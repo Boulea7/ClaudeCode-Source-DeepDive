@@ -85,6 +85,7 @@
 `main.tsx` 里还有一个单独特判：
 
 - non-interactive 模式下，如果是 custom main-thread agent，会直接把它的 prompt 放进 headless `systemPrompt`
+- 只要 `customSystemPrompt` 已经存在，`QueryEngine` 这条链还会跳过 `getSystemPrompt()` 与 `getSystemContext()` 的标准预取
 
 因此文档里如果把“所有主线程 prompt 都走同一条链”写死，会和源码不一致。
 
@@ -246,3 +247,4 @@ flowchart TD
 - 不同 feature gate 下 fork / proactive / coordinator / built-in agent 的真实启用状态。
 - 某个具体运行时里 agent prompt 的最终字节内容。
 - fork fallback 重算时与父线程 prompt 的实际偏差范围。源码只说明“可能 diverge”，不能写成绝对一致。
+- `COORDINATOR_MODE`、`PROACTIVE`、`KAIROS` 这些名字当前只能稳定证明它们会改写主线程 / agent prompt 路径，不能直接当成公开产品档位。

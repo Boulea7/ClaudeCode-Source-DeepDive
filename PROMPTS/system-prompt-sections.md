@@ -112,6 +112,11 @@ uncached section：
 
 - 缓存稳定性优先
 
+这里还要再补一个边界：
+
+- “最明确”指的是标准 section registry 路径里最容易直接坐实的一项
+- 如果 `isMcpInstructionsDeltaEnabled()` 为真，MCP instructions 还会改走 attachment / delta 路径，而不是继续以内联 section 形态出现
+
 ### 6. static boundary / dynamic boundary 不是审美问题
 
 `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 的作用不是“看起来更整齐”，而是把：
@@ -205,3 +210,4 @@ flowchart TD
 
 - 某些 feature gate 会不会在不同构建里增减 section 集合，这一页不展开。
 - `beta header latches` 的完整产品语义，这一页也不继续延伸。
+- `mcp_instructions` 在不同 gate 组合下最终以内联 section 还是 delta / attachment 形式出现，这一页只确认机制，不把它写成单一路径。

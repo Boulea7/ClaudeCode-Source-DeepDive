@@ -80,6 +80,13 @@
 - `companionReaction` 驱动 speech bubble
 - `companionPetAt` 驱动 pet hearts
 
+这一轮还能把 reaction / pet 的边界再写具体一点：
+
+- `REPL.tsx` 在每次 `query()` 结束后，会把 `fireCompanionObserver(messagesRef.current, ...)` 的回调结果写回 `AppState.companionReaction`
+- `REPL.tsx` 滚动时也会主动把 `companionReaction` 清空
+- `CompanionSprite.tsx` 只是读取 `companionReaction` / `companionPetAt` 并负责渲染，不负责生成 reaction 文本
+- `companionPetAt` 这一轮仍只确认到读取点，没有在当前树里复核到明确写入点
+
 `prompt.ts` 则把 `companion_intro` 作为一次性附件注入给主对话，用来提醒模型：
 
 - 输入框旁边还有一个 companion / watcher
@@ -96,6 +103,12 @@
 - `companionPetAt` 只有读取点，没有确认到写入点
 
 所以文档不能把 companion reaction 的生成机制、模型来源、`/buddy pet` 行为写死。
+
+这里还可以再补一个更具体的限制：
+
+- `PromptInput.tsx` 只证明 companion footer 选中后会提交 `/buddy`
+- 但这轮没有在当前可见树里复核到 `/buddy` 命令实现文件
+- 因此 hatch / pet / mute / rename 这类具体行为，都不该在这一页写死
 
 ### 2. `voice` 不只是 gating，但也不能写成完整语音产品栈
 
@@ -130,6 +143,9 @@
 - `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
 - `useVoiceEnabled()` 会把 `settings.voiceEnabled === true` 和 auth / kill-switch 合并成最终 UI 可见状态
 - `useVoiceIntegration()` 会处理 hold threshold、尾部按键清理、voice anchor 与 interim transcript 回填
+- `services/voice.ts` 当前更像本地录音后端选择与采集层
+- `services/voiceStreamSTT.ts` 当前更像 `voice_stream` WebSocket STT 客户端
+- `TextInput.tsx` 只消费 `voiceState` / `voiceAudioLevels` 来画录音时的输入光标波形
 
 如果再往下拆，这条链其实更适合分成两段来看：
 
@@ -138,8 +154,14 @@
 
 因此更稳妥的表述是：
 
-- 这套代码至少已经覆盖了“判定 + 输入集成 + 录音 / STT 接点”
+- 这套代码至少已经覆盖了“判定 + 输入集成 + 本地录音 / STT 接点”
 - 但不要把它直接扩写成完整语音产品闭环
+
+这一轮还可以把负面边界写得更具体：
+
+- 在这批可见文件里，没有复核到明确的 TTS / playback / output-side 主链
+- `commands/voice/index.ts` 与 `commands/voice/voice.ts` 的职责都集中在开关、预检和设置切换
+- 所以更稳妥的表述仍然是“终端文本输入上的语音听写增强”，不是“双向语音助手”
 
 另外，`services/voiceStreamSTT.ts` 里还能看到 `tengu_cobalt_frost` 这类运行时 gate 线索，说明 STT 侧仍有按 rollout 变化的分支；文档里更适合写成“语音链路中仍存在 feature-gated 参数与模型分支”。
 
@@ -231,8 +253,8 @@ flowchart LR
     A[REPL.tsx] --> B[useVoiceIntegration]
     B --> C[context/voice.tsx]
     B --> D[useVoice]
-    D --> E[services/voice.ts]
-    D --> F[services/voiceStreamSTT.ts]
+    D --> E[services/voice.ts<br/>local recording]
+    D --> F[services/voiceStreamSTT.ts<br/>voice_stream STT]
     F --> G[voiceInterimTranscript / final transcript]
     G --> H[insert transcript back into input]
 ```
@@ -274,6 +296,7 @@ flowchart LR
 - `Buddy` 是否就是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这些文件定论。
 - `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
 - `companionPetAt` 的写入点当前没有确认到。
-- `voice` 的完整产品语义仍然不能从这轮范围推出，包括 TTS、播放链、服务端策略和设备管理的全貌。
+- `/buddy` 命令的具体实现文件这轮没有在当前树里复核到，因此 companion 的 hatch / pet / mute 等动作边界仍不能写死。
+- `voice` 的完整产品语义仍然不能从这轮范围推出；这批文件能稳定确认的是开关、预检、按键保持、本地录音、STT 与输入框回填，不能继续外推到 TTS、播放链或 output-side 语音能力。
 - `BUDDY`、`VOICE_MODE`、`tengu_cobalt_frost` 这些 gate 在不同构建里的默认状态，静态源码不能直接推出。
 - `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。

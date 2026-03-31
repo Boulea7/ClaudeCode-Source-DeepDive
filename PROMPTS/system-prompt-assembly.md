@@ -96,6 +96,7 @@
 - 交互式主线程不是先走 `QueryEngine`
 - 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
 - 同一层还会从 store 现算工具池，并把 `refreshTools` 放进 `toolUseContext`
+- `main.tsx` 传给 REPL 的 `systemPrompt` 更适合理解成 `customSystemPrompt` 输入，而不是已经渲染完的最终 prompt
 
 当前源码里可确认的 precedence 更适合写成：
 
@@ -259,4 +260,4 @@ flowchart TD
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 在 API 层如何切分 prompt block，这一页没有继续展开到 API 实现。
 - `isForkSubagentEnabled()` 的完整判定条件，这一页只确认它与 non-interactive / fork gate 有关，不继续展开所有开关。
 - `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 名字带 `fork`，但不能直接等同于 fork 子代理主装配链。
-- proactive / KAIROS / coordinator 在不同构建里的默认 rollout 状态，这一页也不外推。
+- proactive / KAIROS / coordinator 在不同构建里的默认 rollout 状态，这一页也不外推；当前只能确认它们会改写 prompt 路径，不证明公开构建一定启用。

@@ -114,6 +114,7 @@
 
 - 只要不是 override
 - `appendSystemPrompt` 都会尾追加
+- coordinator 这一层还要求 `COORDINATOR_MODE` 打开、`CLAUDE_CODE_COORDINATOR_MODE` 为真，且当前没有 `mainThreadAgentDefinition`
 
 还有一个必须写明的分支：
 
@@ -242,4 +243,4 @@ flowchart TD
 - `PROACTIVE`、`KAIROS`、`COORDINATOR_MODE` 等 feature gate 的线上默认状态，静态源码不能直接推出。
 - 具体某个会话最终落地的 prompt 字节内容仍然依赖 runtime 输入，例如 memory、MCP instructions、output style、agent prompt。
 - fork fallback 重算时与父线程 prompt 的实际偏差范围，源码只说明“可能 diverge”，不能写成绝对一致。
-- `KAIROS` 的完整产品含义，当前仍然只能保守写成 proactive / feature-gated 线索。
+- `KAIROS` 的完整产品含义，当前仍然只能保守写成 prompt / assistant / brief 相关的 feature-gated 线索，不能直接写成固定公开产品模式。
