@@ -57,6 +57,11 @@
 
 而不是一段后期再切的长文本。
 
+这里还要补一个很重要的限制：
+
+- 这套 default prompt parts 工厂本身也受 `feature(...)`、GrowthBook、env flag 影响
+- 因此文档应该描述“哪些路径存在”，不要把某条路径写成所有构建里的统一公开行为
+
 这里还要多补一个边界：
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 是条件插入

@@ -114,6 +114,14 @@
 
 - “本地 HTTP 服务端”
 
+另外还要补一层 gate 边界：
+
+- `bridgeEnabled.ts` 明确把 `BRIDGE_MODE` 当作编译期总开关
+- entitlement 还要再叠加 `tengu_ccr_bridge`
+- env-less REPL path 还要再看 `tengu_bridge_repl_v2`
+
+所以“bridge 基础设施存在”与“当前会话一定可走到这条路径”是两回事。
+
 ### 4. `bridge/` 更适合拆成两套 REPL core，再加一条 standalone worker 入口
 
 当前源码里可以明确分成两套 core：
@@ -192,6 +200,11 @@
 - 这些结论说明的是“客户端怎么连”
 - 不是“服务端一定怎么实现”
 
+同时还可以补一句：
+
+- `tengu_cobalt_harbor`、`tengu_ccr_mirror`、`feature('KAIROS')` 等 gate 会继续改变默认连接方式、mirror mode 和 CLI resume 语义
+- 文档更适合把它们写成“bridge / remote 的条件分支”，而不是“固定产品层级”
+
 ### 6. `sessionRunner.ts` 说明 bridge 不只是一个内存态适配层
 
 `sessionRunner.ts` 很关键，因为它说明 standalone / multi-session bridge 最终会：
@@ -256,3 +269,4 @@ flowchart LR
 - `/bridge`、`worker_epoch`、`ccr_v2_compat_enabled` 等服务端语义，这一轮只能写成“客户端预期 / 兼容逻辑”，不能写成后端事实。
 - `session_*` 与 `cse_*` 的双 ID 兼容逻辑可以确认存在，但服务端当前到底接受哪些 tag，不能只靠客户端静态代码写死。
 - env-based 与 env-less 在真实产品入口里的默认启用条件，这一轮不继续外推。
+- `BRIDGE_MODE`、`tengu_ccr_bridge`、`tengu_bridge_repl_v2`、`tengu_ccr_mirror` 在不同构建里的默认 rollout 状态，静态源码不能直接推出。

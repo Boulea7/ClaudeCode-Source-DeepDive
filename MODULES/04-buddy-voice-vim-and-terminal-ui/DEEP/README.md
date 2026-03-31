@@ -84,6 +84,12 @@
 
 - 输入框旁边还有一个 companion / watcher
 
+这里还要补一个 gate 边界：
+
+- `CompanionSprite.tsx`、`useBuddyNotification.tsx`、`buddy/prompt.ts` 都直接受 `feature('BUDDY')` 控制
+- 这说明当前能确认的是 companion 前台表现层与提示附件存在 gated path
+- 不能把它外推成“所有构建里默认开启的公开功能”
+
 但这里有两个边界必须单独写出来：
 
 - `fireCompanionObserver(...)` 在 REPL 里有调用点，但本轮没有在当前树中复核到它的定义
@@ -111,6 +117,11 @@
 3. `useVoiceEnabled()`
    - 再叠加 `settings.voiceEnabled === true`
 
+其中第一层还可以写得更具体一点：
+
+- `isVoiceGrowthBookEnabled()` 不是泛泛的 feature probe
+- 它明确把 `VOICE_MODE` 编译期开关和 `tengu_amber_quartz_disabled` kill switch 叠在一起
+
 另外还可以明确写出：
 
 - `/voice` 命令的 `isEnabled` 与 `isHidden` 不是同一条件
@@ -129,6 +140,8 @@
 
 - 这套代码至少已经覆盖了“判定 + 输入集成 + 录音 / STT 接点”
 - 但不要把它直接扩写成完整语音产品闭环
+
+另外，`services/voiceStreamSTT.ts` 里还能看到 `tengu_cobalt_frost` 这类运行时 gate 线索，说明 STT 侧仍有按 rollout 变化的分支；文档里更适合写成“语音链路中仍存在 feature-gated 参数与模型分支”。
 
 ### 3. `vim/` 采用“五段式”结构
 
@@ -262,4 +275,5 @@ flowchart LR
 - `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
 - `companionPetAt` 的写入点当前没有确认到。
 - `voice` 的完整产品语义仍然不能从这轮范围推出，包括 TTS、播放链、服务端策略和设备管理的全貌。
+- `BUDDY`、`VOICE_MODE`、`tengu_cobalt_frost` 这些 gate 在不同构建里的默认状态，静态源码不能直接推出。
 - `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。

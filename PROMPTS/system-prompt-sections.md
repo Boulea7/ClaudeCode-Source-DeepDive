@@ -143,6 +143,28 @@ uncached section：
 - dynamic boundary
 - cacheBreak
 
+### 7. section 集合本身也会受 gate 影响
+
+这一页还要再收紧一个边界：
+
+- section registry 本身是稳定机制
+- 但“本轮到底注册哪些 section”仍会受 build flag 和 runtime gate 影响
+
+当前源码里已经能看到几类典型分支：
+
+- proactive / KAIROS 会整体绕开标准 section registry，改走 autonomous prompt 路径
+- `mcp_instructions` 会因为 `isMcpInstructionsDeltaEnabled()` 改走 attachment / delta 路径
+- `session_guidance` 的实际内容还会受 `COORDINATOR_MODE`、fork gate、verification gate 影响
+
+所以这页更适合写成：
+
+- section 机制是稳定的
+- section 集合与具体内容是条件性的
+
+而不是：
+
+- 所有构建、所有模式都严格拥有同一份 dynamic sections 列表
+
 ## 一张图看 section 生命周期
 
 ```mermaid

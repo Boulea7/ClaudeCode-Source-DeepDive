@@ -76,6 +76,13 @@
 
 所以文档里要把“标准路径”与“特化路径”分开写，不要混成一个通用流程。
 
+这里再补一个边界会更稳妥：
+
+- 这些路径分支已经能从源码确认存在
+- 但它们的公开启用状态仍受 `feature(...)`、GrowthBook、env flag 共同影响
+
+因此这一页只能说明装配机制，不能把 proactive / KAIROS / coordinator 写成固定公开产品档位。
+
 ### 3. interactive 主线程在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
 
 `utils/systemPrompt.ts` 负责 interactive 主线程的最终折叠。
@@ -252,3 +259,4 @@ flowchart TD
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 在 API 层如何切分 prompt block，这一页没有继续展开到 API 实现。
 - `isForkSubagentEnabled()` 的完整判定条件，这一页只确认它与 non-interactive / fork gate 有关，不继续展开所有开关。
 - `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 名字带 `fork`，但不能直接等同于 fork 子代理主装配链。
+- proactive / KAIROS / coordinator 在不同构建里的默认 rollout 状态，这一页也不外推。

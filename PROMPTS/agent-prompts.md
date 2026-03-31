@@ -65,6 +65,11 @@
 
 这说明 built-in agent prompt 可以感知当前工具上下文，而 custom / plugin agent 默认是更静态的 prompt 提供者。
 
+这里还可以再补一个条件：
+
+- coordinator prompt 只有在 `COORDINATOR_MODE` 开启且当前没有 `mainThreadAgentDefinition` 时才会抢到这一层
+- 所以它不是“永远排在 main-thread agent 前面”的无条件分支
+
 ### 3. 非交互主线程不完全一样
 
 `QueryEngine.ts` 这条路径里，主线程不会调用：
@@ -184,6 +189,19 @@ flowchart TD
 
 - 普通 subagent 走自己的 agent prompt 链
 - fork 尽量复用父 `renderedSystemPrompt` 与父消息前缀
+
+### 8. 这些路径本身也受 feature gate 控制
+
+这一页最后还要把几个名字写得更保守：
+
+- `COORDINATOR_MODE` 会改变 interactive 主线程是否插入 coordinator prompt，以及 tool pool 的裁剪方式
+- `PROACTIVE` / `KAIROS` 会让 main-thread agent prompt 从“替换 default”变成“追加在 default 后面”
+- `FORK_SUBAGENT` 会改变省略 `subagent_type` 时的默认语义
+
+这些都说明：
+
+- agent prompt 路径确实会被 feature gate 改写
+- 但静态源码只能证明“有这条分支”，不能直接证明它在当前公开构建里默认启用
 
 ## 一张图看 4 条 agent prompt 路径
 

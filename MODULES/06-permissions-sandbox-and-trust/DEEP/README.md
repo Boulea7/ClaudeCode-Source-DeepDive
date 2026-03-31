@@ -90,6 +90,11 @@
 
 - 权限判定器
 
+这一层还有一个值得补出的 gate 细节：
+
+- `PermissionRequest.tsx` 自己也会按 `feature('REVIEW_ARTIFACT')`、`feature('WORKFLOW_SCRIPTS')`、`feature('MONITOR_TOOL')` 条件加载额外请求组件
+- 这说明审批 UI 的分发表面不是固定常量，而是会随构建形态变化
+
 ### 4. classifier 是这层的一部分，不是外挂
 
 从 `permissions.ts`、`permissionSetup.ts`、`yoloClassifier.ts`、`bashClassifier.ts` 之间的引用关系可以确认：
