@@ -1,111 +1,149 @@
 # System Prompt Sections
 
-这一页只讲一件事：**Claude Code 不是简单拼几段字符串，而是在维护一套带缓存语义的 prompt section 结构。**
+这一页只讲 section 机制本身。
+
+也就是：
+
+**Claude Code 怎么把动态 prompt 段注册、缓存、失效，再重新求值。**
 
 ## 关键文件
 
 - `restored-src/src/constants/systemPromptSections.ts`
 - `restored-src/src/constants/prompts.ts`
 
-## section 机制本身很简单，但很关键
+## 先看三件核心对象
 
-`restored-src/src/constants/systemPromptSections.ts` 里一共给了三组核心能力：
+`systemPromptSections.ts` 里只有三件真正关键的东西：
 
 - `systemPromptSection(name, compute)`
-  - 生成一个可缓存 section
+  - 普通 section，会缓存
 - `DANGEROUS_uncachedSystemPromptSection(name, compute, reason)`
-  - 生成一个每轮都可能重新计算的 section
+  - 每轮重算的 volatile section
 - `resolveSystemPromptSections(sections)`
-  - 真正把 section 展开成 prompt 字符串数组
+  - 把注册好的 section 真正求值成 prompt 字符串数组
 
-这里最关键的是 `cacheBreak` 这个概念：
+这里最重要的字段就是：
 
-- `systemPromptSection()` 的 `cacheBreak` 是 `false`
-- `DANGEROUS_uncachedSystemPromptSection()` 的 `cacheBreak` 是 `true`
+- `cacheBreak`
 
-也就是说，源码里明确区分了：
+它直接决定这个 section 是：
 
-- 可以在 `/clear` 或 `/compact` 之前复用的 section
-- 会打破 prompt cache 的 volatile section
+- 可复用
+- 还是每轮都要重新算
 
-## 一张图看 section 解析
+## 普通 section 与 uncached section 的区别
 
-```mermaid
-flowchart TD
-    A[define sections] --> B[systemPromptSection]
-    A --> C[DANGEROUS_uncachedSystemPromptSection]
-    B --> D[resolveSystemPromptSections]
-    C --> D
-    D --> E[getSystemPromptSectionCache]
-    E --> F[reuse cached value]
-    D --> G[compute new value]
-    G --> H[setSystemPromptSectionCacheEntry]
-```
+`systemPromptSection()`：
 
-## 当前公开镜像里有哪些 dynamic sections
+- `cacheBreak: false`
+- 如果 cache 里已有同名项，就直接复用
 
-从 `restored-src/src/constants/prompts.ts` 可以直接看到，普通路径下会注册这些 dynamic sections：
+`DANGEROUS_uncachedSystemPromptSection()`：
 
-- `session_guidance`
-- `memory`
-- `ant_model_override`
-- `env_info_simple`
-- `language`
-- `output_style`
-- `mcp_instructions`
-- `scratchpad`
-- `frc`
-- `summarize_tool_results`
-- `numeric_length_anchors`
-- `token_budget`
-- `brief`
+- `cacheBreak: true`
+- 每轮都重新执行 `compute`
+- 然后再把最新值写回 cache
 
-其中最值得单独注意的是：
+也就是说，uncached 不是“完全不进 cache”，而是“不允许用旧 cache 命中直接返回”。
 
-- `mcp_instructions`
-  - 走的是 `DANGEROUS_uncachedSystemPromptSection()`
-  - 原因也在源码里写得很清楚：MCP server 可能在不同 turn 之间连接或断开
+## `resolveSystemPromptSections()` 的行为很简单，但很重要
 
-这说明 section 不是“拆着写更好看”，而是为了给 prompt cache 和动态注入服务。
+`resolveSystemPromptSections()` 会：
 
-## `/clear` 和 `/compact` 会清掉什么
+1. 读取当前 section cache
+2. 逐个 section 看 `cacheBreak`
+3. 如果是普通 section 且 cache 命中，就直接返回
+4. 否则执行 `compute`
+5. 用 `setSystemPromptSectionCacheEntry()` 写回最新值
 
-`restored-src/src/constants/systemPromptSections.ts` 里的 `clearSystemPromptSections()` 会：
+这让 prompt section 更像一个 registry，而不是 scattered string builder。
+
+## `clearSystemPromptSections()` 会在 `/clear` 和 `/compact` 后失效缓存
+
+`clearSystemPromptSections()` 做了两件事：
 
 - `clearSystemPromptSectionState()`
 - `clearBetaHeaderLatches()`
 
-而源码注释也写明了，它会在：
+源码注释也写得很清楚：
 
-- `/clear`
-- `/compact`
+- 它会在 `/clear`
+- 以及 `/compact`
 
-这些流程里调用。
+后调用。
 
-这点很重要，因为它说明 compact 不是只处理消息历史，也会重置 prompt section 的缓存状态。
+所以 compact 不只是重写消息历史，也会让 section cache 重新求值。
+
+## 为什么 `mcp_instructions` 是显式 uncached
+
+这是当前 section 机制里最值得单独拿出来讲的例子。
+
+在 `prompts.ts` 里：
+
+- `mcp_instructions`
+- 用的是 `DANGEROUS_uncachedSystemPromptSection(...)`
+
+原因源码里已经直接写出来了：
+
+- MCP servers 可能在 turn 之间连接或断开
+
+这意味着：
+
+- 如果把它放进普通缓存
+- prompt cache 会更稳定
+- 但模型看到的 MCP instructions 就可能过期
+
+所以作者在这里明确选择了“动态正确性优先”。
+
+## 为什么 `session_guidance` 也必须放在动态边界之后
+
+`session_guidance` 依赖的不是固定文本，而是运行时条件，例如：
+
+- 当前是不是 non-interactive session
+- fork gate 是否开启
+
+因此它也不应该混进静态前缀。
+
+更准确地说，当前默认 prompt parts 的静态/动态边界不是审美问题，而是缓存边界设计。
+
+## 一张图看 section 生命周期
+
+```mermaid
+flowchart TD
+    A[register section] --> B{cacheBreak?}
+    B -- no --> C[check cache by name]
+    C -- hit --> D[reuse cached value]
+    C -- miss --> E[compute]
+    B -- yes --> E
+    E --> F[write latest value into cache]
+    F --> G[resolved prompt part]
+    H[/clear or /compact] --> I[clearSystemPromptSections]
+    I --> J[clear section state and beta latches]
+```
 
 ## 为什么 section 机制重要
 
-这套机制带来几个很实际的效果：
+如果没有这层 registry，prompt 装配会面临两个问题：
 
-- 不是每轮都要把所有 prompt 部分重新计算一遍
-- 真正动态的部分可以被单独标记出来
-- prompt cache 的边界更容易稳定
-- compact / clear 之后，系统可以明确知道哪些 section 需要重建
+- 不是每轮都知道哪些段是真动态的
+- compact / clear 后也不知道该让哪些段失效
 
-从工程上说，这让 prompt 装配更像一个可维护的 registry，而不是散落在各处的字符串拼接。
+现在这套机制至少带来了三点好处：
+
+- 动态段可以按名管理
+- cache break 是显式语义，不靠注释猜
+- `/clear` 和 `/compact` 的失效边界清楚
 
 ## 已确认的事实
 
-- section 在源码里是一等结构，不是抽象说法
-- cache break 在类型层面就是显式字段
-- `resolveSystemPromptSections()` 会先查 cache，再决定是否重新计算
-- `/clear` 和 `/compact` 会清 prompt section state
-- `mcp_instructions` 是明确的 uncached section
+- section 在源码里是一等结构，不是文档概念
+- 普通 section 会命中 cache
+- uncached section 每轮重算
+- `/clear` 和 `/compact` 会清 section cache
+- `mcp_instructions` 是显式 uncached section
+- `session_guidance` 属于动态段，而不是静态前缀
 
 ## 仍待确认
 
-- 某些实验 gate 下是否还会动态增减 section 集合
-- 不同构建形态下 beta header latch 的完整影响范围
-
-这些点目前更适合保守记录，不适合扩写成完整结论。
+- 某些 feature gate 在不同构建里是否会增减 section 集合
+- beta header latches 在完整产品里的影响范围，这一页不展开
