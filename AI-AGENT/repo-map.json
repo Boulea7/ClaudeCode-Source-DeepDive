@@ -9,6 +9,8 @@
     "MODULES/03-persistent-memory-system/README.md",
     "MODULES/02-planning-compaction-and-assistant/README.md",
     "MODULES/05-tools-mcp-skills-and-plugins/README.md",
+    "MODULES/04-buddy-voice-vim-and-terminal-ui/README.md",
+    "MODULES/08-prompts-config-and-other-moats/README.md",
     "PROMPTS/README.md"
   ],
   "modules": [
@@ -30,7 +32,12 @@
     {
       "id": "04",
       "name": "buddy-voice-vim-and-terminal-ui",
-      "status": "mixed"
+      "status": "mixed",
+      "focus": [
+        "companion-subsystem",
+        "vim-input-state-machine",
+        "voice-mode-gating"
+      ]
     },
     {
       "id": "05",
@@ -50,8 +57,12 @@
     {
       "id": "08",
       "name": "prompts-config-and-other-moats",
-      "status": "confirmed"
+      "status": "confirmed",
+      "focus": [
+        "system-prompt-sections",
+        "dynamic-boundary",
+        "main-thread-vs-subagent-prompt-assembly"
+      ]
     }
   ]
 }
-

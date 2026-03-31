@@ -1,8 +1,19 @@
-Module 04 explains how Claude Code interacts with the user in the terminal.
+Module 04 is best read as three separate code paths:
 
-Focus on:
-- buddy/ as a real code surface
-- vim/ as structured input logic
-- voice/ as a separate mode gate
-- AgentTool/UI.tsx as the link between UI and agent runtime
+- `buddy/` is a companion subsystem, not a confirmed product-name layer.
+- `vim/` is a real input-state machine with `types -> transitions -> motions -> operators/textObjects`.
+- `voice/` currently confirms mode gating, not a full audio pipeline.
 
+Recommended order:
+- `restored-src/src/buddy/companion.ts`
+- `restored-src/src/buddy/CompanionSprite.tsx`
+- `restored-src/src/buddy/prompt.ts`
+- `restored-src/src/hooks/useVimInput.ts`
+- `restored-src/src/vim/types.ts`
+- `restored-src/src/vim/transitions.ts`
+- `restored-src/src/voice/voiceModeEnabled.ts`
+
+Use this module when an agent needs:
+- companion / watcher clues
+- vim input behavior
+- voice enablement conditions

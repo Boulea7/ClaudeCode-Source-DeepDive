@@ -5,10 +5,14 @@
   "key_paths": [
     "restored-src/src/buddy/CompanionSprite.tsx",
     "restored-src/src/buddy/companion.ts",
+    "restored-src/src/buddy/prompt.ts",
     "restored-src/src/buddy/useBuddyNotification.tsx",
+    "restored-src/src/hooks/useVimInput.ts",
+    "restored-src/src/vim/types.ts",
     "restored-src/src/voice/voiceModeEnabled.ts",
     "restored-src/src/vim/motions.ts",
     "restored-src/src/vim/operators.ts",
+    "restored-src/src/vim/textObjects.ts",
     "restored-src/src/vim/transitions.ts",
     "restored-src/src/tools/AgentTool/UI.tsx"
   ],
@@ -16,6 +20,10 @@
     "01-agent-loop-and-teams",
     "06-permissions-sandbox-and-trust"
   ],
-  "status": "mixed"
+  "status": "mixed",
+  "subsystems": [
+    "buddy-companion",
+    "vim-input-kernel",
+    "voice-mode-gating"
+  ]
 }
-

@@ -32,6 +32,26 @@ flowchart LR
     K --> F
 ```
 
+## Prompt 与技能如何挂到主链上
+
+```mermaid
+flowchart LR
+    A[main.tsx / REPL] --> B[getSystemPrompt]
+    B --> C[resolveSystemPromptSections]
+    C --> D[buildEffectiveSystemPrompt]
+    D --> E[renderedSystemPrompt]
+
+    F[skills/loadSkillsDir.ts] --> G[createSkillCommand]
+    G --> H[commands.ts getSkillToolCommands]
+    H --> I[SkillTool / skill_listing attachment]
+
+    E --> J[AgentTool forkSubagent]
+    D --> K[main-thread agent]
+    I --> L[query.ts]
+    J --> L
+    K --> L
+```
+
 ## 主执行链路
 
 ```mermaid
@@ -196,6 +216,23 @@ sequenceDiagram
 - `remote/` 负责远程会话对象和适配
 - `bridge/` 负责桥接运行时、session runner、transport 和 permission callback
 
+### 8. Prompt 与命令注入层
+
+这层主要落在：
+
+- `restored-src/src/constants/prompts.ts`
+- `restored-src/src/constants/systemPromptSections.ts`
+- `restored-src/src/utils/systemPrompt.ts`
+- `restored-src/src/skills/loadSkillsDir.ts`
+- `restored-src/src/commands.ts`
+
+现在可以更明确地说：
+
+- 默认主 prompt 不是一段固定长文本，而是一组 section
+- section 的缓存边界在源码里是显式声明的
+- `buildEffectiveSystemPrompt()` 才负责交互式主线程的最终优先级装配
+- skill 不是“额外文档”，而是先变成 `Command`，再通过 `getSkillToolCommands()` 与 attachment 进入模型可见面
+
 ## 为什么这套分层重要
 
 如果只看产品表面，很容易把 Claude Code 理解成：
@@ -224,7 +261,9 @@ sequenceDiagram
 7. `MODULES/03-persistent-memory-system`
 8. `MODULES/05-tools-mcp-skills-and-plugins`
 9. `MODULES/06-permissions-sandbox-and-trust`
-10. `PROMPTS/`
+10. `MODULES/04-buddy-voice-vim-and-terminal-ui`
+11. `MODULES/08-prompts-config-and-other-moats`
+12. `PROMPTS/`
 
 ## 仍待确认
 

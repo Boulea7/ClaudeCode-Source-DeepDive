@@ -31,6 +31,13 @@ This repository is unofficial and is reconstructed from the public npm package a
 - 想看 prompt 机制：看 [PROMPTS](./PROMPTS/)
 - 想补一点发布时间和竞品背景：看 [COMPARISONS](./COMPARISONS/)
 
+最近已重点补厚的入口：
+
+- [MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md](./MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md)：companion、vim 输入内核、voice gating
+- [MODULES/08-prompts-config-and-other-moats/DEEP/README.md](./MODULES/08-prompts-config-and-other-moats/DEEP/README.md)：prompt 装配链、dynamic boundary、main-thread / subagent 差异
+- [PROMPTS/agent-prompts.md](./PROMPTS/agent-prompts.md)：agent prompt 继承与 fork 差异
+- [PROMPTS/skills-and-command-injection.md](./PROMPTS/skills-and-command-injection.md)：skill 从 `SKILL.md` 进入命令层与模型上下文的路径
+
 ## 仓库结构
 
 ```text
@@ -77,7 +84,7 @@ flowchart TD
 - 入口：[`MODULES/03-persistent-memory-system`](./MODULES/03-persistent-memory-system/)
 
 ### 04 Buddy, Voice, Vim, And Terminal UI
-- 这部分关注终端 UI、输入模式、voice 和 teammate 预览界面。
+- 这部分关注 companion 子系统、vim 输入状态机、voice mode gating 和终端交互层。
 - 入口：[`MODULES/04-buddy-voice-vim-and-terminal-ui`](./MODULES/04-buddy-voice-vim-and-terminal-ui/)
 
 ### 05 Tools, MCP, Skills, And Plugins
@@ -93,7 +100,7 @@ flowchart TD
 - 入口：[`MODULES/07-remote-session-bridge-and-sdk`](./MODULES/07-remote-session-bridge-and-sdk/)
 
 ### 08 Prompts, Config, And Other Moats
-- 这部分关注 prompt 装配、agent prompt、config 和一些不容易放进前面模块的关键设计。
+- 这部分关注 prompt section、dynamic boundary、main-thread / subagent prompt 装配，以及一些不容易放进前面模块的关键设计。
 - 入口：[`MODULES/08-prompts-config-and-other-moats`](./MODULES/08-prompts-config-and-other-moats/)
 
 ## 为什么很多人会研究 Claude Code
