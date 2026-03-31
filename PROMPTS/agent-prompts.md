@@ -185,6 +185,23 @@ flowchart TD
 - 普通 subagent 走自己的 agent prompt 链
 - fork 尽量复用父 `renderedSystemPrompt` 与父消息前缀
 
+## 一张图看 4 条 agent prompt 路径
+
+```mermaid
+flowchart TD
+    A[interactive main thread] --> B[REPL.tsx]
+    B --> C[buildEffectiveSystemPrompt]
+
+    D[non-interactive main thread] --> E[QueryEngine.ts]
+    E --> F[custom/default + memory + append]
+
+    G[agentDefinition.getSystemPrompt] --> H[ordinary subagent]
+    H --> I[enhanceSystemPromptWithEnvDetails]
+
+    J[parent renderedSystemPrompt] --> K[fork subagent]
+    K --> L[buildForkedMessages]
+```
+
 ## 为什么这个设计重要
 
 这条装配链决定了几个关键事实：

@@ -48,6 +48,11 @@
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
+这里最好再补一句源码语义：
+
+- boundary 是 `shouldUseGlobalCacheScope()` 为真时才插入
+- 不是每次调用 `getSystemPrompt()` 都一定出现
+
 也就是说，default prompt 在这一层已经被明确拆成：
 
 - static
@@ -68,6 +73,12 @@
    - 先构造 dynamic sections
    - 再通过 `resolveSystemPromptSections()` 求值
 
+标准路径里还能直接确认一个特别重要的动态 section：
+
+- `mcp_instructions`
+  - 通过 `DANGEROUS_uncachedSystemPromptSection(...)` 注册
+  - 用来承接 MCP server instructions 这种会随连接状态变化的内容
+
 所以文档里要把“标准路径”与“特化路径”分开写，不要混成一个通用流程。
 
 ### 3. interactive 主线程在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
@@ -82,6 +93,7 @@
 
 - 交互式主线程不是先走 `QueryEngine`
 - 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
+- 同一层还会从 store 现算工具池，并把 `refreshTools` 放进 `toolUseContext`
 
 当前源码里可确认的 precedence 是：
 

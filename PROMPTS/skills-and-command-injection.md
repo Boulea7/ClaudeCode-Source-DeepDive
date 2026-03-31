@@ -112,6 +112,7 @@
 - hard-coded commands
 
 这里要特别注意 3 个集合：
+这里要特别注意 4 个集合：
 
 #### 执行集合
 
@@ -148,11 +149,24 @@
 
 它和 `getSkillToolCommands()` 也不是同一个结果。
 
+#### MCP skill 补集
+
+还有一组只针对 `AppState.mcp.commands` 的过滤函数：
+
+- `getMcpSkillCommands()`
+
+它只保留：
+
+- `type === 'prompt'`
+- `loadedFrom === 'mcp'`
+- `disableModelInvocation !== true`
+
 所以文档里一定要把这 3 个集合分开写。
 
 更直白一点说：
 
 - 模型看得到的 skill，不等于运行时真能执行到的全部 skill
+- 运行时还能在本地命令集合之外，再补一层 MCP skill 集合
 
 ```mermaid
 flowchart LR
@@ -160,11 +174,12 @@ flowchart LR
     B[legacy commands] --> E
     C[bundled skills] --> E
     D[plugin skills] --> E
-    F[MCP skill bridge] --> G[SkillTool runtime supplement]
+    F[MCP skill bridge] --> G[getMcpSkillCommands]
     E --> H[commands.ts]
     H --> I[getCommands / getAllCommands]
     H --> J[getSkillToolCommands]
     H --> K[getSlashCommandToolSkills]
+    G --> I
     I --> L[execution set]
     J --> M[model-visible listing]
     K --> N[skills index]

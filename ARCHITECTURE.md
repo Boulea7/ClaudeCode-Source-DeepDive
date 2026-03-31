@@ -39,22 +39,25 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[constants/prompts.ts<br/>getSystemPrompt] --> B[default prompt parts]
-    B --> C[resolveSystemPromptSections]
-    C --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
-    D --> E[interactive main thread<br/>REPL.tsx]
-    E --> F[buildEffectiveSystemPrompt]
-    F --> G[renderedSystemPrompt]
+    B --> C[REPL.tsx interactive path]
+    C --> D[buildEffectiveSystemPrompt]
+    D --> E[renderedSystemPrompt]
+    B --> F[QueryEngine.ts headless path]
+    F --> G[custom/default + memory + append]
+    H[agentDefinition.getSystemPrompt] --> I[ordinary subagent]
+    E --> J[fork subagent]
 
-    H[skills/loadSkillsDir.ts] --> I[createSkillCommand]
-    I --> J[commands.ts<br/>getSkillToolCommands]
-    I --> K[SkillTool.ts<br/>getAllCommands]
-    K --> L[processPromptSlashCommand]
+    K[skills/loadSkillsDir.ts] --> L[createSkillCommand]
+    L --> M[commands.ts<br/>listing and index]
+    L --> N[SkillTool.ts<br/>execution set]
+    N --> O[processPromptSlashCommand]
 
-    G --> M[fork subagent]
-    J --> N[model-visible skill listing]
-    L --> O[query.ts]
-    M --> O
-    N --> O
+    M --> P[model-visible skill listing]
+    O --> Q[query.ts]
+    G --> Q
+    I --> Q
+    J --> Q
+    P --> Q
 ```
 
 ## 主执行链路
@@ -73,6 +76,7 @@ sequenceDiagram
     M->>M: 初始化状态、工具池、MCP、skills、plugins
     alt interactive
         M->>R: 启动 REPL
+        R->>R: 现算 assembleToolPool() / refreshTools()
         R->>R: 获取 default prompt / userContext / systemContext
         R->>R: buildEffectiveSystemPrompt()
         R->>Q: 进入 query()
@@ -101,6 +105,7 @@ sequenceDiagram
 - `restored-src/src/tools.ts`
 
 为什么是这 5 个：
+为什么是这 6 个：
 
 - `main.tsx` 决定运行前准备了什么
 - `REPL.tsx` 决定交互式主线程怎样装 prompt、工具池和 query 上下文
@@ -285,17 +290,18 @@ sequenceDiagram
 第一次阅读建议按下面顺序走：
 
 1. `restored-src/src/main.tsx`
-2. `restored-src/src/QueryEngine.ts`
-3. `restored-src/src/query.ts`
-4. `restored-src/src/Tool.ts`
-5. `restored-src/src/tools.ts`
-6. `MODULES/01-agent-loop-and-teams`
-7. `MODULES/03-persistent-memory-system`
-8. `MODULES/05-tools-mcp-skills-and-plugins`
-9. `MODULES/06-permissions-sandbox-and-trust`
-10. `MODULES/04-buddy-voice-vim-and-terminal-ui`
-11. `MODULES/08-prompts-config-and-other-moats`
-12. `PROMPTS/`
+2. `restored-src/src/screens/REPL.tsx`
+3. `restored-src/src/QueryEngine.ts`
+4. `restored-src/src/query.ts`
+5. `restored-src/src/Tool.ts`
+6. `restored-src/src/tools.ts`
+7. `MODULES/01-agent-loop-and-teams`
+8. `MODULES/03-persistent-memory-system`
+9. `MODULES/05-tools-mcp-skills-and-plugins`
+10. `MODULES/06-permissions-sandbox-and-trust`
+11. `MODULES/04-buddy-voice-vim-and-terminal-ui`
+12. `MODULES/08-prompts-config-and-other-moats`
+13. `PROMPTS/`
 
 ## 仍待确认
 

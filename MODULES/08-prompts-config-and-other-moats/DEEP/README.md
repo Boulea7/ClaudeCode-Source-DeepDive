@@ -57,6 +57,11 @@
 
 而不是一段后期再切的长文本。
 
+这里还要多补一个边界：
+
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 是条件插入
+- 只有 `shouldUseGlobalCacheScope()` 为真时才会出现
+
 ### 2. section cache 是独立层，不是内容层
 
 `constants/systemPromptSections.ts` 提供的是：
@@ -75,6 +80,7 @@
 当前这轮可以更明确地写出：
 
 - `mcp_instructions` 是标准路径里最明确的 uncached section
+- 它不是抽象概念，而是通过 `DANGEROUS_uncachedSystemPromptSection(...)` 注册进去的
 
 ### 3. interactive 主线程会在 `REPL.tsx` 里再走一次 `buildEffectiveSystemPrompt()`
 
@@ -88,6 +94,7 @@
 
 - 交互式主线程不是先经过 `QueryEngine`
 - 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
+- 同一层还会从 store 现算工具池，并把 `refreshTools` 挂到 `toolUseContext`
 
 当前可确认的优先级是：
 
@@ -180,14 +187,15 @@ flowchart TD
     F --> G[interactive main thread]
     G --> H[REPL.tsx]
     H --> I[buildEffectiveSystemPrompt]
+    I --> J[renderedSystemPrompt]
 
-    F --> J[non-interactive main thread]
-    J --> K[QueryEngine direct combine]
+    F --> K[non-interactive main thread]
+    K --> L[QueryEngine direct combine]
 
-    L[agentDefinition.getSystemPrompt] --> M[ordinary subagent]
-    M --> N[enhanceSystemPromptWithEnvDetails]
+    M[agentDefinition.getSystemPrompt] --> N[ordinary subagent]
+    N --> O[enhanceSystemPromptWithEnvDetails]
 
-    O[parent renderedSystemPrompt] --> P[fork subagent]
+    J --> P[fork subagent]
     P --> Q[buildForkedMessages]
 ```
 
