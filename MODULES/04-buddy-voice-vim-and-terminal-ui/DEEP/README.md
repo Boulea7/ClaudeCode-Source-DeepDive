@@ -119,6 +119,11 @@
 - `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
 - `useVoiceEnabled()` 会把 `settings.voiceEnabled === true` 和 auth / kill-switch 合并成最终 UI 可见状态
 
+如果再往下拆，这条链其实更适合分成两段来看：
+
+- `/voice` 是开关与预检入口
+- `REPL -> useVoiceIntegration -> useVoice -> services/voice -> voiceStreamSTT` 才是实际的录音与转写链
+
 因此更稳妥的表述是：
 
 - 这套代码至少已经覆盖了“判定 + 输入集成 + 录音 / STT 接点”
@@ -194,16 +199,26 @@ flowchart TD
     C --> H[PersistentState / lastChange / lastFind]
 ```
 
-## 一张图看 voice 相关链路
+## 一张图看 voice 开关与预检链
 
 ```mermaid
 flowchart LR
     A[/voice command] --> B[voiceModeEnabled.ts]
     B --> C[useVoiceEnabled]
-    C --> D[useVoiceIntegration]
-    D --> E[context/voice.tsx]
-    D --> F[services/voice.ts]
-    F --> G[services/voiceStreamSTT.ts]
+    C --> D[settings.voiceEnabled]
+    D --> E[voice feature visible]
+```
+
+## 一张图看 voice 录音与转写链
+
+```mermaid
+flowchart LR
+    A[REPL.tsx] --> B[useVoiceIntegration]
+    B --> C[context/voice.tsx]
+    B --> D[useVoice]
+    D --> E[services/voice.ts]
+    D --> F[services/voiceStreamSTT.ts]
+    F --> G[voiceInterimTranscript / final transcript]
     G --> H[insert transcript back into input]
 ```
 
@@ -217,7 +232,7 @@ flowchart LR
 几个最值得记住的点：
 
 - `buddy` 不是一张静态贴图，而是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
-- `voice` 在当前范围里已经不只是 gating，还能看到输入集成、录音和 STT 接点
+- `voice` 在当前范围里已经不只是 gating，还能看到开关、预检、输入集成、录音和 STT 接点
 - `vim` 不是零散快捷键，而是一套清楚拆层的 modal 输入引擎
 
 ## 推荐阅读顺序

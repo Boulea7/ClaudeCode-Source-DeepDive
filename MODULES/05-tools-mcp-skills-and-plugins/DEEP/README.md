@@ -257,6 +257,11 @@ MCP 并不只生成远端 tools。
 - `commands.ts` 负责装配
 - `SkillTool.ts` 负责执行
 
+还要多加一个这轮刚坐实的边界：
+
+- `SkillTool` 真正执行时查的是 `getAllCommands()`
+- 不是 `getSkillToolCommands()`
+
 ### 9. “模型可见的 skill listing” 不等于 “全部可执行 skill”
 
 这点很容易写错。
@@ -277,18 +282,28 @@ MCP 并不只生成远端 tools。
 - `disableModelInvocation` 的项不会进入 listing
 - plugin/MCP 项通常需要 `description` 或 `whenToUse`
 
+这里其实至少有 3 个不同集合：
+
+- `getAllCommands()`
+  - 执行集合
+- `getSkillToolCommands()`
+  - 更接近模型可见 listing
+- `getSlashCommandToolSkills()`
+  - 更接近技能索引 / 菜单集合
+
 所以文档里要明确区分：
 
 - 执行集合
-- listing 集合
+- 模型 listing 集合
+- 技能索引集合
 
 更直白一点说：
 
 - 模型看得到的 skill，不等于运行时真能执行到的全部 skill
 
-### 10. plugin command 与 plugin skill 是两条独立加载链
+### 10. plugin command 与 plugin skill 入口不同，但共用同一构造器
 
-`utils/plugins/loadPluginCommands.ts` 里，这两条链并不相同。
+`utils/plugins/loadPluginCommands.ts` 里，这两条链的入口和过滤规则并不相同，但最终会落到同一个命令构造器。
 
 `commands/` 路径支持：
 
@@ -310,7 +325,11 @@ MCP 并不只生成远端 tools。
 - 该目录会被当作 skill 叶子目录
 - 同目录其他 `.md` 文件不会再各自产生命令
 
-这也是需要在文档里单独提醒的边界。
+所以更准确的说法是：
+
+- plugin command 与 plugin skill 不是两套完全不同的命令对象
+- 它们共享同一个构造器
+- 主要差别落在 `loadedFrom`、发现路径和过滤条件
 
 ### 11. `src/plugins/` 不是完整 runtime plugin loader
 
@@ -324,6 +343,7 @@ MCP 并不只生成远端 tools。
 - `main.tsx` 启动阶段确实会调用 `initBuiltinPlugins()`
 - 但当前树里没有看到实际 `registerBuiltinPlugin(...)` 调用
 - `initBuiltinPlugins()` 在当前镜像里仍是空实现
+- 真正已经有实际注册内容的是 `initBundledSkills()`
 
 所以文档里不应再写：
 

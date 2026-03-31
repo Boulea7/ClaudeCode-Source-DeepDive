@@ -111,7 +111,7 @@
 - workflow commands
 - hard-coded commands
 
-这里要特别注意两个集合：
+这里要特别注意 3 个集合：
 
 #### 执行集合
 
@@ -127,7 +127,7 @@
 
 补进来。
 
-#### listing 集合
+#### 模型 listing 集合
 
 模型看到的 skill listing 更窄，来自：
 
@@ -140,7 +140,15 @@
 - `disableModelInvocation` 的项不会进入 listing
 - plugin / MCP 项通常需要显式 `description` 或 `whenToUse`
 
-所以文档里一定要把这两个集合分开写。
+#### 技能索引集合
+
+还有一组更接近菜单 / 技能索引的集合：
+
+- `getSlashCommandToolSkills()`
+
+它和 `getSkillToolCommands()` 也不是同一个结果。
+
+所以文档里一定要把这 3 个集合分开写。
 
 更直白一点说：
 
@@ -156,11 +164,13 @@ flowchart LR
     E --> H[commands.ts]
     H --> I[getCommands / getAllCommands]
     H --> J[getSkillToolCommands]
-    I --> K[execution set]
-    J --> L[model-visible listing]
-    K --> M[SkillTool]
-    M --> N[processPromptSlashCommand]
-    N --> O[attachments / command_permissions]
+    H --> K[getSlashCommandToolSkills]
+    I --> L[execution set]
+    J --> M[model-visible listing]
+    K --> N[skills index]
+    L --> O[SkillTool]
+    O --> P[processPromptSlashCommand]
+    P --> Q[attachments / command_permissions]
 ```
 
 ### 5. SkillTool 是执行壳，不是 discovery 源
@@ -184,7 +194,7 @@ flowchart LR
 
 - “SkillTool 自己发现并运行所有 skills”
 
-### 6. plugin command 与 plugin skill 是两条独立加载链
+### 6. plugin command 与 plugin skill 入口不同，但共用同一构造器
 
 这是这一轮要特别强调的点。
 
@@ -193,7 +203,7 @@ flowchart LR
 - `getPluginCommands()` 处理 plugin `commands/`
 - `getPluginSkills()` 处理 plugin `skills/`
 
-它们的规则并不相同。
+它们的入口和过滤规则并不相同，但最终会落到同一个命令构造器。
 
 `commands/` 支持：
 
@@ -214,6 +224,12 @@ flowchart LR
 - 在 plugin `commands/` 树中，如果某目录含 `SKILL.md`
 - 该目录会被当作 skill 叶子目录
 - 同目录其他 `.md` 不会再各自产生命令
+
+所以更准确的说法是：
+
+- plugin command 与 plugin skill 不是两套完全不同的命令对象
+- 它们共享同一个构造器
+- 主要差别落在 `loadedFrom`、发现路径和过滤条件
 
 ### 7. built-in plugin skill 不是单独的 source 类型
 
@@ -237,6 +253,7 @@ flowchart LR
 - `main.tsx` 启动阶段会调用 `initBuiltinPlugins()`
 - `initBuiltinPlugins()` 在当前镜像里是空实现
 - 本轮没有看到实际 `registerBuiltinPlugin(...)` 调用
+- 真正已经有实际注册内容的是 `initBundledSkills()`
 
 所以可以写：
 

@@ -84,6 +84,11 @@
 
 - `screens/REPL.tsx`
 
+这里可以直接把一句旧说法改得更清楚：
+
+- 交互式主线程不是先经过 `QueryEngine`
+- 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
+
 当前可确认的优先级是：
 
 1. `overrideSystemPrompt`
@@ -167,7 +172,7 @@ fork subagent：
 flowchart TD
     A[getSystemPrompt default parts] --> B[static sections]
     A --> C[dynamic sections]
-    B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY]
+    B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
     C --> E[resolveSystemPromptSections]
     D --> F[default prompt parts]
     E --> F
@@ -180,7 +185,10 @@ flowchart TD
     J --> K[QueryEngine direct combine]
 
     L[agentDefinition.getSystemPrompt] --> M[ordinary subagent]
-    N[parent renderedSystemPrompt] --> O[fork subagent]
+    M --> N[enhanceSystemPromptWithEnvDetails]
+
+    O[parent renderedSystemPrompt] --> P[fork subagent]
+    P --> Q[buildForkedMessages]
 ```
 
 ## 为什么这个设计重要

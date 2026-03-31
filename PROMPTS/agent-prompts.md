@@ -130,6 +130,11 @@ fork 会优先把父线程已经渲染好的：
 - 避免 GrowthBook 等运行时状态从 cold 变 warm 导致 prompt 漂移
 - 尽量保持 prompt cache 前缀稳定
 
+换成更口语一点的说法就是：
+
+- fork 不是重新算一遍 prompt
+- 而是尽量沿用父线程已经算好的那份
+
 #### `promptMessages` 也不是普通 user prompt
 
 普通 subagent 常见的是新的用户任务消息。

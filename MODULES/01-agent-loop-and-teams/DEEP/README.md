@@ -196,7 +196,7 @@ fork subagent：
 
 - 先注册前景 `local_agent`
 - 再手动拉取 `runAgent()` 的 iterator
-- 如果中途被后台化，再把同一个任务 ID 续跑成 async
+- 如果中途被后台化，会以同一个 task / agent 身份重新进入 async 生命周期
 
 也就是说：
 
@@ -207,7 +207,13 @@ fork subagent：
 
 - `LocalAgentTaskState`
 
-而不是两套不同 task 类型。
+这里更准确的说法不是：
+
+- “同一个执行实例原地切后台”
+
+而是：
+
+- 同一个 task / transcript 身份被延续到了后台生命周期
 
 ### 7. `tasks/` 是 runtime representation layer
 
@@ -221,6 +227,11 @@ fork subagent：
 - `in_process_teammate`
 - `dream`
 - 以及用 `agentType: 'main-session'` 区分的主会话后台任务
+
+这也意味着一个很容易写错的点：
+
+- `background` 是生命周期状态
+- 不是另一种新的 task 类型
 
 这里还有一个需要写明的边界：
 
@@ -264,6 +275,7 @@ flowchart TD
 
 - 主线程与子线程共享同一种 query runtime
 - fork、resume、background 都是源码里的正式路径
+- 同步 agent、异步 agent、主会话后台任务都复用 `local_agent` 表示层
 - 本地 agent、远端 agent、shell、主会话后台任务都能落到统一任务表示层
 
 这也是 Claude Code 的 worker / team 能力看起来更像 runtime feature，而不是 prompt fan-out 的原因。
@@ -288,3 +300,4 @@ flowchart TD
 - `remote isolation` 的代码路径和远程任务模型都存在，但当前公开 schema 是否完整暴露给用户侧，仍需保守表述。
 - `requiredMcpServers` 在运行时会被检查，但本轮没有坐实自定义 markdown/json agent 是否能在 frontmatter 中稳定声明它。
 - `resumeAgentBackground()` 的调用入口不在这轮重点范围内，所以“谁负责触发恢复”不能写死。
+- foreground agent 被后台化时，源码更接近“同一 task 身份重进 async 生命周期”，而不是“原来的执行实例直接切后台线程”。

@@ -6,7 +6,8 @@
 但从 `ChinaSiro/claude-code-sourcemap` 的公开镜像来看，真正重要的是这些部分已经被接成一个持续运行的系统：
 
 - 启动层先把状态、工具、MCP、skills、plugins、permission context 装好
-- `QueryEngine` 负责一轮输入怎样变成一次完整 query
+- 交互式主线程主要在 `REPL.tsx` 里装配 prompt、工具池和 `query()` 入口
+- headless / SDK 路径主要在 `QueryEngine.ts` 里装配 turn 级上下文
 - `query.ts` 负责真正的循环，包括 compact、tool execution、attachment 回挂、stop hook 和继续下一轮
 - tools、memory、permissions、remote/bridge 并不是旁支，而是这条主链上的常驻节点
 
@@ -14,17 +15,18 @@
 
 ```mermaid
 flowchart LR
-    A[main.tsx<br/>bootstrap and wiring] --> B[App state and tool pool]
-    B --> C[getSystemPrompt / buildEffectiveSystemPrompt]
-    C --> D[QueryEngine.submitMessage]
-    D --> E[query.ts query loop]
+    A[main.tsx<br/>bootstrap and wiring] --> B{session type}
+    B --> C[interactive main thread<br/>REPL.tsx]
+    B --> D[headless / SDK<br/>QueryEngine.submitMessage]
+    C --> E[query.ts query loop]
+    D --> E
     E --> F[Tool orchestration]
     F --> G[Built-in tools]
     F --> H[MCP tools and resources]
     E --> I[Memory and compact]
     E --> J[Permissions and sandbox]
     E --> K[Tasks and agent runtime]
-    E --> L[Remote and bridge]
+    E --> L[Remote client / bridge exposure]
     E --> M[TUI / buddy / vim / voice]
     I --> E
     J --> F
@@ -36,20 +38,23 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[main.tsx / REPL] --> B[getSystemPrompt]
+    A[constants/prompts.ts<br/>getSystemPrompt] --> B[default prompt parts]
     B --> C[resolveSystemPromptSections]
-    C --> D[buildEffectiveSystemPrompt]
-    D --> E[renderedSystemPrompt]
+    C --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
+    D --> E[interactive main thread<br/>REPL.tsx]
+    E --> F[buildEffectiveSystemPrompt]
+    F --> G[renderedSystemPrompt]
 
-    F[skills/loadSkillsDir.ts] --> G[createSkillCommand]
-    G --> H[commands.ts getSkillToolCommands]
-    H --> I[SkillTool / skill_listing attachment]
+    H[skills/loadSkillsDir.ts] --> I[createSkillCommand]
+    I --> J[commands.ts<br/>getSkillToolCommands]
+    I --> K[SkillTool.ts<br/>getAllCommands]
+    K --> L[processPromptSlashCommand]
 
-    E --> J[AgentTool forkSubagent]
-    D --> K[main-thread agent]
-    I --> L[query.ts]
-    J --> L
-    K --> L
+    G --> M[fork subagent]
+    J --> N[model-visible skill listing]
+    L --> O[query.ts]
+    M --> O
+    N --> O
 ```
 
 ## 主执行链路
@@ -58,6 +63,7 @@ flowchart LR
 sequenceDiagram
     participant U as User
     participant M as main.tsx
+    participant R as REPL.tsx
     participant QE as QueryEngine.submitMessage
     participant Q as query.ts
     participant TO as Tool orchestration
@@ -65,23 +71,30 @@ sequenceDiagram
 
     U->>M: 输入请求
     M->>M: 初始化状态、工具池、MCP、skills、plugins
-    M->>QE: 创建 query context
-    QE->>QE: 获取 system prompt / userContext / systemContext
-    QE->>QE: 处理 slash command / input / transcript
-    QE->>Q: 进入 query()
+    alt interactive
+        M->>R: 启动 REPL
+        R->>R: 获取 default prompt / userContext / systemContext
+        R->>R: buildEffectiveSystemPrompt()
+        R->>Q: 进入 query()
+    else headless / SDK
+        M->>QE: 创建 QueryEngine
+        QE->>QE: fetchSystemPromptParts()
+        QE->>QE: 处理 slash command / input / transcript
+        QE->>Q: 进入 query()
+    end
     Q->>CM: 预处理消息、compact、memory prefetch
     Q->>TO: 执行 tool calls
     TO-->>Q: tool results / attachments / progress
     Q->>CM: stop hooks / durable memory / next-turn context
-    Q-->>QE: assistant / user / result messages
-    QE-->>U: 输出结果
+    Q-->>U: assistant / user / result messages
 ```
 
 ## 关键入口
 
-建议先盯住下面 5 个入口文件：
+建议先盯住下面 6 个入口文件：
 
 - `restored-src/src/main.tsx`
+- `restored-src/src/screens/REPL.tsx`
 - `restored-src/src/QueryEngine.ts`
 - `restored-src/src/query.ts`
 - `restored-src/src/Tool.ts`
@@ -90,7 +103,8 @@ sequenceDiagram
 为什么是这 5 个：
 
 - `main.tsx` 决定运行前准备了什么
-- `QueryEngine.ts` 决定“一轮”是怎么进来的
+- `REPL.tsx` 决定交互式主线程怎样装 prompt、工具池和 query 上下文
+- `QueryEngine.ts` 决定 headless / SDK 的一轮怎样进来
 - `query.ts` 决定“这一轮如何继续下去”
 - `Tool.ts` 定义统一 tool contract
 - `tools.ts` 决定有哪些 tool 真正进入 prompt 和运行时
@@ -112,7 +126,23 @@ sequenceDiagram
 
 这也是为什么 `main.tsx` 会非常大：它承担了“把一个会话跑起来”的装配职责，而不是只做参数分发。
 
-### 2. Turn 级协调层
+### 2. 交互式主线程装配层
+
+这层主要落在 `restored-src/src/screens/REPL.tsx`。
+
+交互式会话不是先进入 `QueryEngine`，而是先在 REPL 里做几件事：
+
+- 现算 built-in + MCP 的正式工具池
+- 读取 `defaultSystemPrompt`、`userContext`、`systemContext`
+- 调 `buildEffectiveSystemPrompt()` 处理 main-thread agent、coordinator、custom prompt、append prompt 的优先级
+- 把结果写进 `toolUseContext.renderedSystemPrompt`
+- 再直接进入 `query()`
+
+所以更准确的说法是：
+
+- 交互式主线程主要是 `main.tsx -> REPL.tsx -> query.ts`
+
+### 3. Headless / SDK 协调层
 
 这层主要落在 `restored-src/src/QueryEngine.ts`。
 
@@ -126,9 +156,11 @@ sequenceDiagram
 - 加载技能与插件缓存
 - 调 `query()` 进入真正的主循环
 
-也就是说，`QueryEngine` 不是“模型请求包装器”，而是 turn 级的协调器。
+也就是说，`QueryEngine` 不是“所有会话共享的唯一主入口”，而是更适合描述成：
 
-### 3. Query loop 层
+- headless / SDK 的 turn 协调器
+
+### 4. Query loop 层
 
 这层主要落在 `restored-src/src/query.ts`。
 
@@ -144,7 +176,7 @@ sequenceDiagram
 
 这部分是 Claude Code 最值得反复读的地方，因为很多“为什么它不像一次性问答工具”的答案都在这里。
 
-### 4. Tool contract 与 tool pool 层
+### 5. Tool contract 与 tool pool 层
 
 这层主要落在：
 
@@ -171,7 +203,7 @@ sequenceDiagram
 
 这意味着“工具”在 Claude Code 里不是一个松散数组，而是一套强约束接口。
 
-### 5. 持久上下文层
+### 6. 持久上下文层
 
 这层主要落在：
 
@@ -185,7 +217,7 @@ sequenceDiagram
 - memory 不只是一段 prompt 文本，它有明确目录、文件和后台提炼流程
 - compact 也不是简单摘要，它会在 compact 后重新注入一些上下文和附件，尽量保证会话还能继续
 
-### 6. 权限与信任层
+### 7. 权限与信任层
 
 这层主要落在：
 
@@ -202,7 +234,7 @@ sequenceDiagram
 
 一起工作。
 
-### 7. 外部连接层
+### 8. 外部连接层
 
 这层主要落在：
 
@@ -213,10 +245,10 @@ sequenceDiagram
 它们分别解决不同问题：
 
 - `services/mcp/` 负责外部 MCP server 接入、连接、工具和资源暴露
-- `remote/` 负责远程会话对象和适配
-- `bridge/` 负责桥接运行时、session runner、transport 和 permission callback
+- `remote/` 负责远端会话客户端层
+- `bridge/` 负责把本地 REPL 或独立 bridge server 暴露给远端控制面
 
-### 8. Prompt 与命令注入层
+### 9. Prompt 与命令注入层
 
 这层主要落在：
 

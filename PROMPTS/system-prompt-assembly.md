@@ -78,6 +78,11 @@
 
 - `screens/REPL.tsx`
 
+更直接一点说：
+
+- 交互式主线程不是先走 `QueryEngine`
+- 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
+
 当前源码里可确认的 precedence 是：
 
 1. `overrideSystemPrompt`
@@ -189,22 +194,19 @@ fork subagent 和普通 subagent 的差异非常大。
 
 ```mermaid
 flowchart TD
-    A[getSystemPrompt default parts] --> B{session type}
-
+    A[getSystemPrompt default parts] --> B[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
     B --> C[interactive main thread]
     C --> D[REPL.tsx]
     D --> E[buildEffectiveSystemPrompt]
     E --> F[renderedSystemPrompt]
 
-    B --> G[non-interactive main thread]
+    A --> G[non-interactive main thread]
     G --> H[QueryEngine direct combine]
 
-    B --> I[ordinary subagent]
-    I --> J[agentDefinition.getSystemPrompt]
+    I[agentDefinition.getSystemPrompt] --> J[ordinary subagent]
     J --> K[enhanceSystemPromptWithEnvDetails]
 
-    B --> L[fork subagent]
-    L --> M[reuse renderedSystemPrompt]
+    L[parent renderedSystemPrompt] --> M[fork subagent]
     M --> N[buildForkedMessages]
 ```
 
