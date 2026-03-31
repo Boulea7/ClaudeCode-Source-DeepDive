@@ -66,14 +66,17 @@
 ### `KAIROS` 对 memory 的影响
 
 - `memdir/memdir.ts` 在 `feature('KAIROS') && getKairosActive()` 时会切到 daily-log prompt。
-- 这里能确认的是：KAIROS 会改变“新 memory 写到哪里”的提示逻辑。
-- 不能把它直接写成 nightly distillation 或完整长期记忆产品已发布。
+- `memdir/paths.ts` 与 `memdir/memdir.ts` 的注释都把 nightly `/dream`、distill、日志到 `MEMORY.md` 的关系写成 prompt / 注释层线索。
+- 这里能确认的是：KAIROS 会改变“新 memory 写到哪里”的提示逻辑；`MEMORY.md` 仍会被当成 distilled index 读入上下文。
+- 当前还能确认另一条边界：`autoDream` 会在 `getKairosActive()` 时直接关闭，所以不能把 KAIROS daily-log 与当前可见的 `autoDream` 机制混成同一条实现链。
+- 不能把它直接写成 nightly distillation 已经在当前公开构建里稳定上线，更不能写成完整长期记忆产品已发布。
 
 ### `tengu_coral_fern` / `tengu_moth_copse`
 
 - `memdir/memdir.ts` 里：
   - `tengu_coral_fern` 控制“Searching past context”这一段是否出现。
   - `tengu_moth_copse` 控制是否跳过 `MEMORY.md` index 写法说明。
+- `claudemd.ts` 里还能看到：`tengu_moth_copse` 打开后，`AutoMem/TeamMem` 入口索引会从 system prompt 注入集合中过滤掉，改由 relevant-memory prefetch 去 surfaced topic files。
 
 ### `tengu_passport_quail` / `tengu_slate_thimble` / `tengu_bramble_lintel`
 
@@ -101,7 +104,8 @@
 ## 不能确认的发布状态
 
 - 这份镜像能证明相关分支存在，但不能证明这些 gate 在当前正式版全都打开。
-- `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支，不能确认完整 nightly 流程的公开范围。
+- `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 更像 prompt / 注释里的运行线索，不能确认完整公开范围。
+- `autoDream` 是 opportunistic consolidation 机制，不是固定 nightly job；同时它在 `getKairosActive()` 时会关闭，所以不能拿它当作 KAIROS daily-log 的直接后台实现。
 - Task V2 的默认启用逻辑在交互式会话里可见，但不能仅凭静态代码推出所有入口的一致产品策略。
 
 ## 容易误写的点
@@ -110,6 +114,8 @@
 - 不要把 `REACTIVE_COMPACT`、`CONTEXT_COLLAPSE` 写成“同一个实验名字的别名”。
 - 不要把 `TEAMMEM` 写成“所有用户都默认拥有的 team memory”。
 - 不要把 TodoWrite / Task V2 / runtime task 混成一种“Task”。
+- 不要把 `KAIROS` daily-log 路径写成“已经能从源码证实 nightly distillation 完整跑通”。
+- 不要把 `autoDream` 写成“KAIROS nightly /dream 的已证实后台实现”。
 
 ## 推荐阅读顺序
 

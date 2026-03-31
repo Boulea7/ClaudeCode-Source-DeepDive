@@ -37,6 +37,7 @@
 - `tools.ts` 会切 coordinator mode 工具集。
 - `main.tsx` / `QueryEngine.ts` 还会在 resume 和 headless 路径里匹配 coordinator mode。
 - 更稳妥的写法是：它同时作用于 prompt、context、tools。
+- 但这条 prompt 覆盖分支还要求当前没有 `mainThreadAgentDefinition`，所以不能把它写成“永远压过 main-thread agent”。
 
 ### `PROACTIVE` / `KAIROS` / `KAIROS_BRIEF` / `KAIROS_CHANNELS`
 
@@ -79,6 +80,8 @@
 - `voice/voiceModeEnabled.ts` 把 voice 可见性拆成编译期开关和 GrowthBook kill switch。
 - `hasVoiceAuth()` 还要求 Claude.ai OAuth。
 - `isVoiceModeEnabled()` 最终是 auth + gate 的合成结果。
+- `/voice` 命令本身还会继续检查录音可用性、`voice_stream` 可用性、依赖和麦克风权限。
+- 当前检索范围里没有坐实 TTS / playback / output-side 主链，更适合写成“语音听写增强”。
 
 ### `tengu_cobalt_frost`
 
@@ -89,6 +92,8 @@
 
 - `buddy/CompanionSprite.tsx`、`useBuddyNotification.tsx`、`buddy/prompt.ts` 都直接受 `feature('BUDDY')` 控制。
 - 当前能确认的是 companion sprite / notification / intro attachment 的 gated path。
+- `REPL.tsx` 还会在 query 结束后调用 `fireCompanionObserver(...)`，把回调结果写进 `companionReaction`。
+- 但这轮没有在当前树里复核到 `fireCompanionObserver(...)` 的定义，也没有确认 `companionPetAt` 的写入点。
 - 不能把这组分支直接写成完整 companion 产品闭环。
 
 ## 不能确认的发布状态
@@ -103,6 +108,25 @@
 - 不要把 proactive / KAIROS 写成“就是 Claude Code 当前公开的 agent 模式”。
 - 不要把 `VOICE_MODE` 写成“语音功能已经完整上线”。
 - 不要把 `BUDDY` 写成“官方 companion 产品已经公开”。
+
+## 高风险误写点
+
+- `KAIROS`
+  - 当前源码能证明：会改写 prompt 路径，并和 brief / assistant 相关状态联动。
+  - 当前不能证明：它在公开构建里对应一个稳定对外产品模式。
+  - 推荐写法：`KAIROS` 是会改写 prompt / runtime 的 feature-gated 分支。
+- `PROACTIVE`
+  - 当前源码能证明：会让 main-thread agent prompt 从“替换 default”变成“追加到 default 后面”。
+  - 当前不能证明：它已经固定等同于某个公开的 autonomous mode 档位。
+  - 推荐写法：`PROACTIVE` 是 prompt / runtime 装配分支，不是发布公告。
+- `Buddy`
+  - 当前源码能证明：companion sprite、notification、intro attachment、reaction callback 路径存在。
+  - 当前不能证明：observer 生成机制、pet 写入路径、正式产品命名与公开状态。
+  - 推荐写法：`Buddy` 是 gated companion 前台表现层与 watcher 线索。
+- `voice`
+  - 当前源码能证明：开关、预检、本地录音、STT、输入框回填。
+  - 当前不能证明：TTS、播放链、完整双向语音助手闭环。
+  - 推荐写法：`voice` 当前更像 feature-gated 的语音听写增强链路。
 
 ## 推荐阅读顺序
 

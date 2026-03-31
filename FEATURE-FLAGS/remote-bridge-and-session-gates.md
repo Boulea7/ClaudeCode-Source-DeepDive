@@ -42,10 +42,12 @@
 
 - `bridgeEnabled.ts` 里它控制 env-less REPL bridge path。
 - 注释明确说它只决定 REPL 用哪条实现，不等于 bridge 能力整体是否可用。
+- 同一段注释还写明 daemon / `--print` 路径仍停在 env-based，不跟这条 gate 一起切。
 
 ### `tengu_bridge_repl_v2_cse_shim_enabled`
 
 - `bridgeEnabled.ts` 里它控制 `cse_* -> session_*` 的 compat shim 是否启用。
+- 默认值是 `true`，更接近“客户端兼容 shim 默认保持开启，直到明确下线”。
 - 当前能确认的是客户端 ID 兼容分支存在，不能反推服务端当前接受哪些 tag。
 
 ### `tengu_cobalt_harbor` + `CCR_AUTO_CONNECT`
@@ -78,11 +80,18 @@
 - `query.ts`、`query/stopHooks.ts`、`utils/computerUse/*` 里都能看到 `CHICAGO_MCP` 分支。
 - 当前更稳妥的写法是：Computer Use / Chicago MCP 相关路径受 gate 控制，公开状态不能仅凭源码判断。
 
+### `agentSdkTypes` 内部桥接入口
+
+- `entrypoints/agentSdkTypes.ts` 里有 `@internal` helper 明确写着会跳过 `tengu_ccr_bridge` gate 和 policy-limits check。
+- 这说明源码里存在 pre-entitled internal caller 路径。
+- 更稳妥的写法是：这是内部桥接接线面，不能拿来反推公开 SDK 默认 entitlement。
+
 ## 不能确认的发布状态
 
 - `RemoteSessionManager` 能证明已有 session 的客户端层存在，但不能证明所有用户都可创建对应远端 session。
 - `bridge/` 里 env-based / env-less / standalone worker 三条路径都存在，但默认启用条件仍受 build / entitlement / runtime gate 控制。
 - v1 `HybridTransport` 与 v2 `SSETransport + CCRClient` 能确认是客户端 transport 形态，不能写成服务端架构承诺。
+- `entrypoints/agentSdkTypes.ts` 里虽然有 remote-control 类型与注释，但当前镜像中的 `connectRemoteControl()` 仍是 stub，不能把它写成已证实可用的公开 SDK 方法。
 
 ## 容易误写的点
 
@@ -90,6 +99,7 @@
 - 不要把 `bridge/` 写成“本地服务端实现”；当前更准确是出站桥接层。
 - 不要把 `tengu_bridge_repl_v2` 写成“Remote Control v2 已全面发布”。
 - 不要把 `session_*` / `cse_*` compat shim 写成服务端事实。
+- 不要把 `agentSdkTypes` 里的 internal pre-entitled helper 写成“公开 SDK 默认跳过 entitlement gate”。
 
 ## 推荐阅读顺序
 
