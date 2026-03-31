@@ -1,22 +1,24 @@
 # 深度拆解：Prompts、Config 与系统装配层
 
-这一章关注的不是“prompt 写得好不好”，而是**Claude Code 怎样把 prompt 当作运行时部件来装配**。
+这一章关注的不是“prompt 写得好不好”，而是：
 
-如果只看最终发给模型的文本，很容易忽略一个事实：在当前源码里，prompt 至少分成了三层职责：
+**Claude Code 怎样把 prompt 当作运行时部件来装配。**
 
-- 默认 section 工厂
+如果只看最终发给模型的文本，很容易忽略一个事实：在当前源码里，prompt 至少分成了几层：
+
+- 默认 prompt parts 工厂
 - section 缓存与 dynamic boundary
-- 主线程 / agent / fork 的二次装配
+- interactive 主线程的最终 precedence
+- non-interactive 主线程的另一条装配链
+- 普通 subagent 与 fork subagent 的不同继承模型
 
 ## 这部分负责什么
 
-这部分代码主要负责三件事：
+这一层主要负责三件事：
 
-- 在 `constants/prompts.ts` 里生成默认主线程 prompt 部件
-- 在 `constants/systemPromptSections.ts` 里管理哪些 section 可缓存、哪些必须逐轮重算
-- 在 `utils/systemPrompt.ts` 里把 override、coordinator、main-thread agent、custom prompt、default prompt 组合成最终有效 prompt
-
-它还和启动层、agent runtime、memory、skills 直接相连，所以这一章更像“系统 glue”，不是单一 prompt 模板说明。
+1. 在 `constants/prompts.ts` 里生成 default prompt parts
+2. 在 `constants/systemPromptSections.ts` 里管理 section cache 与 dynamic boundary
+3. 在 `utils/systemPrompt.ts`、`QueryEngine.ts`、`AgentTool/runAgent.ts` 里把这些 parts 组装成不同会话类型真正使用的 prompt
 
 ## 关键文件
 
@@ -24,174 +26,190 @@
 - `restored-src/src/constants/prompts.ts`
 - `restored-src/src/constants/systemPromptSections.ts`
 - `restored-src/src/utils/systemPrompt.ts`
+- `restored-src/src/utils/queryContext.ts`
 - `restored-src/src/QueryEngine.ts`
+- `restored-src/src/tools/AgentTool/AgentTool.tsx`
 - `restored-src/src/tools/AgentTool/runAgent.ts`
 - `restored-src/src/tools/AgentTool/forkSubagent.ts`
-- `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
 
 ## 执行流
 
-### 1. 默认主 prompt 不是一段常量，而是一组 section
+### 1. `getSystemPrompt()` 先生成 default prompt parts
 
-`constants/prompts.ts` 的 `getSystemPrompt()` 返回的不是单一大字符串，而是一组 prompt section。
+`constants/prompts.ts` 里的 `getSystemPrompt()` 返回的不是单段最终文本，而是：
 
-常规路径下，它的结构可以概括成：
+- default prompt parts
 
-- 静态 section
-- 可选 `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
-- 动态 section 的求值结果
+标准路径里，它会构造：
 
-动态 section 不是直接内联拼接，而是先注册为 `systemPromptSection(...)` 或 `DANGEROUS_uncachedSystemPromptSection(...)`，再由 `resolveSystemPromptSections(...)` 统一求值。
+- 静态前缀
+- 动态 sections
 
-这一点非常重要，因为这说明 prompt 的边界设计和缓存策略是源码里明确存在的，而不是后处理时临时切的。
+然后在两者之间插入：
 
-```mermaid
-flowchart LR
-    A[getSystemPrompt] --> B[static sections]
-    A --> C[dynamic section registry]
-    C --> D[resolveSystemPromptSections]
-    B --> E[SYSTEM_PROMPT_DYNAMIC_BOUNDARY]
-    D --> F[resolved dynamic sections]
-    E --> G[default system prompt array]
-    B --> G
-    F --> G
-```
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
-### 2. `systemPromptSections.ts` 是缓存层，不是内容层
+这意味着默认主 prompt 在源码里已经被明确拆成：
 
-`constants/systemPromptSections.ts` 提供的不是具体 prompt 文本，而是 section 的缓存控制：
+- static
+- dynamic
 
-- `systemPromptSection(name, compute)`：普通 section，可缓存
-- `DANGEROUS_uncachedSystemPromptSection(...)`：显式标记为每轮重算
-- `resolveSystemPromptSections(...)`：统一求值
-- `clearSystemPromptSections()`：在 `/clear`、`/compact` 等场景清掉缓存和 beta header latches
+而不是一段后期再切的长文本。
 
-因此写文档时，不能把这个文件说成“存放 system prompt 内容”；它更像一层 section cache manager。
+### 2. section cache 是独立层，不是内容层
 
-### 3. 主线程最终 prompt 还会再做一次优先级装配
+`constants/systemPromptSections.ts` 提供的是：
 
-`utils/systemPrompt.ts` 的 `buildEffectiveSystemPrompt()` 才是交互式主线程的二次装配器。
+- `systemPromptSection()`
+- `DANGEROUS_uncachedSystemPromptSection()`
+- `resolveSystemPromptSections()`
+- `clearSystemPromptSections()`
 
-当前源码里可以明确读出的优先级是：
+这一层负责的不是“写 prompt 内容”，而是：
+
+- 哪些 section 可缓存
+- 哪些 section 每轮必须重算
+- `/clear` / `/compact` 后如何失效
+
+当前这轮可以更明确地写出：
+
+- `mcp_instructions` 是标准路径里最明确的 uncached section
+
+### 3. interactive 主线程会再走一次 `buildEffectiveSystemPrompt()`
+
+`utils/systemPrompt.ts` 负责 interactive 主线程的最终 precedence。
+
+当前可确认的优先级是：
 
 1. `overrideSystemPrompt`
-2. coordinator prompt
+2. `coordinator prompt`
 3. `mainThreadAgentDefinition`
 4. `customSystemPrompt`
 5. `defaultSystemPrompt`
+6. `appendSystemPrompt`
 
-然后：
+其中：
 
-- `appendSystemPrompt` 总是在最后追加
-- proactive 分支下，main-thread agent 不是替换 default，而是追加在 default 后面
+- 只要不是 override
+- `appendSystemPrompt` 都会尾追加
 
-这意味着“默认主 prompt 的生成”和“当前 turn 真实用到的 prompt”是两步，不是一回事。
+还有一个必须写明的分支：
+
+- 平时 main-thread agent prompt 会替换 default
+- proactive / KAIROS 激活时，main-thread agent prompt 会作为 `# Custom Agent Instructions` 追加在 default 后面
+
+所以“main-thread agent 是否替换默认 prompt”本身也是运行时相关的。
+
+### 4. non-interactive 主线程不是同一条 precedence
+
+这一点很容易被旧文档写错。
+
+`QueryEngine.ts` 的 non-interactive / SDK 路径不会走：
+
+- `buildEffectiveSystemPrompt()`
+
+它的组合方式是：
+
+- `customSystemPrompt ?? defaultSystemPrompt`
+- `+ memoryMechanicsPrompt?`
+- `+ appendSystemPrompt`
+
+同时，`queryContext.ts` 还能确认：
+
+- 只要 `customSystemPrompt` 存在，就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
+
+`main.tsx` 里还对 non-interactive custom main-thread agent 做了额外特判：
+
+- 会直接把 custom main-thread agent 的 prompt 放进 headless `systemPrompt`
+
+所以 interactive 与 non-interactive 不是“同一条 prompt 链换了个壳”，而是真有两条不同装配路径。
+
+### 5. 普通 subagent 与 fork subagent 不共享同一条 prompt 模型
+
+普通 subagent：
+
+- 起点是 `agentDefinition.getSystemPrompt()`
+- 若失败则回退到 `DEFAULT_AGENT_PROMPT`
+- 再经过 `enhanceSystemPromptWithEnvDetails()`
+
+fork subagent：
+
+- 优先复用父 `renderedSystemPrompt`
+- 复用父精确工具池与 `thinkingConfig`
+- 用 `buildForkedMessages()` 重建父 assistant 前缀
+
+这里有一个这轮需要继续保持保守的点：
+
+- 可以确认 fork 复用父级 prompt 与父消息前缀
+- 但不要把它写成“fork 自带完全独立的默认基础 prompt 常量”
+
+### 6. `getAgentToolSection()` 也是 prompt 装配的一部分
+
+主线程默认 prompt 里，和 agent 调度相关的一段说明来自：
+
+- `getAgentToolSection()`
+
+它会根据 fork gate 改变文案：
+
+- fork 开启时，强调“不带 `subagent_type` 会创建 fork”
+- fork 未开启时，强调“使用 specialized agents”
+
+这段文案被放在 dynamic boundary 之后，说明它本身就是运行时相关的 prompt 片段。
+
+## 一张图看系统装配层
 
 ```mermaid
 flowchart TD
-    A[defaultSystemPrompt] --> F[buildEffectiveSystemPrompt]
-    B[customSystemPrompt] --> F
-    C[mainThreadAgentDefinition.getSystemPrompt] --> F
-    D[coordinator prompt] --> F
-    E[overrideSystemPrompt] --> F
-    F --> G[appendSystemPrompt]
-    G --> H[renderedSystemPrompt]
+    A[getSystemPrompt default parts] --> B[static sections]
+    A --> C[dynamic sections]
+    B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY]
+    C --> E[resolveSystemPromptSections]
+    D --> F[default prompt parts]
+    E --> F
+
+    F --> G[interactive main thread]
+    G --> H[buildEffectiveSystemPrompt]
+
+    F --> I[non-interactive main thread]
+    I --> J[QueryEngine direct combine]
+
+    K[agentDefinition.getSystemPrompt] --> L[ordinary subagent]
+    M[parent renderedSystemPrompt] --> N[fork subagent]
 ```
-
-### 4. 交互式主线程、非交互主线程、subagent 不是同一路径
-
-这里是最容易写混的地方。
-
-#### 交互式主线程
-
-交互式主线程会先走：
-
-- `getSystemPrompt(...)`
-- `getUserContext()`
-- `getSystemContext()`
-- `buildEffectiveSystemPrompt(...)`
-
-然后把最终结果挂到 `renderedSystemPrompt`，供 fork 路径复用。
-
-#### 非交互主线程
-
-`QueryEngine.ts` 的 headless/SDK 路径不走 `buildEffectiveSystemPrompt()`。它会先 `fetchSystemPromptParts(...)`，再直接拼：
-
-- `customSystemPrompt` 或 `defaultSystemPrompt`
-- 可选 `memoryMechanicsPrompt`
-- 可选 `appendSystemPrompt`
-
-也就是说，非交互路径和交互式 REPL 路径在 prompt 装配上并不完全相同。
-
-#### 普通 subagent
-
-普通 subagent 的 system prompt 来源是：
-
-- `agentDefinition.getSystemPrompt(...)`
-- 若失败则 fallback 到 `DEFAULT_AGENT_PROMPT`
-- 然后 `enhanceSystemPromptWithEnvDetails(...)`
-
-它不是直接拿主线程完整 prompt。
-
-#### fork subagent
-
-fork 是特例。它会优先继承父线程已经渲染好的 `renderedSystemPrompt`；如果拿不到，再回退到“重新取父级默认 prompt + `buildEffectiveSystemPrompt()` 重算”的路径。
-
-源码注释还明确说明了这么做的原因：避免因为 GrowthBook 冷热状态或其他运行时差异导致重算出的 prompt 和父线程不一致。
-
-```mermaid
-flowchart LR
-    A[Interactive REPL] --> B[getSystemPrompt]
-    B --> C[buildEffectiveSystemPrompt]
-    C --> D[renderedSystemPrompt]
-    D --> E[fork subagent]
-
-    F[runAgent selectedAgent.getSystemPrompt] --> G[enhanceSystemPromptWithEnvDetails]
-    G --> H[normal subagent]
-
-    I[QueryEngine fetchSystemPromptParts] --> J[custom/default + memory mechanics + append]
-    J --> K[non-interactive main thread]
-```
-
-### 5. `main.tsx` 还处理了非交互 custom main-thread agent 的特判
-
-`main.tsx` 里有一段很值得记住的注释：非交互模式下，如果存在 `mainThreadAgentDefinition`，而且这个 agent 不是 built-in agent，就会直接把 agent 的 prompt 赋给 `systemPrompt`；注释同时写明 interactive mode 会改走 `buildEffectiveSystemPrompt`。
-
-这个细节说明：源码里确实区分了“交互式 main thread agent”和“非交互 main thread agent”的 prompt 注入方式。
 
 ## 为什么这个设计重要
 
-这部分设计解释了 Claude Code 的两个关键特征。
+这层设计解释了 Claude Code 的两个关键特点。
 
-第一，它把 prompt 组织做成了**显式运行时结构**：
+第一，它把 prompt 组织做成了显式运行时结构：
 
-- section 是命名的
-- section 是否可缓存是显式声明的
-- 静态与动态之间有明确 boundary
+- section 有名字
+- cacheBreak 有显式语义
+- static / dynamic 有明确边界
 
 第二，它把主线程、main-thread agent、普通 subagent、fork subagent 区分得很清楚。
 
 这会直接影响：
 
-- prompt cache 能否共享
+- prompt cache 是否能共享
 - agent 是否真正继承父线程上下文
-- 交互式与非交互式行为是否一致
-- proactive / coordinator / custom prompt 是否按预期叠加
+- interactive 与 non-interactive 行为是否一致
+- proactive / KAIROS / coordinator 是否按预期叠加
 
 ## 推荐阅读顺序
 
 1. `restored-src/src/constants/prompts.ts`
 2. `restored-src/src/constants/systemPromptSections.ts`
 3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/main.tsx`
-5. `restored-src/src/QueryEngine.ts`
-6. `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+4. `restored-src/src/utils/queryContext.ts`
+5. `restored-src/src/main.tsx`
+6. `restored-src/src/QueryEngine.ts`
 7. `restored-src/src/tools/AgentTool/runAgent.ts`
 8. `restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 
-- `PROACTIVE`、`KAIROS`、`COORDINATOR_MODE`、`EXPERIMENTAL_SKILL_SEARCH` 等分支在当前真实运行时是否启用。源码只证明分支存在。
-- 某个具体会话里最终落地的 prompt 字节内容。因为 memory prompt、output style、MCP instructions、agent 自身 prompt 都依赖运行时输入。
-- fork fallback 重算时是否一定与父线程完全一致。源码注释明确提醒过，这条回退路径可能出现差异。
-- `KAIROS` 的完整产品含义。当前最稳妥的写法仍然是“相关 proactive/brief 分支与 feature gate 线索”。
+- `PROACTIVE`、`KAIROS`、`COORDINATOR_MODE` 等 feature gate 的线上默认状态，静态源码不能直接推出。
+- 具体某个会话最终落地的 prompt 字节内容仍然依赖 runtime 输入，例如 memory、MCP instructions、output style、agent prompt。
+- fork fallback 重算时与父线程 prompt 的实际偏差范围，源码只说明“可能 diverge”，不能写成绝对一致。
+- `KAIROS` 的完整产品含义，当前仍然只能保守写成 proactive / feature-gated 线索。

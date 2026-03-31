@@ -52,7 +52,12 @@
     {
       "id": "07",
       "name": "remote-session-bridge-and-sdk",
-      "status": "mixed"
+      "status": "mixed",
+      "focus": [
+        "remote-session-client-layer",
+        "bridge-exposure-layer",
+        "server-behavior-stays-conservative"
+      ]
     },
     {
       "id": "08",

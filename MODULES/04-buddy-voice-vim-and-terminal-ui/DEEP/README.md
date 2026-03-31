@@ -2,21 +2,21 @@
 
 这一章只做一件事：把终端交互层里**能从源码确认的部分**讲清楚。
 
-这里最容易被写重的，是 `Buddy` 和 `voice`。当前公开镜像能确认的，是一组 companion、sprite、notification、mode gating 和输入状态机实现；还不能把它们直接写成完整产品包装。
+这里最容易被写重的，是 `Buddy` 和 `voice`。当前公开镜像能确认的，是一组 companion、sprite、notification、mode gating 和输入状态机实现；还不能把它们直接写成完整产品闭环。
 
 ## 这部分负责什么
 
-这一组代码主要覆盖三件事：
+这一层主要覆盖三件事：
 
-- `buddy/`：在终端输入区旁边渲染一个 companion，并通过附件和提示把这个 companion 暴露给主对话。
-- `vim/`：提供一套独立的 vim 风格输入内核，负责 NORMAL / INSERT、motion、operator、text object 和 repeat 逻辑。
-- `voice/`：提供 voice mode 的可用性判定，而不是完整语音链路。
+1. `buddy/` 里的 companion 子系统
+2. `vim/` 里的 modal 输入内核
+3. `voice/` 里的可见性 / 可用性 gating
 
-换句话说，这一层解决的是“用户如何在终端里和 Claude Code 交互”，而不是“主循环如何调用模型”。
+换句话说，这一层解决的是“用户怎么在终端里和 Claude Code 交互”，而不是“模型主循环怎么运行”。
 
 ## 关键文件
 
-### Buddy / Companion
+### Companion 子系统
 
 - `restored-src/src/buddy/companion.ts`
 - `restored-src/src/buddy/types.ts`
@@ -30,44 +30,144 @@
 ### Vim 输入内核
 
 - `restored-src/src/vim/types.ts`
-- `restored-src/src/vim/transitions.ts`
 - `restored-src/src/vim/motions.ts`
-- `restored-src/src/vim/operators.ts`
 - `restored-src/src/vim/textObjects.ts`
+- `restored-src/src/vim/operators.ts`
+- `restored-src/src/vim/transitions.ts`
 - `restored-src/src/hooks/useVimInput.ts`
+- `restored-src/src/components/VimTextInput.tsx`
 
-### Voice mode gating
+### Voice gating
 
 - `restored-src/src/voice/voiceModeEnabled.ts`
 - `restored-src/src/hooks/useVoiceEnabled.ts`
-- `restored-src/src/commands.ts`
+- `restored-src/src/commands/voice/index.ts`
+- `restored-src/src/tools/ConfigTool/ConfigTool.ts`
 
 ## 执行流
 
-### 1. Buddy / Companion 这条线
+### 1. `buddy/` 当前更适合写成 companion 子系统
 
-`companion.ts` 不是简单返回一段配置。它先从 `getGlobalConfig().companion` 取持久化的 soul，再用 `oauthAccount.accountUuid` 或 `userID` 经过哈希和伪随机流程稳定生成 bones，最后由 `getCompanion()` 把两者合并成运行时 companion。
+这轮重新核读后，`buddy/` 最稳妥的描述是：
 
-这里能确认一个很重要的设计：`name`、`personality`、`hatchedAt` 这类内容是持久化的，但 `species`、`rarity`、`eye`、`hat`、`stats`、`shiny` 是按用户身份稳定派生的，不是任意写进配置里就能伪造。
+- companion 的确定性骨架生成
+- 终端 sprite / 气泡渲染
+- 输入区 teaser 与 `/buddy` 触发提示
+- 一次性 `companion_intro` 附件注入
 
-`CompanionSprite.tsx` 再把这个 companion 渲染成终端 UI：
+`companion.ts` 先从全局配置里读取持久化的 soul，再用：
 
-- 宽屏下显示完整 sprite 和气泡
-- 窄屏下退化为单行 face + label
-- `companionReaction` 控制 speech bubble
-- `companionPetAt` 控制 pet hearts 动画
-- `footerSelection === 'companion'` 控制 focus 态
+- `oauthAccount.accountUuid`
+- 或 `userID`
 
-`buddy/prompt.ts` 则给主模型加一条很关键的上下文：通过 `companion_intro` 附件说明“输入框旁边有一个单独 watcher”。这意味着主模型不是直接扮演 companion，而是被提醒在用户直接喊 companion 名字时尽量少说，让气泡来回应。
+生成 deterministic bones，最后由 `getCompanion()` 把两者合并成运行时 companion。
 
-`useBuddyNotification.tsx`、`PromptInput.tsx`、`REPL.tsx` 这一侧负责把 `/buddy` 相关提示和 companion UI 插到输入区域与主界面里。
+这也意味着：
+
+- `name`、`personality`、`hatchedAt` 更接近持久化 soul
+- `species`、`rarity`、`eye`、`hat`、`stats`、`shiny` 是按用户身份稳定派生的 bones
+
+`CompanionSprite.tsx` 再把它变成终端 UI：
+
+- 窄终端下退化为单行 face + label
+- 宽终端下显示多帧 sprite
+- fullscreen 时把浮动气泡拆成单独渲染层
+- `companionReaction` 驱动 speech bubble
+- `companionPetAt` 驱动 pet hearts
+
+`prompt.ts` 则把 `companion_intro` 作为一次性附件注入给主对话，用来提醒模型：
+
+- 输入框旁边还有一个 companion / watcher
+
+但这里有两个边界必须单独写出来：
+
+- `fireCompanionObserver(...)` 在 REPL 里有调用点，但本轮没有在当前树中复核到它的定义
+- `companionPetAt` 只有读取点，没有确认到写入点
+
+所以文档不能把 companion reaction 的生成机制、模型来源、`/buddy pet` 行为写死。
+
+### 2. `voice/` 当前主要体现为 gating，不是完整语音栈
+
+当前 `src/voice/` 范围里能直接确认的核心文件是：
+
+- `voiceModeEnabled.ts`
+
+它解决的问题不是“怎么录音、怎么转写、怎么播报”，而是：
+
+- voice mode 当前是否可见
+- 是否满足 auth
+- 是否真正允许进入交互态
+
+当前源码里能明确看到 3 层条件：
+
+1. `isVoiceGrowthBookEnabled()`
+   - 看 `VOICE_MODE` 编译期开关和 GrowthBook kill-switch
+2. `hasVoiceAuth()`
+   - 看是否具备 Claude.ai OAuth token
+3. `useVoiceEnabled()`
+   - 再叠加 `settings.voiceEnabled === true`
+
+另外还可以明确写出：
+
+- `/voice` 命令的 `isEnabled` 与 `isHidden` 不是同一条件
+- `ConfigTool` 对 `voiceEnabled` 也会再次做 runtime gate
+- 默认 push-to-talk 键位是 `space -> voice:pushToTalk`
+
+因此更稳妥的表述是：
+
+- `voice/voiceModeEnabled.ts` 是运行时 gate
+- 不要把它直接扩写成完整音频链路
+
+### 3. `vim/` 采用“五段式”结构
+
+这轮复读后，`vim/` 的结构可以更清楚地写成：
+
+- `types.ts`
+  - 状态机与持久状态
+- `motions.ts`
+  - motion 解析
+- `textObjects.ts`
+  - text object 边界查找
+- `operators.ts`
+  - 实际文本改写
+- `transitions.ts`
+  - NORMAL 模式状态转移
+
+真正的接入层在：
+
+- `useVimInput.ts`
+- `VimTextInput.tsx`
+- `PromptInput.tsx`
+
+`useVimInput()` 负责：
+
+- INSERT / NORMAL 切换
+- `.` dot-repeat
+- `lastFind`
+- `lastChange`
+- 方向键与 `h/j/k/l` 的映射
+
+这里还有两个这轮应该明确写出的细节：
+
+- `operator + text object` 的 `count` 虽然会被记录，但当前实现里没有真正传进 `findTextObject()`
+- `D` 和 `C` 当前固定走 `executeOperatorMotion(..., '$', 1, ctx)`，前置 count 没有继续下沉到这个分支
+
+因此文档里不能写：
+
+- “完全 Vim 兼容”
+
+更稳妥的写法是：
+
+- 当前实现覆盖 INSERT / NORMAL、count、find、部分 `g` 前缀、常见 operator、部分 text object、dot-repeat 与寄存器/粘贴语义
+
+## 一张图看 companion 子系统
 
 ```mermaid
 flowchart LR
     A[getGlobalConfig().companion] --> B[getCompanion]
     C[userID / oauth uuid] --> B
     B --> D[CompanionSprite.tsx]
-    D --> E[sprite / speech bubble / pet animation]
+    D --> E[sprite / speech bubble / pet hearts]
     B --> F[buddy/prompt.ts]
     F --> G[companion_intro attachment]
     G --> H[main conversation]
@@ -75,131 +175,51 @@ flowchart LR
     I --> J[/buddy teaser / focus state]
 ```
 
-### 2. Vim 这条线
-
-`vim/types.ts` 是这套实现的骨架。它显式定义了：
-
-- `VimState`
-- `CommandState`
-- `PersistentState`
-- `RecordedChange`
-
-这说明它不是“几个快捷键 if/else”，而是一套明确的状态机。
-
-`useVimInput.ts` 是真实接入点。它维护：
-
-- 当前 `VimState`
-- 持久 `PersistentState`
-- INSERT / NORMAL 切换
-- `.` 重放
-- 寄存器、last find、last change
-
-真正的 NORMAL 模式逻辑由 `transition()` 驱动。`transitions.ts` 做的事情是：
-
-- 按当前 state type 分发
-- 在 `idle` / `count` 状态里处理普通 motion、find、operator、replace、indent 等输入
-- 在 `operator` 系列状态里继续等待 motion / find / text object
-- 一旦满足执行条件，就调用 `operators.ts`
-
-`motions.ts` 只做“把 motion 解析成目标光标位置”；`operators.ts` 才做真正的文本修改；`textObjects.ts` 只负责找范围。
-
-这个分层很干净：
-
-- `types.ts`：状态与数据结构
-- `transitions.ts`：状态转移表
-- `motions.ts`：光标移动计算
-- `operators.ts`：文本改写
-- `textObjects.ts`：范围选择
+## 一张图看 Vim 五段式结构
 
 ```mermaid
-stateDiagram-v2
-    [*] --> INSERT
-    INSERT --> NORMAL: Escape
-    NORMAL --> INSERT: i / a / o / O / c...
-    NORMAL --> COUNT: 1-9
-    NORMAL --> OPERATOR: d / c / y
-    NORMAL --> FIND: f / F / t / T
-    OPERATOR --> OPERATOR_COUNT: 0-9
-    OPERATOR --> OPERATOR_FIND: f / F / t / T
-    OPERATOR --> OPERATOR_TEXT_OBJECT: i / a
-    OPERATOR --> EXECUTE: motion
-    OPERATOR_FIND --> EXECUTE: char
-    OPERATOR_TEXT_OBJECT --> EXECUTE: object type
-    COUNT --> NORMAL: next command
-    FIND --> NORMAL: char resolved
-    EXECUTE --> NORMAL
-```
-
-当前范围内可以稳妥写出的命令覆盖包括：
-
-- 基础移动：`h/l/j/k`
-- 屏幕行移动：`gj/gk`
-- word / WORD：`w/b/e/W/B/E`
-- 行首行尾：`0/^/$`
-- `G` / `gg`
-- operator：`d/c/y`、`dd/cc/yy`
-- `f/F/t/T`
-- text object
-- `x`、`r`、`~`、`J`
-- `p/P`
-- `>>/<<`
-- `o/O`
-
-但这里仍然不能把它写成“完整 vim 编辑器”。
-
-### 3. Voice 这条线
-
-当前 `src/voice/` 范围里只看到 `voiceModeEnabled.ts`。这份文件只解决一个问题：voice mode 当前是否可见、是否可用。
-
-源码里有三层判断：
-
-- `isVoiceGrowthBookEnabled()`：看 `VOICE_MODE` 编译特性和 GrowthBook kill-switch
-- `hasVoiceAuth()`：确认当前是 Anthropic auth，并且有 access token
-- `isVoiceModeEnabled()`：把前两者做与运算
-
-`useVoiceEnabled.ts` 再补一层用户意图：只有 `settings.voiceEnabled === true` 且 auth/growthbook 允许时，React 渲染侧才认为 voice 可用。
-
-这意味着当前最稳妥的写法是：`voice/` 在这份镜像里体现的是 **mode gating**，不是完整音频链路。
-
-```mermaid
-flowchart LR
-    A[VOICE_MODE feature] --> D[isVoiceGrowthBookEnabled]
-    B[GrowthBook kill-switch] --> D
-    C[Anthropic OAuth token] --> E[hasVoiceAuth]
-    D --> F[isVoiceModeEnabled]
-    E --> F
-    G[settings.voiceEnabled] --> H[useVoiceEnabled]
-    F --> H
-    H --> I[/voice command / config / notice UI]
+flowchart TD
+    A[PromptInput] --> B[VimTextInput]
+    B --> C[useVimInput]
+    C --> D[transitions.ts]
+    D --> E[motions.ts]
+    D --> F[textObjects.ts]
+    D --> G[operators.ts]
+    C --> H[PersistentState / lastChange / lastFind]
 ```
 
 ## 为什么这个设计重要
 
-这部分代码很能说明 Claude Code 的一个特点：它不是“先有主循环，再随手接一层 UI”，而是把输入模式、companion、voice gating 这些交互能力也做成了相对清晰的子系统。
+这部分代码很能说明 Claude Code 的一个特点：
 
-几个值得记住的点：
+- 它不是“先有主循环，再随手接一层 UI”
+- 而是把输入模式、companion、voice gating 也做成了相对独立的子系统
 
-- `buddy` 不是一张静态贴图，而是有持久 soul、稳定 bones、附件注入和输入区提示的 companion 子系统。
-- `vim` 没有和输入框硬耦合成一团，它保持了很强的纯逻辑结构，这也是为什么 `useVimInput.ts` 可以比较干净地接上去。
-- `voice` 当前范围里虽然只看到 gating，但这种拆法也说明：能力是否可见、是否允许、是否满足 auth，先在边界层被判定，再交给上层 UI 和命令处理。
+几个最值得记住的点：
+
+- `buddy` 不是一张静态贴图，而是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
+- `voice` 在当前范围里首先是 gating 体系，而不是完整音频后端
+- `vim` 不是零散快捷键，而是一套清楚拆层的 modal 输入引擎
 
 ## 推荐阅读顺序
 
 1. `restored-src/src/buddy/companion.ts`
 2. `restored-src/src/buddy/CompanionSprite.tsx`
 3. `restored-src/src/buddy/prompt.ts`
-4. `restored-src/src/hooks/useVimInput.ts`
-5. `restored-src/src/vim/types.ts`
-6. `restored-src/src/vim/transitions.ts`
-7. `restored-src/src/vim/motions.ts`
-8. `restored-src/src/vim/operators.ts`
-9. `restored-src/src/vim/textObjects.ts`
-10. `restored-src/src/voice/voiceModeEnabled.ts`
-11. `restored-src/src/hooks/useVoiceEnabled.ts`
+4. `restored-src/src/buddy/useBuddyNotification.tsx`
+5. `restored-src/src/voice/voiceModeEnabled.ts`
+6. `restored-src/src/hooks/useVoiceEnabled.ts`
+7. `restored-src/src/vim/types.ts`
+8. `restored-src/src/vim/transitions.ts`
+9. `restored-src/src/vim/motions.ts`
+10. `restored-src/src/vim/textObjects.ts`
+11. `restored-src/src/vim/operators.ts`
+12. `restored-src/src/hooks/useVimInput.ts`
 
 ## 仍待确认
 
-- `Buddy` 是否是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这几个文件定论。
-- `/buddy` 的完整行为和 hatch/pet 文法。当前范围主要看到的是 UI 消费和提示，不是完整命令实现。
-- `voice` 的完整实现范围。当前只能确认 gating，不能推出音频采集、流式传输、TTS、设备管理或实时 UX。
-- `vim` 是否支持 visual mode、macro、marks、完整 undo tree、搜索等更大范围能力。当前看到的是一套明确但有限的输入内核。
+- `Buddy` 是否就是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这些文件定论。
+- `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
+- `companionPetAt` 的写入点当前没有确认到。
+- `voice` 的完整实现范围仍然不能从这轮范围推出，包括音频采集、流式传输、TTS、设备管理等。
+- `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。

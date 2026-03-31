@@ -1,6 +1,8 @@
 # Skills And Command Injection
 
-这一页解释的是：**skill 在源码里如何从 `SKILL.md` 变成 `Command`，再进入模型可见上下文。**
+这一页解释的是：
+
+**skill 在源码里如何从 `SKILL.md` 变成 `Command`，再进入模型可见上下文。**
 
 这件事不能只看 `SkillTool.ts`。真正的路径横跨：
 
@@ -9,6 +11,16 @@
 - `tools/SkillTool/SkillTool.ts`
 - `utils/processUserInput/processSlashCommand.tsx`
 - `utils/attachments.ts`
+
+## 这部分负责什么
+
+这一页主要讲五件事：
+
+1. skill 怎么先被生产成 `Command(type: 'prompt')`
+2. 技能来源有哪些
+3. `commands.ts` 如何决定哪些 skill 进入命令层与 listing
+4. SkillTool 为什么只是执行壳
+5. plugin skill 与普通 skill 的边界在哪里
 
 ## 关键文件
 
@@ -22,11 +34,19 @@
 - `restored-src/src/utils/attachments.ts`
 - `restored-src/src/utils/plugins/loadPluginCommands.ts`
 
-## 第一步：skill 先被解析成 `Command`
+## 执行流
 
-`loadSkillsDir.ts` 的中心不是“直接执行 skill”，而是把 skill 解析成 `Command`。
+### 1. skill 先被生产成 `Command`
 
-它会先走 `parseSkillFrontmatterFields(...)`，把 frontmatter 里的关键信息提出来，例如：
+`loadSkillsDir.ts` 的中心不是“直接执行 skill”，而是把 skill 解析成：
+
+- `Command(type: 'prompt')`
+
+它会先走：
+
+- `parseSkillFrontmatterFields(...)`
+
+把 frontmatter 里的关键信息提出来，例如：
 
 - `allowedTools`
 - `argumentHint`
@@ -40,70 +60,87 @@
 - `paths`
 - `shell`
 
-然后再调用 `createSkillCommand(...)`，真正构造一个 `type: 'prompt'` 的 `Command`。
+然后再调用：
 
-这一步很关键，因为它说明 skill 在源码里不是“附加文本”，而是进入统一命令系统的对象。
+- `createSkillCommand(...)`
 
-## 第二步：skill 来源不只一种
+真正构造命令对象。
 
-当前源码里至少有四种来源：
+这一步很关键，因为它说明 skill 在源码里不是“附加文本”，而是先进入统一命令系统。
 
-- 本地 `skills/`
-- legacy `commands/`
-- bundled skills
-- plugin skills
+### 2. 技能来源不是单一路径
 
-另外，MCP skill 还有一条桥接路径，但在当前镜像里主要能确认的是 builder registry，不是完整实现。
+当前源码里至少能确认这些来源：
 
-### 本地 `skills/`
+- `/skills/<name>/SKILL.md`
+- legacy `/commands/`
+- bundled skill 注册表
+- 已启用插件里的 `skills/`
+- 运行时从 `AppState.mcp.commands` 补入的 MCP skills
 
-`/skills/` 目录只支持 `skill-name/SKILL.md` 这种目录布局。
+其中有几个边界要写清楚：
 
-带 `paths` frontmatter 的 skill 不会立刻进入可用列表，而是先进入 conditional skill 集合，等文件操作命中对应路径后再激活。
+- `/skills/` 下只认目录式 `SKILL.md`
+- legacy `/commands/` 仍支持单文件 `.md` 与目录式 `SKILL.md`
+- MCP skills 不在 `getCommands()` 主注册表里，而是由 SkillTool 执行时补入
 
-### legacy `commands/`
+### 3. conditional / dynamic skills 不是 SkillTool 触发的
 
-legacy `.claude/commands` 同时支持单文件和 `SKILL.md` 目录格式。
+`loadSkillsDir.ts` 里还维护了两组很重要的集合：
 
-### bundled skills
+- `conditionalSkills`
+- `dynamicSkills`
 
-`bundledSkills.ts` 维护的是进程内注册表。若某个 bundled skill 带有附属文件，这些文件会在首次调用时惰性落盘，然后再把 `Base directory for this skill:` 前缀补到 prompt 前面。
+触发逻辑主要来自文件操作：
 
-### plugin skills
+- `discoverSkillDirsForPaths()`
+- `addSkillDirectories()`
+- `activateConditionalSkillsForPaths()`
 
-plugin skill 的主要加载逻辑不在 `src/plugins/`，而在 `utils/plugins/loadPluginCommands.ts`。
+也就是说，“读 / 写 / 编辑文件后 skill 集合发生变化”这件事，主要是文件工具侧触发的，不是 SkillTool 自己扫描出来的。
 
-当前镜像里，plugin skill 会：
+### 4. `commands.ts` 决定命令层与 listing
 
-- 只从已启用插件加载
-- 自动带上 `pluginName:` 前缀
-- 支持目录技能和子目录 `SKILL.md`
+`commands.ts` 会把多路技能合并进统一命令系统：
 
-### MCP skills
-
-`mcpSkillBuilders.ts` 当前能确认的职责是：提供一个 write-once registry，让 `loadSkillsDir.ts` 暴露 `createSkillCommand` 与 `parseSkillFrontmatterFields` 给 MCP skill discovery 复用，避免循环依赖。
-
-因此当前最稳妥的写法是：**MCP skill 有桥接设计，但这份镜像中更完整的发现实现不在当前 `src/skills/` 树里。**
-
-## 第三步：`commands.ts` 决定哪些 skill 进入模型可见面
-
-`commands.ts` 会把多路技能合并进命令系统：
-
-- 本地 skill / legacy command
+- skill dir commands
+- plugin commands
 - plugin skills
 - bundled skills
-- builtin plugin skills
+- built-in plugin skills
+- workflow commands
+- hard-coded commands
 
-然后 `getSkillToolCommands(cwd)` 再从这些命令里筛出“可由模型调用的 prompt commands”。
+这里要特别注意两个集合：
 
-这个筛选条件很重要：
+#### 执行集合
 
-- 必须是 `type === 'prompt'`
-- 不能 `disableModelInvocation`
-- 不能是 builtin command
-- 某些来源还要求有明确描述或 `whenToUse`
+执行侧更宽，SkillTool 在执行时会通过：
 
-也就是说，模型能看到的 skill 列表，不等于磁盘上所有 skill 文件。
+- `getAllCommands()`
+
+查命令。
+
+这个集合还会额外把：
+
+- `AppState.mcp.commands` 中 `loadedFrom === 'mcp'` 的 prompt commands
+
+补进来。
+
+#### listing 集合
+
+模型看到的 skill listing 更窄，来自：
+
+- `getSkillToolCommands()`
+
+它会额外过滤：
+
+- 只保留 `type === 'prompt'`
+- 排除 built-in commands
+- `disableModelInvocation` 的项不会进入 listing
+- plugin / MCP 项通常需要显式 `description` 或 `whenToUse`
+
+所以文档里一定要把这两个集合分开写。
 
 ```mermaid
 flowchart LR
@@ -111,92 +148,128 @@ flowchart LR
     B[legacy commands] --> E
     C[bundled skills] --> E
     D[plugin skills] --> E
-    F[MCP skill bridge] --> E
-    E --> G[commands.ts]
-    G --> H[getSkillToolCommands]
-    G --> I[getSlashCommandToolSkills]
-    H --> J[SkillTool]
-    I --> K[slash command / prompt visibility]
+    F[MCP skill bridge] --> G[SkillTool runtime supplement]
+    E --> H[commands.ts]
+    H --> I[getCommands / getAllCommands]
+    H --> J[getSkillToolCommands]
+    I --> K[execution set]
+    J --> L[model-visible listing]
 ```
 
-## 第四步：动态 skill 发现不是 SkillTool 触发的
+### 5. SkillTool 是执行壳，不是 discovery 源
 
-这是一个很容易写错的点。
+`SkillTool.ts` 做的事情是：
 
-当前源码里，动态 skill 发现主要发生在文件工具侧，而不是 SkillTool 自己：
+1. `validateInput()`
+2. 从执行集合里查命令
+3. `checkPermissions()`
+4. 按 `context === 'fork'` 或 inline 路径执行
+5. 调 `processPromptSlashCommand()` 把内容重新注入会话
 
-- `FileReadTool`
-- `FileEditTool`
-- `FileWriteTool`
+这说明真实结构应该写成：
 
-这些工具在处理路径时会调用：
+- `loadSkillsDir.ts` 负责发现与生产
+- `commands.ts` 负责装配
+- `SkillTool.ts` 负责执行
 
-- `discoverSkillDirsForPaths()`
-- `addSkillDirectories()`
-- `activateConditionalSkillsForPaths()`
+而不是：
 
-因此，“读/写/编辑文件后技能列表发生变化”是源码里的真实行为，而且是由文件工具触发的。
+- “SkillTool 自己发现并运行所有 skills”
 
-## 第五步：SkillTool 负责执行，不负责发现
+### 6. plugin command 与 plugin skill 是两条独立加载链
 
-`SkillTool.ts` 是执行壳。
+这是这一轮要特别强调的点。
 
-它会先做：
+`utils/plugins/loadPluginCommands.ts` 里：
 
-- `validateInput()`
-- `checkPermissions()`
+- `getPluginCommands()` 处理 plugin `commands/`
+- `getPluginSkills()` 处理 plugin `skills/`
 
-然后根据 skill 的属性走三条路径：
+它们的规则并不相同。
 
-- inline
-- `context === 'fork'` 的 subagent 路径
-- feature-gated remote canonical skill 路径
+`commands/` 支持：
 
-inline 路径最值得看。它最终会调用 `processPromptSlashCommand()`，后者再调用 `command.getPromptForCommand()`，并补上：
+- 普通 `.md`
+- 目录式 `SKILL.md`
+- manifest 路径数组
+- 对象映射
+- inline content
 
-- hooks 注册
-- invoked skill 记录
+`skills/` 则更严格：
+
+- 只认目录里的 `SKILL.md`
+- 不把普通 markdown 文件当 skill
+- 命名统一是 `pluginName:skillName`
+
+另外还有一个容易写错的叶子规则：
+
+- 在 plugin `commands/` 树中，如果某目录含 `SKILL.md`
+- 该目录会被当作 skill 叶子目录
+- 同目录其他 `.md` 不会再各自产生命令
+
+### 7. built-in plugin skill 不是单独的 source 类型
+
+当前源码里：
+
+- plugin 产物统一是 `source: 'plugin'`
+- built-in plugin 导出的 skills 会被转换成 `source: 'bundled', loadedFrom: 'bundled'`
+
+所以文档里不要再写：
+
+- “builtin plugin skill 是 SkillTool 可见的独立 source 类型”
+
+更稳妥的写法是：
+
+- built-in plugin skill 在命令层会落到 bundled 一侧
+
+### 8. built-in plugin 机制目前仍是 scaffolding
+
+这轮复核还能更明确写出：
+
+- `initBuiltinPlugins()` 在当前镜像里是空实现
+- 本轮没有看到实际 `registerBuiltinPlugin(...)` 调用
+
+所以可以写：
+
+- 当前支持 built-in plugin registry / scaffold
+
+但不要写：
+
+- 当前已有 built-in plugin skills 在运行
+
+## 为什么这个设计重要
+
+这条链路说明 Claude Code 的 skill 不是“prompt 文本拼接”那么简单。
+
+它先被生产成 `Command`，再按不同来源进入命令层，最后通过：
+
+- listing
+- slash command
+- SkillTool
 - attachments
-- `command_permissions`
 
-所以源码里的真实结构是：
+一起进入模型可见面。
 
-- skill 先变成 `Command`
-- SkillTool 只是在运行时调用这个 `Command`
-- 真正把 skill 内容注入会话的是 `processPromptSlashCommand()`
+这样做的好处是：
 
-## 第六步：模型看到的 skill，不是硬编码文本，而是 attachment
+- skill 可以像命令一样被治理
+- plugin / bundled / MCP skill 可以共享同一套执行壳
+- listing 与执行集合可以分开控制
 
-当前 skill 可见性主要通过 attachment 系统完成：
+## 推荐阅读顺序
 
-- `skill_listing`：当前可调用 skill 列表
-- `dynamic_skill`：新发现的技能目录提示
-- `invoked_skills`：已经调用过的 skill 内容，供 compact / resume 后保留
+1. `restored-src/src/skills/loadSkillsDir.ts`
+2. `restored-src/src/skills/bundledSkills.ts`
+3. `restored-src/src/commands.ts`
+4. `restored-src/src/tools/SkillTool/SkillTool.ts`
+5. `restored-src/src/tools/SkillTool/prompt.ts`
+6. `restored-src/src/utils/plugins/loadPluginCommands.ts`
+7. `restored-src/src/skills/mcpSkillBuilders.ts`
+8. `restored-src/src/utils/processUserInput/processSlashCommand.tsx`
+9. `restored-src/src/utils/attachments.ts`
 
-这说明 SkillTool prompt 不是唯一信息来源。模型看到的技能面，是：
+## 仍待确认
 
-- Tool prompt
-- 命令聚合结果
-- attachment 注入
-- 已调用 skill 的恢复内容
-
-共同形成的。
-
-## plugin skill 和普通 skill 的边界
-
-当前镜像里最稳妥的边界划分是：
-
-- 普通 skill：来自磁盘上的 `.claude/skills` 或 legacy `.claude/commands`
-- plugin skill：来自已启用插件，并自动带命名空间前缀
-- bundled skill：进程内注册，不依赖用户磁盘目录
-- MCP skill：通过 builder registry 预留桥接，但完整发现实现需谨慎表述
-
-另外，当前 `src/plugins/bundled/index.ts` 的 `initBuiltinPlugins()` 是空实现，这意味着 builtin plugin 机制已经搭好，但在这份镜像里看不到实际注册的 builtin plugin 定义。
-
-## 可以直接记住的结论
-
-- skill 在源码里首先是 `Command`，其次才是可执行 prompt。
-- SkillTool 是执行壳，不是发现源。
-- 动态 skill 发现主要由文件工具触发。
-- 模型看到的 skill 列表主要通过 attachment 注入，而不是写死在一段 prompt 文本里。
-- plugin skill、bundled skill、普通 skill、MCP skill 的来源与命名空间不同，不能混写成一类。
+- `mcpSkillBuilders.ts` 明确说明 MCP skill discovery 会复用 `createSkillCommand` 和 `parseSkillFrontmatterFields`，但本轮没有继续展开 `mcpSkills.ts`，所以不能把完整 MCP skill 发现时机和缓存策略写得更细。
+- `processPromptSlashCommand()` 与 `SkillsMenu` 的内部细节，这一页不继续展开到 UI / message 级别。
+- bundled skills 与 built-in plugins 的真实启动调用点，不在本轮重点范围内；这里只确认 registry / scaffold 和装配代码存在。
