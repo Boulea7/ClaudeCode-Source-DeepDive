@@ -132,19 +132,23 @@
 - 真正生成 compact summary
 - 重建 compact boundary
 - 补回 compact 之后继续工作需要的附件
-- 在结尾再做 post-compact cleanup
 
 当前可以明确写出的补回内容包括：
 
 - `plan_file_reference`
 - 当前仍在 plan mode 时的 `plan_mode`
 - skills 相关附件
-- async task 相关附件
+- async agent 相关附件
 - `deferred tools delta`
 - `agent listing delta`
 - `mcp instructions delta`
 
 两者的主要区别不在“会不会补”，而在“摘要边界在哪里”。
+
+`postCompactCleanup.ts` 也要单独看待：
+
+- 它不是 `compactConversation()` / `partialCompactConversation()` 内部的同步步骤
+- 更准确地说，它由 `autoCompactIfNeeded()` 或 `/compact` 这类调用方在成功后再触发
 
 ### 5. Plan Mode 要分开看权限模式、plan 文件和 attachment
 
@@ -282,7 +286,8 @@ flowchart TD
     G --> K[reinject plan_file_reference]
     H --> L[reinject post-compact attachments]
     J --> L
-    K --> M[postCompactCleanup]
+    M[call-site cleanup] --> N[postCompactCleanup]
+    K --> M
     L --> M
 ```
 
@@ -293,21 +298,23 @@ flowchart TD
     A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
     B --> D[continue exploring in read-only planning state]
     C[attachments.ts] --> E[plan_mode / plan_mode_reentry / plan_mode_exit]
-    D --> F[ExitPlanModeV2Tool]
-    F --> G[read current plan file]
-    F --> H[write edited plan back when input.plan exists]
-    F --> I[persistFileSnapshotIfRemote<br/>plan only]
-    F --> J[restore prePlanMode on normal exit]
-    F --> K[plan approval branch for teammates]
+    E --> D
+    D --> F[plan file create or edit]
+    D --> G[ExitPlanModeV2Tool]
+    G --> H[read current plan file]
+    G --> I[write edited plan back when input.plan exists]
+    G --> J[persistFileSnapshotIfRemote<br/>plan only]
+    G --> K[restore prePlanMode on normal exit]
+    G --> L[plan approval branch<br/>early return for teammates]
 
-    L[TodoWrite v1] --> M[AppState.todos]
-    N[TaskCreate/List/Get/Update] --> O[disk task list]
-    P[TaskOutput / TaskStop] --> Q[AppState.tasks runtime tasks]
+    M[TodoWrite v1] --> N[AppState.todos]
+    O[TaskCreate/List/Get/Update] --> P[disk task list]
+    Q[TaskOutput / TaskStop] --> R[AppState.tasks runtime tasks]
 ```
 
 ## 为什么这个设计重要
 
-这里真正重要的地方，是 Claude Code 没有把“计划”和“上下文压缩”做成一段模糊提示词。
+这里更值得注意的地方，是 Claude Code 没有把“计划”和“上下文压缩”做成一段模糊提示词。
 
 它把这些能力拆成了明确运行时层：
 

@@ -35,7 +35,7 @@ This repository is unofficial and is reconstructed from the public npm package a
 
 - [MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md](./MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md)：tool contract、MCP 动态实例化、skills / plugins 边界
 - [MODULES/01-agent-loop-and-teams/DEEP/README.md](./MODULES/01-agent-loop-and-teams/DEEP/README.md)：`AgentTool` 编排层、`runAgent` 执行链、fork 与 task 表示层
-- [MODULES/03-persistent-memory-system/DEEP/README.md](./MODULES/03-persistent-memory-system/DEEP/README.md)：`SessionMemory`、auto memory、team subtree 与 recall 调用边界
+- [MODULES/03-persistent-memory-system/DEEP/README.md](./MODULES/03-persistent-memory-system/DEEP/README.md)：`SessionMemory`、turn-end durable memory、team subtree 与 recall 调用边界
 - [MODULES/02-planning-compaction-and-assistant/DEEP/README.md](./MODULES/02-planning-compaction-and-assistant/DEEP/README.md)：多路径 compact、plan 文件恢复链，以及 Todo / Task / runtime task 分层
 - [MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md](./MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md)：companion、vim 输入内核、voice 判定与输入集成
 - [MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md](./MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md)：`remote/` 会话客户端层与 `bridge/` 本地桥接层的分界
@@ -85,7 +85,7 @@ flowchart TD
 - 入口：[`MODULES/02-planning-compaction-and-assistant`](./MODULES/02-planning-compaction-and-assistant/)
 
 ### 03 Persistent Memory System
-- 这部分是核心模块，讲 `SessionMemory`、auto memory、team subtree 和相关 recall 在源码里的真实边界。
+- 这部分是核心模块，讲 `SessionMemory`、turn-end durable memory、team subtree 和相关 recall 在源码里的真实边界。
 - 入口：[`MODULES/03-persistent-memory-system`](./MODULES/03-persistent-memory-system/)
 
 ### 04 Buddy, Voice, Vim, And Terminal UI
@@ -101,7 +101,7 @@ flowchart TD
 - 入口：[`MODULES/06-permissions-sandbox-and-trust`](./MODULES/06-permissions-sandbox-and-trust/)
 
 ### 07 Remote Session, Bridge, And SDK
-- 这部分关注远端 session 客户端、本地 Remote Control bridge，以及相关 transport / session compat 对象。
+- 这部分关注远端 session 客户端、本地 bridge/control layer，以及相关 transport / session compat 对象。
 - 入口：[`MODULES/07-remote-session-bridge-and-sdk`](./MODULES/07-remote-session-bridge-and-sdk/)
 
 ### 08 Prompts, Config, And Other Moats
@@ -114,7 +114,7 @@ flowchart TD
 
 - 它不是只做补全，而是更接近一个可以自己推进任务的 `agentic coding tool`
 - 它把 `Plan Mode`、team、memory、skills、MCP、permission 这些能力放进了同一套运行时
-- 这些能力在源码里不是散碎的 feature，而是互相连接的系统
+- 这些能力在源码里也会彼此连接，而不是完全独立的 feature
 
 这些背景放在 [COMPARISONS](./COMPARISONS/) 中做轻量补充。
 

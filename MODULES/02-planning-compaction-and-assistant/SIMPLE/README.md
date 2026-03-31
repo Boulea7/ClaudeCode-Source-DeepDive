@@ -1,20 +1,22 @@
 # 1 分钟看懂 Planning, Compaction, And Assistant
 
-Claude Code 的规划链可以先这样理解：
+Claude Code 的这部分更适合先拆成几条并行机制：
 
 ```mermaid
 flowchart TD
-    A[EnterPlanModeTool] --> B[Plan Agent / Plan UI]
-    B --> C[plans/*.md]
-    C --> D[Execution]
-    D --> E[compact]
-    E --> F[plan reference kept alive]
+    A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
+    B --> C[read-only planning state]
+    D[attachments / plan prompts] --> E[plan file create or edit]
+    F[autoCompactIfNeeded] --> G[trySessionMemoryCompaction]
+    G -->|fallback| H[compactConversation]
+    I[TodoWrite v1] --> J[AppState.todos]
+    K[Task V2] --> L[task-list files]
+    M[runtime task] --> N[AppState.tasks + output files]
 ```
 
 ## 核心理解
 
-- `Plan Mode` 不是一句提示词
-- 计划会落成文件
-- 上下文压缩时，计划不会被简单丢掉
-- `QueryEngine` 负责把这些对象真正串起来
-
+- `Plan Mode` 不是一句提示词，而是权限态加上后续 attachment 提醒
+- plan 文件是独立 artifact，但不是进入 Plan Mode 的同步副作用
+- `compact` 至少分成 session-memory、full、partial 等几条路径
+- `TodoWrite`、Task V2、runtime task 不是同一套对象

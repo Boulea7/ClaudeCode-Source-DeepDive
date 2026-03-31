@@ -6,15 +6,18 @@
 flowchart TD
     A[Local Session] --> B[remote/]
     A --> C[bridge/]
-    C --> D[replBridge]
-    C --> E[remoteBridgeCore]
-    B --> F[RemoteSessionManager]
-    F --> G[WebSocket / Permission Bridge]
+    C --> D[initReplBridge]
+    D --> E[env-based core]
+    D --> F[env-less core]
+    C --> G[bridgeMain / runBridgeLoop]
+    G --> H[sessionRunner child CLI]
+    B --> I[RemoteSessionManager]
+    B --> J[sdkMessageAdapter / remotePermissionBridge]
 ```
 
 ## 核心理解
 
 - 这不是只有“本地终端”这一种工作方式
-- `remote/` 说明会话本身可以被管理
-- `bridge/` 说明 Claude Code 在处理跨界面、跨环境、跨 transport 的连接问题
-
+- `remote/` 负责附着到已有远端 session
+- `bridge/` 负责把本地 REPL 或 child CLI 接到远端控制面
+- `bridge/` 当前更像本地桥接层，不像本地 HTTP 服务端

@@ -113,9 +113,9 @@
 
 - “本地 HTTP 服务端”
 
-### 4. `bridge/` 至少有环境式、env-less 和 standalone / headless 三类入口
+### 4. `bridge/` 至少有两套 core，再加 standalone / headless 运行模式
 
-当前源码里可以明确分成两条 bridge 路径。
+当前源码里可以明确分成两套 core：
 
 #### 环境式路径
 
@@ -163,13 +163,14 @@
 
 #### standalone / headless 路径
 
-`bridgeMain.ts` 与 headless bridge 会继续复用 bridge API、poll loop 和 transport 逻辑。
+`bridgeMain.ts` 与 headless bridge 更适合写成 env-based bridge 的 standalone / headless 入口。
 
 这条路径和 REPL 的差别在于：
 
 - 它会实际拉起本地 child CLI
 - `sessionRunner.ts` 负责 stdin / stdout 桥接
 - 权限与控制流会经过 `bridgeMessaging.ts` 这一层
+- `cli/print.ts` 只承担 child / SDK 侧接线，不是 bridge core 本体
 
 ### 5. transport 在客户端侧至少有 v1 / v2 两种形态
 
@@ -200,8 +201,8 @@ flowchart LR
     A[Local REPL / UI] --> B[remote/]
     B --> C[RemoteSessionManager]
     C --> D[SessionsWebSocket]
-    B --> E[sdkMessageAdapter]
-    B --> F[remotePermissionBridge]
+    E[sdkMessageAdapter] --> A
+    F[remotePermissionBridge] --> A
 
     A --> G[bridge/]
     G --> H[initReplBridge]
@@ -210,10 +211,11 @@ flowchart LR
     I --> N[replBridgeTransport]
     I --> K[bridgeApi registerBridgeEnvironment / pollForWork / acknowledgeWork]
     J --> L[codeSessionApi createCodeSession / fetchRemoteCredentials]
-    G --> M[bridgeMain / headless bridge]
+    G --> M[bridgeMain / headless entry]
     M --> O[runBridgeLoop]
     O --> P[sessionRunner child CLI]
     G --> Q[bridgeMessaging control flow]
+    G --> R[sessionIdCompat]
 ```
 
 ## 为什么这个设计重要

@@ -2,10 +2,11 @@
 
 这一章最容易被误解的地方，是大家会把 Claude Code 的 memory 想成“一个 `CLAUDE.md` 文件”。
 
-但从公开镜像来看，更准确的结构是两条并行链：
+但从公开镜像来看，更准确的结构是三块并行机制：
 
 - **session continuity**：`SessionMemory`
-- **durable recall**：`memdir + extractMemories`
+- **durable writing**：`extractMemories`
+- **durable rules and recall**：`memdir`
 
 它们会互相配合，但不是同一套系统的上下两层。
 
@@ -136,6 +137,7 @@
 `memdir` 这层真正负责 durable memory 的规则：
 
 - 根目录在哪
+- instruction prompt 怎么组织
 - `MEMORY.md` 怎么作为入口索引
 - taxonomy 是什么
 - recall 怎么做
@@ -144,7 +146,7 @@
 也就是说：
 
 - `extractMemories` 负责写
-- `memdir` 负责解释“什么叫 durable memory”
+- `memdir` 负责 durable memory 的规则、目录初始化和 recall 基础设施
 
 ### 5. durable taxonomy 是闭集四类
 
@@ -194,7 +196,8 @@
 
 因此更准确的说法是：
 
-- 如果调用方传入 `getAutoMemPath()`，`team/` 子树也会进入候选范围
+- 是否覆盖 `team/`，取决于调用方传入的 `memoryDir`
+- 常见调用方会传 `getAutoMemPath()`，但这不是 `findRelevantMemories()` 自己的默认行为
 - 如果调用方传的是更窄目录，召回范围也会相应缩小
 
 但这里还有一个很重要的过滤：
@@ -245,7 +248,7 @@ flowchart TD
     D --> E[sessionMemoryCompact]
     C --> G[auto memory root]
     G --> H[topic files]
-    G --> I[optional MEMORY.md index updates]
+    C -. conditional .-> I[optional MEMORY.md index updates]
     H --> J[findRelevantMemories(memoryDir)]
     J --> K[sideQuery selection]
     K --> L[attachment surfacing]
@@ -256,17 +259,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[getAutoMemPath] --> B[auto memory root]
-    B --> C[private-side topic files]
+    B --> C[non-team topic files]
     B --> D[team subtree]
     B --> E[MEMORY.md entrypoint]
     D --> F[team topic files]
     D --> G[team MEMORY.md]
     H[memoryTypes taxonomy] --> I[user / feedback / project / reference]
+    I -. prompt guidance, not hard router .-> B
 ```
 
 ## 为什么这个设计重要
 
-这套设计真正厉害的地方，不是“有记忆”，而是把不同时间尺度分开了：
+这套分层最值得注意的地方，不是“有记忆”，而是把不同时间尺度分开了：
 
 - 当前会话连续性：`SessionMemory`
 - 跨会话可复用知识：`durable memory`

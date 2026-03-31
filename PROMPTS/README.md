@@ -12,7 +12,7 @@
 
 - 说明 prompt 装配链
 - 说明 section 的职责
-- 先说明 REPL 与 headless / SDK 的 prompt 装配入口，再逐步展开 agent、skills、slash command、plugin 的影响面
+- 先说明 REPL 与 headless / SDK 的 prompt 装配入口，再展开其它 prompt 影响面
 - 给出关键源码路径
 
 建议阅读顺序：

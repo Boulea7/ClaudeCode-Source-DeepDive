@@ -26,7 +26,7 @@ flowchart LR
     E --> I[Memory and compact]
     E --> J[Permissions and sandbox]
     E --> K[Tasks and agent runtime]
-    E --> L[Remote client / bridge exposure]
+    E --> L[Remote client / local bridge]
     E --> M[TUI / buddy / vim / voice]
     I --> E
     J --> F
@@ -104,7 +104,6 @@ sequenceDiagram
 - `restored-src/src/Tool.ts`
 - `restored-src/src/tools.ts`
 
-为什么是这 5 个：
 为什么是这 6 个：
 
 - `main.tsx` 决定运行前准备了什么
@@ -251,7 +250,7 @@ sequenceDiagram
 
 - `services/mcp/` 负责外部 MCP server 接入、连接、工具和资源暴露
 - `remote/` 负责远端会话客户端层
-- `bridge/` 负责把本地 REPL 或独立 bridge server 暴露给远端控制面
+- `bridge/` 负责把本地 REPL 或 bridge 进程接到远端控制面
 
 ### 9. Prompt 与命令注入层
 
