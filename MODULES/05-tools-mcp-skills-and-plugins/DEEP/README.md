@@ -56,7 +56,7 @@
 - `restored-src/src/skills/mcpSkillBuilders.ts`
   - MCP skill builder 复用桥接
 - `restored-src/src/commands.ts`
-  - 总命令装配与 `getSkillToolCommands()`
+  - 总命令装配与 `getSkillToolCommands()` / `getSlashCommandToolSkills()` / `getMcpSkillCommands()`
 - `restored-src/src/tools/SkillTool/SkillTool.ts`
   - 技能执行壳
 
@@ -125,6 +125,11 @@ export function getMergedTools(...) {
   return [...builtInTools, ...mcpTools]
 }
 ```
+
+如果要再压得更准确一点，可以直接写成：
+
+- `getMergedTools()` 更像“平铺后的总集合”
+- `assembleToolPool()` 才是给 prompt 与运行时正式使用的稳定工具池
 
 ### 3. `MCPTool.ts` 只是模板，不是真正的 MCP 工具来源
 
@@ -282,7 +287,7 @@ MCP 并不只生成远端 tools。
 - `disableModelInvocation` 的项不会进入 listing
 - plugin/MCP 项通常需要 `description` 或 `whenToUse`
 
-这里其实至少有 3 个不同集合：
+这里其实至少有 4 个不同集合：
 
 - `getAllCommands()`
   - 执行集合
@@ -290,12 +295,15 @@ MCP 并不只生成远端 tools。
   - 更接近模型可见 listing
 - `getSlashCommandToolSkills()`
   - 更接近技能索引 / 菜单集合
+- `getMcpSkillCommands()`
+  - 专门从 `AppState.mcp.commands` 里筛出 MCP skills 的补集
 
 所以文档里要明确区分：
 
 - 执行集合
 - 模型 listing 集合
 - 技能索引集合
+- MCP skill 补集
 
 更直白一点说：
 
@@ -387,10 +395,15 @@ flowchart TD
     H[skills/loadSkillsDir.ts] --> I[Command type prompt]
     J[utils/plugins/loadPluginCommands.ts] --> I
     K[skills/bundledSkills.ts] --> I
-    I --> L[getSkillToolCommands]
-    I --> M[SkillTool execution]
-    M --> N[processPromptSlashCommand]
-    N --> O[attachments / command_permissions]
+    E --> L[getMcpSkillCommands]
+    I --> M[getSkillToolCommands]
+    I --> N[getSlashCommandToolSkills]
+    I --> O[SkillTool execution]
+    L --> O
+    O --> P[processPromptSlashCommand]
+    M --> Q[model-visible listing]
+    N --> R[skills index]
+    P --> S[attachments / command_permissions]
 ```
 
 ## 为什么这个设计重要

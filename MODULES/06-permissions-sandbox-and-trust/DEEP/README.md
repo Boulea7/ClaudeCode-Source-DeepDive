@@ -76,7 +76,7 @@
 更完整的链路是：
 
 - `useCanUseTool` 调 `permissions.ts`
-- `interactiveHandler` 把 ask 结果放进确认队列
+- `interactiveHandler` 把 ask 结果接成桥接、channel、hook、classifier 与本地对话框之间的编排链
 - `REPL.tsx` 渲染 `<PermissionRequest />`
 - `PermissionRequest.tsx` 再按 tool 类型分发给具体组件
 
@@ -97,6 +97,11 @@
 - dangerous patterns 会被单独识别
 
 这说明 auto mode 的安全边界不是只靠规则表，而是规则加 classifier 一起工作。
+
+这一层还有一个很实用的实现细节：
+
+- `useCanUseTool.tsx` 里先统一拿到 `allow / deny / ask`
+- 只有进入 `ask` 分支后，才会继续走 coordinator、swarm worker、interactiveHandler 这些交互路径
 
 ### 5. plan mode 会影响 permission mode
 
@@ -153,10 +158,11 @@ flowchart TD
     D --> G[sandbox override]
     D --> H[working directory checks]
     D --> I[allow / deny / ask result]
-    I --> J[useCanUseTool / interactiveHandler]
-    J --> K[REPL PermissionRequest queue]
-    K --> L[PermissionRequest.tsx]
-    L --> M[permission UI components]
+    I --> J[useCanUseTool]
+    J --> K[interactiveHandler / bridge / channel / hooks]
+    K --> L[REPL PermissionRequest queue]
+    L --> M[PermissionRequest.tsx]
+    M --> N[permission UI components]
 ```
 
 ## 为什么这个设计重要

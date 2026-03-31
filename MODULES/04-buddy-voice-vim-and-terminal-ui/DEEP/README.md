@@ -118,6 +118,7 @@
 - 默认 push-to-talk 键位是 `space -> voice:pushToTalk`
 - `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
 - `useVoiceEnabled()` 会把 `settings.voiceEnabled === true` 和 auth / kill-switch 合并成最终 UI 可见状态
+- `useVoiceIntegration()` 会处理 hold threshold、尾部按键清理、voice anchor 与 interim transcript 回填
 
 如果再往下拆，这条链其实更适合分成两段来看：
 
@@ -203,10 +204,11 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A[/voice command] --> B[voiceModeEnabled.ts]
-    B --> C[useVoiceEnabled]
-    C --> D[settings.voiceEnabled]
-    D --> E[voice feature visible]
+    A[/voice command] --> B[isVoiceModeEnabled]
+    B --> C[recording / stream / dependency / mic preflight]
+    D[useVoiceEnabled] --> E[settings.voiceEnabled]
+    E --> F[hasVoiceAuth + GB kill-switch]
+    F --> G[voice feature visible]
 ```
 
 ## 一张图看 voice 录音与转写链
@@ -227,7 +229,7 @@ flowchart LR
 这部分代码很能说明 Claude Code 的一个特点：
 
 - 它不是“先有主循环，再随手接一层 UI”
-- 而是把输入模式、companion、voice gating 也做成了相对独立的子系统
+- 而是把输入模式、companion、voice 判定与输入集成也做成了相对独立的子系统
 
 几个最值得记住的点：
 
