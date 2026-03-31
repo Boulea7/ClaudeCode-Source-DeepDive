@@ -8,5 +8,6 @@
 8. Read MODULES/07-remote-session-bridge-and-sdk for remote client vs bridge runtime, transport, and session compat.
 9. Read MODULES/04-buddy-voice-vim-and-terminal-ui for companion, vim state machine, and voice integration points.
 10. Read MODULES/08-prompts-config-and-other-moats for prompt assembly, the conditional dynamic boundary, and REPL vs headless differences.
-11. Read PROMPTS/system-prompt-assembly.md and PROMPTS/system-prompt-sections.md.
-12. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear, especially for ordinary subagent vs fork and listing set vs execution set.
+11. Read PROMPTS/README.md before the prompt deep dives.
+12. Read PROMPTS/system-prompt-assembly.md and PROMPTS/system-prompt-sections.md.
+13. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear, especially for ordinary subagent vs fork and SkillTool listing vs attachment-based listing.

@@ -71,7 +71,7 @@ flowchart TD
     C --> G[Memory / Compact]
     D --> H[MCP / Plugins / Skills]
     C --> I[Terminal UI / Buddy / Voice / Vim]
-    C --> J[Remote Session / Bridge]
+    C --> J[Remote Client / Bridge / SDK]
 ```
 
 ## 模块导航
@@ -101,7 +101,7 @@ flowchart TD
 - 入口：[`MODULES/06-permissions-sandbox-and-trust`](./MODULES/06-permissions-sandbox-and-trust/)
 
 ### 07 Remote Session, Bridge, And SDK
-- 这部分关注远端 session 客户端、本地 bridge/control layer，以及相关 transport / session compat 对象。
+- 这部分关注远端 session 客户端、REPL / standalone bridge 路径，以及 `print.ts` 这类 SDK 接线对象。
 - 入口：[`MODULES/07-remote-session-bridge-and-sdk`](./MODULES/07-remote-session-bridge-and-sdk/)
 
 ### 08 Prompts, Config, And Other Moats

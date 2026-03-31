@@ -9,7 +9,7 @@
 - 交互式主线程主要在 `REPL.tsx` 里装配 prompt、工具池和 `query()` 入口
 - headless / SDK 路径主要在 `QueryEngine.ts` 里装配 turn 级上下文
 - `query.ts` 负责真正的循环，包括 compact、tool execution、attachment 回挂、stop hook 和继续下一轮
-- tools、memory、permissions、remote/bridge 并不是旁支，而是这条主链上的常驻节点
+- tools、memory、permissions、remote/bridge 都会接到主链上，但 remote/bridge 主要按具体运行路径动态接入
 
 ## 一张图看总链路
 
@@ -26,7 +26,7 @@ flowchart LR
     E --> I[Memory and compact]
     E --> J[Permissions and sandbox]
     E --> K[Tasks and agent runtime]
-    E --> L[Remote client / local bridge]
+    E --> L[Remote client / bridge / SDK wiring]
     E --> M[TUI / buddy / vim / voice]
     I --> E
     J --> F
@@ -125,7 +125,7 @@ sequenceDiagram
 - MCP config / official registry / client preload
 - plugins 与 bundled skills 初始化
 - permission mode 与 tool permission context
-- remote session 与 bridge 相关准备
+- remote / bridge 相关能力会在对应运行路径里接入，不等于 setup 阶段统一初始化
 - telemetry / growthbook / model capability / settings cache
 
 这也是为什么 `main.tsx` 会非常大：它承担了“把一个会话跑起来”的装配职责，而不是只做参数分发。

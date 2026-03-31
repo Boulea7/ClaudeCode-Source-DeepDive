@@ -1,6 +1,9 @@
 {
   "repo_name": "ClaudeCode-Source-DeepDive",
-  "code_source_of_truth": "https://github.com/ChinaSiro/claude-code-sourcemap",
+  "code_source_of_truth": {
+    "upstream_repo": "https://github.com/ChinaSiro/claude-code-sourcemap",
+    "local_mirror": "/Users/jialinli/ClaudeCode-Source-DeepDive/_upstream/claude-code-sourcemap"
+  },
   "language": "zh-CN",
   "reading_order": [
     "README.md",
@@ -54,7 +57,12 @@
     {
       "id": "05",
       "name": "tools-mcp-skills-and-plugins",
-      "status": "confirmed"
+      "status": "confirmed",
+      "focus": [
+        "tool-protocol-vs-mcp-client-chain",
+        "skilltool-execution-set-vs-skill-listing-attachment",
+        "plugin-runtime-vs-builtin-plugin-scaffold"
+      ]
     },
     {
       "id": "06",
@@ -67,7 +75,7 @@
       "status": "mixed",
       "focus": [
         "remote-session-client-layer",
-        "local-bridge-control-layer",
+        "repl-and-standalone-bridge-paths",
         "server-behavior-stays-conservative"
       ]
     },
