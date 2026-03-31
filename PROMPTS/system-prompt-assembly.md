@@ -4,7 +4,16 @@
 
 **Claude Code 的 system prompt 不是一段固定长文本，而是一套分阶段装配链。**
 
-这里不贴大段 raw prompt，只讲装配机制和优先级。
+这里不贴大段 raw prompt，只讲装配机制、优先级和边界。
+
+## 这部分负责什么
+
+这一页主要说明四件事：
+
+1. `getSystemPrompt()` 如何产出 default prompt parts
+2. interactive 主线程如何走 `buildEffectiveSystemPrompt()`
+3. non-interactive 主线程为什么不是同一条 precedence
+4. 普通 subagent 与 fork subagent 在 prompt 装配上到底差在哪里
 
 ## 关键文件
 
@@ -13,133 +22,107 @@
 - `restored-src/src/utils/systemPrompt.ts`
 - `restored-src/src/utils/queryContext.ts`
 - `restored-src/src/QueryEngine.ts`
-- `restored-src/src/screens/REPL.tsx`
 - `restored-src/src/tools/AgentTool/AgentTool.tsx`
 - `restored-src/src/tools/AgentTool/runAgent.ts`
 - `restored-src/src/tools/AgentTool/forkSubagent.ts`
-- `restored-src/src/tools/AgentTool/resumeAgent.ts`
 
-## 先分清四条装配路径
+## 执行流
 
-这一层最容易写混的地方，是把所有 prompt 都当成同一套链。
+### 1. `getSystemPrompt()` 先生成 default prompt parts
 
-更准确的分法是：
+`constants/prompts.ts` 里的 `getSystemPrompt()` 返回的是：
 
-1. interactive 主线程
-2. non-interactive 主线程
-3. 普通 subagent
-4. fork subagent
+- `string[]`
 
-这四条路径都和 `getSystemPrompt()` 有关系，但后续的组装规则并不相同。
+不是：
 
-## 第一步：`getSystemPrompt()` 先生成默认 prompt parts
+- 最终拼好的单段字符串
 
-`restored-src/src/constants/prompts.ts` 里的 `getSystemPrompt()` 返回的是 `string[]`，不是一整段最终字符串。
+标准路径里，它会先构造：
 
-它会先生成：
-
-- static sections
-- dynamic sections
+- 静态前缀
+- 动态 sections
 
 然后在两者之间插入：
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
-这样做的目的，不只是为了排版，而是为了把静态前缀和动态段分开管理。
+也就是说，default prompt 在这一层已经被明确拆成：
 
-当前常规主线程默认 parts 的结构，可以概括成：
+- static
+- dynamic
 
-- 静态段
-  - intro
-  - system
-  - doing tasks
-  - actions
-  - using your tools
-  - tone and style
-  - output efficiency
-- 动态段
-  - `session_guidance`
-  - `memory`
-  - `ant_model_override`
-  - `env_info_simple`
-  - `language`
-  - `output_style`
-  - `mcp_instructions`
-  - `scratchpad`
-  - `frc`
-  - `summarize_tool_results`
-  - 以及若干 feature-gated 可选段
+这不是排版问题，而是缓存边界设计。
 
-## 第二步：dynamic sections 不是随手拼接，而是 registry
+### 2. 标准路径与 proactive / KAIROS 路径不是一回事
 
-dynamic sections 在 `prompts.ts` 里不是裸函数数组，而是通过：
+当前 `getSystemPrompt()` 至少有三条路径：
 
-- `systemPromptSection(...)`
-- `DANGEROUS_uncachedSystemPromptSection(...)`
+1. `CLAUDE_CODE_SIMPLE`
+   - 返回极简单段 prompt
+2. proactive / KAIROS 激活
+   - 走 autonomous agent 风格路径
+   - 不走标准 section registry
+3. 常规路径
+   - 先构造 dynamic sections
+   - 再通过 `resolveSystemPromptSections()` 求值
 
-注册出来，再交给：
+所以文档里要把“标准路径”与“特化路径”分开写，不要混成一个通用流程。
 
-- `resolveSystemPromptSections()`
+### 3. interactive 主线程才走 `buildEffectiveSystemPrompt()`
 
-求值。
+`utils/systemPrompt.ts` 负责 interactive 主线程的最终折叠。
 
-这意味着默认 prompt parts 不是“字符串拼接脚本”，而是一套带缓存语义的 section registry。
-
-## 第三步：interactive 主线程才走 `buildEffectiveSystemPrompt()`
-
-`restored-src/src/utils/systemPrompt.ts` 负责 interactive 主线程的最终裁决。
-
-当前源码可确认的 precedence 是：
+当前源码里可确认的 precedence 是：
 
 1. `overrideSystemPrompt`
-2. coordinator prompt
-   - 只在没有 `mainThreadAgentDefinition` 时生效
+2. `coordinator prompt`
 3. `mainThreadAgentDefinition`
 4. `customSystemPrompt`
 5. `defaultSystemPrompt`
 6. `appendSystemPrompt`
-   - 只要不是 override，就始终尾追加
 
-这里还有一个很重要的分支：
+其中：
 
-- 平时，main-thread agent prompt 会替换 default prompt
-- proactive / KAIROS 激活时，main-thread agent prompt 会作为 `# Custom Agent Instructions` 追加在 default prompt 后面
+- 只要不是 override
+- `appendSystemPrompt` 就会被尾追加
+
+还有一个非常重要的分支：
+
+- 平时 main-thread agent prompt 会替换 default
+- proactive / KAIROS 激活时，main-thread agent prompt 会作为 `# Custom Agent Instructions` 追加在 default 后面
 
 所以“agent prompt 是否替换默认 prompt”本身也是运行时相关的。
 
-## 第四步：non-interactive 主线程不走这条 precedence
+### 4. non-interactive 主线程不是同一条 precedence
 
-这点非常重要，也最容易被文档写错。
+这一点很容易被写错。
 
-non-interactive 主线程不会走 `buildEffectiveSystemPrompt()`。
+non-interactive 主线程不会走：
 
-它的路径是：
+- `buildEffectiveSystemPrompt()`
 
-- `main.tsx` 把 `systemPrompt` / `appendSystemPrompt` 交给 `runHeadless`
-- `print.ts` 再把它们传给 `ask()`
-- `QueryEngine` 通过 `fetchSystemPromptParts()` 和本地逻辑直接组装最终 prompt
+它的链路是：
 
-更具体地说，`QueryEngine` 组装的是：
+1. `main.tsx` 把 `systemPrompt` / `appendSystemPrompt` 交给 headless 路径
+2. `QueryEngine` 通过 `fetchSystemPromptParts()` 取得 default / user / system context
+3. 再本地组合：
+   - `customSystemPrompt ?? defaultSystemPrompt`
+   - `+ memoryMechanicsPrompt?`
+   - `+ appendSystemPrompt`
 
-- `(customSystemPrompt ?? defaultSystemPrompt)`
-- `+ memoryMechanicsPrompt?`
-- `+ appendSystemPrompt`
+而且：
 
-同时，`queryContext.ts` 还能确认一件事：
+- 只要 `customSystemPrompt` 存在
+- `queryContext.ts` 就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
 
-- 只要 `customSystemPrompt` 存在，就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
+这也是为什么 interactive 与 non-interactive 不能写成“一样的 prompt，只是 UI 不同”。
 
-另外，`main.tsx` 在 headless 下只对一种情况做了额外预注入：
-
-- main-thread agent 是自定义 agent
-
-这里并不会自动套用 interactive 那套 built-in main-thread agent precedence。
-
-## 第五步：普通 subagent 有自己的 prompt 链
+### 5. 普通 subagent 有自己的 prompt 起点
 
 普通 subagent 不复用主线程 default prompt。
 
-它的基底是：
+它的起点来自：
 
 - `agentDefinition.getSystemPrompt()`
 
@@ -147,42 +130,57 @@ non-interactive 主线程不会走 `buildEffectiveSystemPrompt()`。
 
 - `enhanceSystemPromptWithEnvDetails()`
 
-补环境信息和 agent-thread 约束。
-
-如果 agent 自己的 `getSystemPrompt()` 失败，还会退回：
+如果 agent 自己的 `getSystemPrompt()` 失败，才退回：
 
 - `DEFAULT_AGENT_PROMPT`
 
-所以更准确的写法应该是：
+所以更准确的说法是：
 
-- 普通 subagent 拥有自己的 agent prompt 链
-- 它不是“主线程 prompt 的简单子集”
+- 普通 subagent 有自己的 agent prompt 链
+- 它不是主线程 prompt 的简单子集
 
-## 第六步：fork subagent 是另一套模型
+### 6. fork subagent 是另一套上下文继承模型
 
 fork subagent 和普通 subagent 的差异非常大。
 
-它只在：
+它的目标不是：
 
-- interactive
-- 非 coordinator
-- fork gate 开启
-- 并且省略 `subagent_type`
+- “开一个新 agent prompt”
 
-时触发。
+而是：
 
-一旦进入 fork：
+- 尽量复用父线程已经渲染好的 prompt 前缀和消息前缀
 
-- 优先复用父线程已经渲染好的 `renderedSystemPrompt`
-- 复用父线程精确 tools
-- 复用父线程 `thinkingConfig`
-- 用 `buildForkedMessages()` 重建父 assistant 消息、占位 `tool_result` 和 fork directive
+当前可确认的关键点有：
 
-这条链的目标不是“开一个新 agent prompt”，而是“尽量复制父线程前缀，继续做事”。
+- 优先复用父 `renderedSystemPrompt`
+- 复用父精确工具池
+- 复用父 `thinkingConfig`
+- 用 `buildForkedMessages()` 重建父 assistant 消息与占位 `tool_result`
 
-resume fork 也会继续保持这条策略，而不是退回普通 subagent 的 prompt 生成方式。
+这里有一个需要特别保守的地方：
 
-## 一张图看四条装配路径
+- 本轮能确认 fork 复用父 prompt 与父消息前缀
+- 但仅凭 prompt 相关文件本身，看不到“fork 专属默认基础 prompt 常量”
+
+所以文档不要写成：
+
+- “fork 自带完全独立的默认基础 prompt”
+
+### 7. `getAgentToolSection()` 也属于 prompt 装配的一部分
+
+当前主线程默认 prompt 里，和子代理相关的一段说明来自：
+
+- `getAgentToolSection()`
+
+而这段文案本身又和 fork gate 相关：
+
+- fork 开启时，说明“不带 `subagent_type` 会创建 fork”
+- fork 未开启时，说明“使用 specialized agents”
+
+它被放在 dynamic boundary 之后，不是偶然，而是为了避免把这类运行时分支污染全局可缓存静态前缀。
+
+## 一张图看 4 条装配路径
 
 ```mermaid
 flowchart TD
@@ -204,27 +202,30 @@ flowchart TD
     L --> M[buildForkedMessages]
 ```
 
-## 为什么这条链重要
+## 为什么这个设计重要
 
-这条装配链决定了几个很关键的事实：
+这条装配链决定了几个非常关键的事实：
 
 - default prompt 不是最终 prompt
 - interactive 与 non-interactive 的 precedence 不同
-- 普通 subagent 与 fork subagent 的模型完全不同
-- `appendSystemPrompt`、main-thread agent、coordinator、custom prompt 都不是随手追加一句，而是有明确优先级
+- 普通 subagent 与 fork subagent 的 prompt 模型不同
+- `appendSystemPrompt`、main-thread agent、coordinator、custom prompt 都有明确优先级
 
-如果不把这几条路径分开，很多文档就会把源码行为写错。
+如果不把这几条路径拆开，文档就很容易把源码行为写错。
 
-## 已确认的事实
+## 推荐阅读顺序
 
-- `getSystemPrompt()` 返回的是默认 prompt parts，而不是最终 prompt
-- interactive 主线程走 `buildEffectiveSystemPrompt()`
-- non-interactive 主线程不走 `buildEffectiveSystemPrompt()`
-- 普通 subagent 使用自己的 agent prompt
-- fork subagent 复用父级 `renderedSystemPrompt`
-- proactive / KAIROS 激活时，main-thread agent prompt 从“替换”改为“追加”
+1. `restored-src/src/constants/prompts.ts`
+2. `restored-src/src/constants/systemPromptSections.ts`
+3. `restored-src/src/utils/systemPrompt.ts`
+4. `restored-src/src/utils/queryContext.ts`
+5. `restored-src/src/QueryEngine.ts`
+6. `restored-src/src/tools/AgentTool/AgentTool.tsx`
+7. `restored-src/src/tools/AgentTool/runAgent.ts`
+8. `restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 
-- `FORK_SUBAGENT`、`PROACTIVE`、`KAIROS`、`COORDINATOR_MODE` 等 gate 的线上默认状态，不能从静态源码直接推出
-- 各具体 agent 定义里的 `getSystemPrompt()` 文本内容，这一页不展开
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 在 API 层如何切分 prompt block，这一页没有继续展开到 API 实现。
+- `isForkSubagentEnabled()` 的完整判定条件，这一页只确认它与 non-interactive / fork gate 有关，不继续展开所有开关。
+- `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 名字带 `fork`，但不能直接等同于 fork 子代理主装配链。

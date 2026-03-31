@@ -1,329 +1,388 @@
 # 深度拆解：Tools, MCP, Skills, And Plugins
 
-这一章最容易被写乱，因为 `tools`、`MCP`、`skills`、`plugins` 这四层都和“扩展能力”有关。
+这一章最容易写乱，因为 `tools`、`MCP`、`skills`、`plugins` 都在扩展 Claude Code 的能力。
 
-但在源码里，它们其实分得很清楚：
+但从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这四层并不是一锅粥，而是清楚分开的：
 
-- `Tool.ts / tools.ts`：工具协议与工具池
-- `services/mcp/`：外部 server 接入与动态实例化
-- `skills/ + commands.ts`：把 skill 资产生产成 `Command(type:'prompt')`
-- `plugins/ + utils/plugins/`：插件打包边界与 runtime 装配
+- `Tool.ts / tools.ts` 负责工具协议与工具池
+- `services/mcp/` 负责外部 server 接入、实例化和热替换
+- `skills/ + commands.ts` 负责把技能资产变成 `Command(type: 'prompt')`
+- `plugins/ + utils/plugins/` 负责插件边界、路径和运行时装配
 
 ## 这部分负责什么
 
 这一层主要负责四件事：
 
-1. 定义工具协议和运行时上下文
-2. 组装 built-in tool pool，并把它和 MCP tool pool 合并
-3. 把外部 MCP server 变成动态 tools / commands / resources
-4. 把 skill 资产和 plugin 边界接入命令层
+1. 定义统一的 tool contract 和 tool runtime context
+2. 组装 built-in tool pool，并把它和 MCP tool pool 区分开
+3. 把外部 MCP server 变成本地可调用的 `Tool / Command / Resource`
+4. 把 skills 与 plugins 接入命令层，再把可见集合暴露给模型
 
 ## 关键文件
 
 ### 工具协议与工具池
 
 - `restored-src/src/Tool.ts`
-  - `ToolUseContext` 与统一 tool contract
+  - `ToolPermissionContext`、`ToolUseContext`、`Tool`、`findToolByName()`
 - `restored-src/src/tools.ts`
   - `getAllBaseTools()`、`getTools()`、`assembleToolPool()`、`getMergedTools()`
 
 ### MCP 客户端链路
 
-- `restored-src/src/services/mcp/types.ts`
-  - transport/config union、连接状态
-- `restored-src/src/services/mcp/config.ts`
-  - scope 合并、策略过滤、`.mcp.json` 解析、变量展开
 - `restored-src/src/services/mcp/client.ts`
-  - 建连、能力抓取、动态实例化、调用、结果处理
+  - transport 建连、`tools/list` / `prompts/list` / `resources/list`、动态实例化、重连
 - `restored-src/src/services/mcp/auth.ts`
-  - OAuth / XAA / step-up
-- `restored-src/src/services/mcp/headersHelper.ts`
-  - 动态请求头 helper
+  - OAuth / XAA provider、token 存取、step-up scope 检测
 - `restored-src/src/services/mcp/useManageMCPConnections.ts`
-  - 交互期状态维护、重连、`list_changed`
+  - `AppState.mcp` 写入、按 server 前缀替换旧产物、`list_changed`
+- `restored-src/src/services/mcp/headersHelper.ts`
+  - 动态 header helper 与 workspace trust 检查
 - `restored-src/src/tools/MCPTool/MCPTool.ts`
-  - 远端 tool 的本地模板
+  - MCP tool 模板
 - `restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
-  - `needs-auth` 伪工具
+  - `mcp__<server>__authenticate` 伪工具
 - `restored-src/src/tools/ListMcpResourcesTool/`
 - `restored-src/src/tools/ReadMcpResourceTool/`
-  - MCP 资源辅助工具
+  - 资源辅助工具
 
 ### Skills 与命令层
 
 - `restored-src/src/skills/loadSkillsDir.ts`
-  - 本地 `SKILL.md` / legacy commands -> `Command`
+  - 磁盘技能发现、frontmatter 解析、`createSkillCommand()`
 - `restored-src/src/skills/bundledSkills.ts`
   - bundled skills 注册表
 - `restored-src/src/skills/bundled/index.ts`
-  - 启动期 bundled skill 注册
+  - bundled skill 初始化入口
+- `restored-src/src/skills/mcpSkillBuilders.ts`
+  - MCP skill builder 复用桥接
 - `restored-src/src/commands.ts`
-  - 统一命令装配与 `getSkillToolCommands()`
+  - 总命令装配与 `getSkillToolCommands()`
 - `restored-src/src/tools/SkillTool/SkillTool.ts`
-  - SkillTool 执行壳
-- `restored-src/src/utils/processUserInput/processSlashCommand.tsx`
-  - prompt command 展开与消息注入
+  - 技能执行壳
 
 ### Plugins 与 runtime plugin root
 
 - `restored-src/src/plugins/builtinPlugins.ts`
-  - builtin plugin registry
+  - built-in plugin registry 定义
 - `restored-src/src/plugins/bundled/index.ts`
-  - builtin plugin scaffold
+  - built-in plugin scaffold
 - `restored-src/src/utils/plugins/pluginLoader.ts`
-  - runtime plugin root 边界、manifest 解析、组件路径装配
+  - plugin manifest、路径、组件装配
 - `restored-src/src/utils/plugins/loadPluginCommands.ts`
-  - plugin commands / plugin skills 的 markdown 装配
+  - plugin commands / plugin skills 加载
+- `restored-src/src/utils/plugins/mcpPluginIntegration.ts`
+  - plugin MCP server 注入
 
 ## 执行流
 
 ### 1. `Tool.ts` 先定义统一协议
 
-`Tool.ts` 在这里的角色不是“某一个工具实现”，而是：
+`Tool.ts` 不是某一个具体工具，而是整个工具系统的协议层。
 
-- 把工具的输入/输出、权限、交互、MCP 身份、渲染方式放进同一个协议
+这里直接定义了：
 
-当前能直接看到的重要元数据包括：
+- `ToolPermissionContext`
+- `ToolUseContext`
+- `Tool`
+- `Tools`
+- `findToolByName()`
 
-- `requiresUserInteraction`
-- `isMcp`
-- `shouldDefer`
-- `alwaysLoad`
-- `mcpInfo`
+这意味着“工具”在 Claude Code 里不是一个随手塞进去的函数，而是带运行时上下文、权限语义和渲染语义的一等对象。
 
-也就是说，工具在 Claude Code 里是一等运行时对象，不是一个简单函数表。
+### 2. `tools.ts` 里有 4 种不同语义的集合
 
-### 2. `tools.ts` 负责四种不同语义的工具集合
-
-这里一定要分清四个函数：
+这里一定要分清下面 4 个函数：
 
 - `getAllBaseTools()`
-  - exhaustive source of truth，列出所有 base tools
-- `getTools()`
-  - 普通 built-in 可见集合
-- `assembleToolPool()`
-  - built-in + MCP 的正式合并、deny 过滤和去重入口
-- `getMergedTools()`
-  - 只是简单拼接 built-in 与 MCP，不做去重
+  - 列出当前环境下可能可用的 built-in 工具全集
+- `getTools(permissionContext)`
+  - 当前会话真正可见的 built-in 集合
+- `assembleToolPool(permissionContext, mcpTools)`
+  - built-in + MCP 的正式合并入口
+- `getMergedTools(permissionContext, mcpTools)`
+  - 简单拼接，不去重
 
-这个区别非常关键，因为很多文档会把 `getTools()` 误写成“最终工具池”。
+当前源码里，`getTools()` 还会额外做这些过滤：
 
-### 3. MCP helper tools 不是普通 built-in
+- `CLAUDE_CODE_SIMPLE` 简化模式
+- deny rule 过滤
+- `tool.isEnabled()` 过滤
+- REPL 模式下隐藏 `REPL_ONLY_TOOLS`
 
-`ListMcpResourcesTool` 和 `ReadMcpResourceTool` 虽然出现在 exhaustive base list 里，但在 `getTools()` 阶段会被当成 special/helper tools 排除。
+而 `assembleToolPool()` 会进一步：
 
-只有当：
+- 对 MCP tools 再做 deny-rule 过滤
+- built-in 与 MCP 分别按 `name` 排序
+- 按 `name` 去重
 
-- 某个已连接 server 声明了 `resources` capability
+这也是为什么文档里不能把 `getMergedTools()` 写成“最终工具池”。
 
-这些工具才会真正被注入到 MCP 运行时集合里。
+```ts
+// tools.ts
+export function getMergedTools(...) {
+  return [...builtInTools, ...mcpTools]
+}
+```
 
-所以它们不能被简单写成“普通内建工具”。
+### 3. `MCPTool.ts` 只是模板，不是真正的 MCP 工具来源
 
-### 4. MCP 是完整客户端链路，不是几个固定工具
+这点很关键。
 
-`services/mcp/` 这条链至少包含：
+`tools/MCPTool/MCPTool.ts` 里能看到的是一个占位模板，真正的 MCP tool 实例化发生在：
 
-1. 配置汇总
-2. transport 建连
-3. capability 抓取
-4. `tools/list` / `prompts/list` / `resources/list`
-5. 动态实例化本地 `Tool / Command / Resource`
-6. 运行时状态维护
-7. 调用、鉴权、重连与结果治理
+- `services/mcp/client.ts -> fetchToolsForClient()`
 
-配置层会从多种 scope 汇总：
+这里会做的事是：
 
-- enterprise
-- user
-- project
-- local
-- plugin
-- dynamic
-- claude.ai connectors
+1. 拿到远端 `tools/list`
+2. 以 `MCPTool` 模板为底
+3. 覆盖 `name`、`description`、`inputSchema`、`call()`
+4. 挂上 `mcpInfo`
 
-然后再按策略过滤和优先级覆盖。
+默认命名是：
 
-### 5. MCP tool 是运行时动态包装出来的
+- `mcp__<server>__<tool>`
 
-这点非常关键。
+但 `sdk` MCP 在特定开关下可以去掉 `mcp__` 前缀，直接用原始工具名覆盖 builtin。这个分支要单独提，因为它解释了为什么 `MCPTool` 本身不能当成“固定命名工具”来写。
 
-真正的 `mcp__<server>__<tool>` 不是静态写在 `src/tools/` 里的，而是：
+### 4. MCP 是完整客户端链路，不是几个静态工具
 
-- 先拿到远端 `tools/list`
-- 再基于 `MCPTool` 模板动态实例化
+`services/mcp/client.ts` 这条链至少包含：
 
-包装时还会把远端 `tool.annotations` 映射到本地行为属性，例如：
+1. 选择 transport
+2. 建立 client
+3. 拉取 `tools/list`
+4. 拉取 `prompts/list`
+5. 拉取 `resources/list`
+6. 把这些结果转成本地 `Tool / Command / ServerResource`
+7. 处理重连、会话失效、401、URL elicitation
 
-- read-only
-- destructive
-- open-world
-- concurrency-safe
-- search hint
-- always-load
+当前 transport 至少包括：
 
-所以文档应该描述“客户端包装与调度行为”，而不是把这些属性写成服务端原生保证。
+- `sse`
+- `http`
+- `ws`
+- `stdio`
+- `claudeai-proxy`
 
-### 6. `needs-auth` 会暴露伪工具，而不是真工具
+插件提供的 MCP server 则会在运行时被加上：
 
-当某个远端 server 被判定成 `needs-auth` 时，系统不会先把真实工具交给模型，而是暴露一个：
+- `plugin:<pluginName>:` 前缀
+- `scope: 'dynamic'`
 
-- `mcp__<server>__authenticate`
+### 5. resources 与 auth pseudo-tool 都是宿主侧额外补入
 
-调用这个伪工具后，客户端才去发起 OAuth / XAA 流程；成功后再把真实 `tools / commands / resources` 写回 `appState.mcp`。
+MCP 并不只生成远端 tools。
 
-因此，`needs-auth` 不是一个纯状态标签，而是一条明确的运行时行为。
+当前客户端还会在特定条件下额外补入宿主工具：
 
-### 7. resources 与 prompts 也是 MCP 运行时的一部分
+- 如果有 resources capability
+  - 注入 `ListMcpResourcesTool`
+  - 注入 `ReadMcpResourceTool`
+- 如果 server 被判定为 `needs-auth`
+  - 注入 `mcp__<server>__authenticate`
 
-MCP 不只产出 tool。
+这两类都不是 server 自己在 `tools/list` 中暴露出来的普通工具。
 
-当前这份源码还能确认：
+`ReadMcpResourceTool` 还有一个很值得写明的行为：
 
-- `resources/list` / `resources/read`
-  - 文本直接返回
-  - blob 落盘后回传路径说明
-- `prompts/list`
-  - 会被包装成 command
-  - 返回的 text/image/audio/resource/resource_link 会被转成 Claude 可消费 block
+- 对 blob 资源会先落盘，再把保存路径返回给模型
+- 不是把大块 base64 直接塞回上下文
 
-这就是为什么 MCP 在 Claude Code 里更像“外部能力层”，而不是“额外几个工具”。
+### 6. `needs-auth` 是伪工具链路，不是单纯状态标签
 
-### 8. `skills/` 的核心是 `Command` 生产
+当前源码里，“需要授权”的语义不是只停留在连接状态上。
 
-`skills/` 目录真正做的事，是把 skill 资产统一转成 `Command(type:'prompt')`。
+当某个 server 命中 `needs-auth` 时：
 
-入口是：
+1. 连接枚举阶段不下发真实 tools
+2. 只下发 `createMcpAuthTool()` 生成的伪工具
+3. 调这个伪工具后才执行 `performMCPOAuthFlow()`
+4. 成功后再用 `reconnectMcpServerImpl()` 拉回真实 `tools / commands / resources`
 
-- `loadSkillsDir.ts`
+这里有一个容易写大的点：
 
-它会处理：
+- 运行时 401 的确会把 client 状态改成 `needs-auth`
+- 但“401 之后模型立刻拿到 auth tool”这件事，这轮复核没有直接坐实
 
-- 本地 `skills/<name>/SKILL.md`
-- legacy `commands/`
-- frontmatter
-- allowed tools / model / effort / hooks / context
+所以文档里只能写：
 
-然后统一交给命令层。
+- 连接/重连枚举路径会注入 auth pseudo-tool
+- 运行时 401 会把状态切到 `needs-auth`
 
-这就是为什么更准确的说法应该是：
+不要把两者合成一个自动热替换承诺。
 
-- `skills/` 是 Command production layer
-- 不是技能执行器
+### 7. `skills/` 的核心不是执行，而是生产 `Command`
 
-### 9. `SkillTool` 是执行壳，不做 discovery
+`skills/loadSkillsDir.ts` 的中心职责，是把技能资产变成：
 
-`SkillTool` 拿到 skill 名称之后做的事情是：
+- `Command(type: 'prompt')`
 
-- 从已经装配好的 command inventory 里查找
-- 做输入校验
-- 做权限校验
-- 决定 inline / fork / remote canonical skill 分支
+它支持的来源至少包括：
 
-真正把 skill markdown 变成会话消息的是：
+- `/skills/<name>/SKILL.md`
+- legacy `/commands/`
+- bundled skills
+- plugin skills
+
+还有一点要单独写明：
+
+- `/skills/` 目录下只认 `SKILL.md` 目录格式
+- 单文件 `.md` 不会被当成 skill
+
+而 legacy `/commands/` 仍支持：
+
+- 单文件 `.md`
+- 目录式 `SKILL.md`
+
+### 8. `SkillTool` 是执行壳，不是 discovery 源
+
+`SkillTool.ts` 做的事情是：
+
+1. 校验 skill 名
+2. 从执行集合里查 `Command`
+3. 做权限检查
+4. 决定 inline / fork / remote skill 路径
+5. 把结果重新注入对话
+
+真正把 skill 内容展开成对话消息的，是：
 
 - `processPromptSlashCommand()`
 
-所以 `SkillTool` 不负责扫目录，也不负责发现 skill 来源。
+所以更准确的说法是：
 
-### 10. `src/plugins/` 不是完整插件加载器
+- `loadSkillsDir.ts` 负责发现与生产
+- `commands.ts` 负责装配
+- `SkillTool.ts` 负责执行
 
-这部分也很容易写错。
+### 9. “模型可见的 skill listing” 不等于 “全部可执行 skill”
 
-当前快照里：
+这点很容易写错。
 
-- `src/plugins/` 只提供 builtin plugin registry 与 scaffold
-- 真正的 runtime plugin root 装配逻辑在 `src/utils/plugins/`
+执行集合更宽，主要来自：
 
-而且当前这份镜像还能确认一个更强的事实：
+- `getAllCommands()`
+- 再加上 `AppState.mcp.commands` 里的 prompt commands
 
-- builtin plugin 机制虽然预留了
-- 但没有任何实际 builtin plugin 注册代码
+但模型看到的 listing 来自：
 
-因为：
+- `getSkillToolCommands()`
 
-- `initBuiltinPlugins()` 目前是空函数
-- 源码里也没有其它 `registerBuiltinPlugin()` 调用点
+它会额外过滤：
 
-所以文档里不能写成“builtin plugin 已经在当前镜像里落地”。
+- 只保留 `type === 'prompt'`
+- 排除 built-in commands
+- `disableModelInvocation` 的项不会进入 listing
+- plugin/MCP 项通常需要 `description` 或 `whenToUse`
 
-### 11. plugin skill 来源是 runtime plugin root，不是 `src/plugins/`
+所以文档里要明确区分：
 
-plugin skill 的来源边界是：
+- 执行集合
+- listing 集合
 
-- runtime plugin root 下的 `skills/`
-- manifest 的 `skills` / `skillsPaths`
+### 10. plugin command 与 plugin skill 是两条独立加载链
 
-并且最终会统一命名成：
+`utils/plugins/loadPluginCommands.ts` 里，这两条链并不相同。
 
-- `pluginName:skillName`
+`commands/` 路径支持：
 
-这和 `src/plugins/` 源码目录本身没有直接对应关系。
+- 普通 `.md`
+- `SKILL.md` 目录
+- manifest 路径数组
+- 对象映射
+- inline markdown content
 
-## 一张图看工具池合并
+`skills/` 路径则更严格：
+
+- 只认 `SKILL.md` 目录
+- 不把普通 markdown 当 skill
+- 命名统一是 `pluginName:skillName`
+
+另外，在 plugin `commands/` 树中：
+
+- 如果某目录含 `SKILL.md`
+- 该目录会被当作 skill 叶子目录
+- 同目录其他 `.md` 文件不会再各自产生命令
+
+这也是需要在文档里单独提醒的边界。
+
+### 11. `src/plugins/` 不是完整 runtime plugin loader
+
+当前镜像里：
+
+- `src/plugins/` 主要是 builtin plugin registry 与 scaffold
+- 真正的 runtime 装配在 `src/utils/plugins/`
+
+而且本轮重新核读后，可以更明确地写：
+
+- built-in plugin scaffolding 存在
+- 但当前树里没有看到实际 `registerBuiltinPlugin(...)` 调用
+- `initBuiltinPlugins()` 在当前镜像里是空实现
+
+所以文档里不应再写：
+
+- “当前已有 built-in plugin skills 在运行”
+
+更稳妥的写法是：
+
+- 当前镜像里可以确认 registry/scaffold
+- 看不到实际注册项
+
+## 一张图看扩展层关系
 
 ```mermaid
 flowchart TD
-    A[getAllBaseTools] --> B[getTools]
-    B --> C[ordinary built-in tools]
-    D[MCP config and connections] --> E[dynamic MCP tools]
-    C --> F[assembleToolPool]
-    E --> F
-    F --> G[final built-in + MCP pool]
-    C --> H[getMergedTools simple concat]
-    E --> H
-```
-
-## 一张图看 skill 命令链
-
-```mermaid
-flowchart LR
-    A[SKILL.md or legacy command] --> B[loadSkillsDir.ts]
-    B --> C[createSkillCommand]
-    C --> D[Command type prompt]
-    D --> E[getSkillToolCommands]
-    E --> F[SkillTool]
-    F --> G[processPromptSlashCommand]
-    G --> H[messages injected into conversation]
+    A[Tool.ts contract] --> B[tools.ts built-in pool]
+    C[services/mcp/client.ts] --> D[dynamic MCP tools]
+    C --> E[dynamic MCP commands]
+    C --> F[MCP resources]
+    B --> G[assembleToolPool]
+    D --> G
+    H[skills/loadSkillsDir.ts] --> I[Command type prompt]
+    J[utils/plugins/loadPluginCommands.ts] --> I
+    K[skills/bundledSkills.ts] --> I
+    I --> L[getSkillToolCommands]
+    I --> M[SkillTool execution]
 ```
 
 ## 为什么这个设计重要
 
-这套分层的价值，在于它把“扩展能力”拆成了不同粒度：
+这一层真正重要的地方，不是“能不能扩展”，而是把扩展拆成了不同粒度：
 
-- 协议层：tool contract
-- 池层：built-in / MCP tool pool
-- 资产层：skills
-- 打包层：plugins
+- 工具协议层
+- 工具池层
+- 外部 server 客户端层
+- skill 资产层
+- plugin 打包层
 
-这样一来，一个能力可以：
+这样一个能力可以：
 
-- 只是 built-in tool
-- 由 MCP server 动态提供
-- 被 skill 包成 prompt command
+- 作为 built-in tool 存在
+- 通过 MCP 动态下发
+- 作为 skill 进入 prompt command 层
 - 再由 plugin 打包成可启停单元
 
-这比“只有插件系统”或者“只有工具调用”都更灵活。
+这比“只有插件系统”或者“只有工具调用”都要灵活得多。
 
 ## 推荐阅读顺序
 
 1. `restored-src/src/Tool.ts`
 2. `restored-src/src/tools.ts`
-3. `restored-src/src/services/mcp/types.ts`
-4. `restored-src/src/services/mcp/config.ts`
-5. `restored-src/src/services/mcp/client.ts`
-6. `restored-src/src/services/mcp/useManageMCPConnections.ts`
-7. `restored-src/src/tools/MCPTool/MCPTool.ts`
-8. `restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
+3. `restored-src/src/services/mcp/client.ts`
+4. `restored-src/src/services/mcp/auth.ts`
+5. `restored-src/src/services/mcp/useManageMCPConnections.ts`
+6. `restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
+7. `restored-src/src/tools/ListMcpResourcesTool/`
+8. `restored-src/src/tools/ReadMcpResourceTool/`
 9. `restored-src/src/skills/loadSkillsDir.ts`
 10. `restored-src/src/commands.ts`
 11. `restored-src/src/tools/SkillTool/SkillTool.ts`
-12. `restored-src/src/plugins/builtinPlugins.ts`
+12. `restored-src/src/utils/plugins/loadPluginCommands.ts`
 13. `restored-src/src/utils/plugins/pluginLoader.ts`
-14. `restored-src/src/utils/plugins/loadPluginCommands.ts`
+14. `restored-src/src/plugins/builtinPlugins.ts`
 
 ## 仍待确认
 
-- 某些 MCP server 在线上到底会产出哪些具体 MCP skills，当前只能确认客户端如何接收 `loadedFrom === 'mcp'` 的 command。
-- experimental remote skill search 的线上开关状态与后端内容，这份静态源码不能直接证明。
-- builtin plugin 虽然当前快照里没有实际注册，但未来运行构建是否会注入额外生成代码，这份镜像也不能完全否定。
+- `MCP_SKILLS` 这条桥接分支在当前镜像里能看到 call site，但未在这轮完整展开 `mcpSkills.ts`，因此不能把 resource 到 MCP skill 的完整映射时机写得太死。
+- 运行时 401 后是否会立即把 auth pseudo-tool 热替换回模型可见工具池，这轮没有直接坐实。
+- bundled skills 与 built-in plugins 的真实启动调用点不在这一轮重点范围内；这里只能确认 registry/scaffold 和装配代码存在。

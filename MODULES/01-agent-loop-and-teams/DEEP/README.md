@@ -1,168 +1,216 @@
 # 深度拆解：Agent Loop And Teams
 
-这一章关心的不是“Claude Code 能不能开子 agent”，而是另一件更关键的事：
+这一章的重点不是“Claude Code 能不能开子 agent”，而是：
 
-**主线程、子 agent、后台 task、teammate，到底是怎么接成一条稳定运行链的。**
+**主线程、子代理、后台任务、远端任务、同进程 teammate，究竟是怎么接成一条稳定运行链的。**
 
-从 `ChinaSiro/claude-code-sourcemap` 这份镜像来看，这套能力不是几段 prompt 拼出来的，而是明确落在 `main.tsx -> QueryEngine.ts -> query.ts -> AgentTool -> runAgent -> tasks/*` 这条运行时链上。
+从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这套能力并不是几段 prompt fan-out，而是明确落在：
+
+- `main.tsx`
+- `QueryEngine.ts`
+- `query.ts`
+- `AgentTool.tsx`
+- `runAgent.ts`
+- `tasks/*`
+
+这条运行时链上。
 
 ## 这部分负责什么
 
 这一层主要负责三件事：
 
 1. 把一次用户输入推进成一轮可继续递归的 query
-2. 把 agent 调度做成正式 tool，而不是临时 prompt 约定
-3. 把本地 agent、远端 agent、同进程 teammate 等执行对象统一表示为 task state
-
-如果你想理解 Claude Code 为什么不像“问一次、答一次”的普通 CLI，这一层就是最核心的入口。
+2. 把 agent 调度做成正式 tool，而不是临时 prompt 协议
+3. 把本地 agent、远端 agent、shell、主会话后台任务、in-process teammate 统一表示成 task state
 
 ## 关键文件
 
+### 主线程与 query runtime
+
 - `restored-src/src/main.tsx`
-  - 启动总控。负责 interactive / non-interactive 分流、工具种子、MCP 预热、插件初始化，以及把控制权交给 REPL 或 `runHeadless`
+  - interactive / non-interactive 分流、built-in tools 与 MCP 接入
 - `restored-src/src/QueryEngine.ts`
-  - headless / SDK 会话的 turn orchestrator。负责 `mutableMessages`、`ToolUseContext`、`processUserInput()`、transcript 和记账
+  - headless / SDK turn orchestrator
 - `restored-src/src/query.ts`
-  - 真正的模型-工具递归循环。负责 `tool_use -> tool_result -> 下一轮`
+  - 真正的 turn loop
 - `restored-src/src/Tool.ts`
-  - 统一 tool contract 与 `ToolUseContext`
+  - `ToolUseContext`
 - `restored-src/src/tools.ts`
-  - 工具池装配层，区分 `getAllBaseTools()`、`getTools()`、`assembleToolPool()`、`getMergedTools()`
+  - `getTools()`、`assembleToolPool()` 等工具池装配
+
+### Agent 编排与执行
+
 - `restored-src/src/tools/AgentTool/AgentTool.tsx`
-  - 子 agent 编排入口，负责普通 subagent / fork / teammate / worktree / async 分流
+  - 子代理编排入口
 - `restored-src/src/tools/AgentTool/runAgent.ts`
-  - 本地 subagent 执行引擎，负责子上下文、工具池、权限、skills、hooks、MCP、transcript
+  - 子代理执行引擎
 - `restored-src/src/tools/AgentTool/forkSubagent.ts`
-  - fork gate、父 prompt 复用、父消息前缀重建
+  - fork 路径与 `FORK_AGENT`
 - `restored-src/src/tools/AgentTool/resumeAgent.ts`
-  - 后台 agent 恢复，含 resumed fork 路径
+  - transcript 驱动的后台恢复
+- `restored-src/src/tools/AgentTool/agentToolUtils.ts`
+  - async lifecycle、结果收尾、handoff 分类
+- `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+  - agent definition 来源与解析
+
+### 任务表示层
+
 - `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
-  - 本地 agent task 状态、前后台切换、通知与 kill
+  - `local_agent` 状态、前后台切换、通知、kill
 - `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
-  - 远端 session 任务状态、sidecar 持久化、恢复与轮询
+  - `remote_agent` 轮询、恢复、review / ultraplan 状态
+- `restored-src/src/tasks/LocalShellTask/LocalShellTask.tsx`
+  - `local_bash`
+- `restored-src/src/tasks/LocalMainSessionTask.ts`
+  - 主会话后台化
 - `restored-src/src/tasks/InProcessTeammateTask/`
-  - 同进程 teammate 的状态与运行时表示
+  - 同进程 teammate 的状态镜像
+- `restored-src/src/tasks/stopTask.ts`
+  - 通用 stop 路径
 
 ## 执行流
 
-### 1. 启动层先决定这是不是一条 interactive 会话
+### 1. 主线程先把 query runtime 立起来
 
-`restored-src/src/main.tsx` 会先拿到 built-in tools，再按 interactive / non-interactive 分流。
+`main.tsx -> QueryEngine.ts -> query.ts` 这三层分别负责：
 
-这里有两个很重要的事实：
+- 启动与模式分流
+- turn 级 orchestration
+- 真正的 query loop
 
-- interactive 路径不会为了 MCP 连接阻塞首屏和首轮
-- non-interactive 路径会先筛掉不支持 headless 的命令，并在进入 `runHeadless` 前等待 regular MCP 批次连接
+这也是为什么文档里要把 “主循环” 和 “agent tool” 分开写：
 
-也就是说，Claude Code 一开始就把 REPL 和 headless 当成两套不同的运行容器，而不是同一套逻辑换个壳。
+- 主循环先存在
+- 子代理只是这条主循环上的一个 tool 分支
 
-### 2. `QueryEngine` 负责 turn orchestration，不负责 UI
+### 2. `AgentTool` 是 orchestration layer，不是执行器
 
-`restored-src/src/QueryEngine.ts` 的职责很清楚：
+`AgentTool.call()` 负责的事情主要是：
 
-- 维护 `mutableMessages`
-- 构造 `ToolUseContext`
-- 调 `processUserInput()` 处理 slash command / local command
-- 记录 transcript
-- 需要时进入 `query()`
+1. 解析 `subagent_type`
+2. 在 fork gate 开启时决定是否走隐式 fork
+3. 处理 `team_name` 这种 teammate 例外入口
+4. 检查 `requiredMcpServers`
+5. 决定 sync / async / remote / worktree 分支
+6. 把运行结果重新包装成 tool result
 
-这里值得特别注意的一点是：`QueryEngine` 自己就把会话标成 `isNonInteractiveSession: true`。这也是为什么 headless 路径不会再回头向用户索要权限或额外输入。
+所以更准确的说法是：
 
-### 3. `query.ts` 才是主循环
+- `AgentTool` 决定“跑谁、在哪跑、以前台还是后台跑”
+- `runAgent` 决定“子线程内部怎么真正执行”
 
-`restored-src/src/query.ts` 不是“发一次模型请求”的薄封装，而是一条递归循环：
+还有一个非常容易误解的点：
 
-1. 组装本轮可见消息
-2. 调模型，收集 `tool_use`
-3. 执行工具
-4. 把结果变成 `tool_result / attachment / user` 消息
-5. 在必要时刷新工具集
-6. 递归进入下一轮
+```ts
+// AgentTool.tsx
+isReadOnly() {
+  return true
+}
+```
 
-这就是 Claude Code 的 agent loop 骨架。
+这里的 `true` 只说明：
 
-值得注意的细节：
+- `AgentTool` 自己把权限判定委托给底层工具
 
-- 调模型时，`toolUseContext.options.tools` 和 `appState.mcp.tools` 是分开的两组输入
-- `refreshTools` 如果存在，`query()` 可以在 turn 之间刷新工具集
-- 但当前 `QueryEngine` 这条 headless 链里并没有把 `refreshTools` 填进 `ToolUseContext.options`
+不等于：
 
-这也是为什么“built-in tool pool”和“MCP tool pool”在源码里必须分开理解。
+- 子代理不会修改文件
 
-### 4. `AgentTool` 是编排入口，不是执行器
+### 3. fork 不是普通 agent type
 
-`restored-src/src/tools/AgentTool/AgentTool.tsx` 负责的是编排：
+当前实现里，fork 是一个合成路径：
 
-- 如果传了 `team_name + name`，走 teammate spawn
-- 如果显式给 `subagent_type`，走普通 subagent
-- 如果省略 `subagent_type` 且 fork gate 开启，走隐式 fork
-- 再决定是否 async、是否 worktree、是否注册任务
+- 由 `forkSubagent.ts` 里的 `FORK_AGENT` 定义
+- 触发条件是“省略 `subagent_type` 且 fork gate 开启”
 
-这里要特别收窄一个常见误解：
+如果 fork gate 没开，省略 `subagent_type` 的回退逻辑是：
 
-**fork 不是另一个普通 agent type。**
+- `GENERAL_PURPOSE_AGENT.agentType`
 
-`forkSubagent.ts` 里的 `FORK_AGENT` 是一条 feature-gated 的特殊路径，它的目标不是“换一个 agent prompt”，而是尽量复用父线程已经渲染好的 prompt 前缀和工具上下文。
+这也是为什么文档里不能把 fork 写成“另一个普通 agent 定义”。
 
-### 5. 普通 subagent 与 fork subagent 是两种不同模型
+### 4. 普通 subagent 与 fork subagent 是两种不同模型
 
 普通 subagent：
 
-- 使用所选 agent 自己的 `getSystemPrompt()`
-- 再通过 `enhanceSystemPromptWithEnvDetails()` 补环境信息
-- 默认只拿到一条新的用户任务消息
+- 走 `selectedAgent.getSystemPrompt()`
+- 再做 env enhancement
+- 默认只拿到新的用户任务
 - 不自动继承完整父对话
 
 fork subagent：
 
-- 优先复用父级 `renderedSystemPrompt`
-- 复用父级精确工具池与 thinking 配置
-- 用 `buildForkedMessages()` 重建父 assistant 消息前缀和占位 `tool_result`
+- 复用父 `renderedSystemPrompt`
+- 复用父精确工具池
+- 复用父 `thinkingConfig`
+- 用 `buildForkedMessages()` 重建父 assistant 前缀和占位 `tool_result`
 - 显式阻止递归 fork
 
-这两条路径的行为目标完全不同：
+所以它们并不是“同一个机制的两个小变体”，而是两条行为目标不同的路径。
 
-- 普通 subagent 更像“按专用 agent 定义开一个新线程”
-- fork 更像“复制父线程上下文，继续拆一支做事”
+### 5. `runAgent()` 才是实际执行引擎
 
-### 6. `runAgent` 是真正的执行引擎
+`runAgent()` 内部会做这些事：
 
-`restored-src/src/tools/AgentTool/runAgent.ts` 会把编排结果真正落地：
+1. 处理 fork 上下文中未完成的 tool call
+2. 构造 agent 专属 `getAppState()`、`ToolUseContext`、tool pool
+3. 预加载 agent frontmatter 指定的 `skills`
+4. 初始化 agent frontmatter 指定的 `mcpServers`
+5. 写 sidechain transcript 与 metadata
+6. 驱动 `query()`
+7. 清理 session hooks、todos、transcript 子目录
+8. 回收该 agent 生成的 orphan shell tasks
 
-- 构造子上下文
-- 解析工具池
-- 设定权限模式
-- 预载 skill / frontmatter hooks / MCP
-- 写 sidechain transcript 和 metadata
-- 驱动 `query()`
-- 清理收尾
+这条链路说明：
 
-所以更准确的分层应该是：
+- agent 不是“再发一个模型请求”
+- 而是“在同一套 runtime 上再开一条完整子线程”
 
-- `AgentTool` 决定“跑谁、怎么跑”
-- `runAgent` 决定“子线程内部如何真正执行”
+### 6. sync 与 async 共享同一套任务表示
 
-### 7. `tasks/*` 是 runtime representation layer
+这也是源码里一个很重要的设计点。
 
-`tasks/` 这层的职责不是“替模型做推理”，而是把运行中的对象变成统一任务状态。
+异步子代理：
 
-当前这份镜像里能确认的对象至少包括：
+- 先 `registerAsyncAgent()`
+- 再进 `runAsyncAgentLifecycle()`
 
-- `LocalAgentTask`
-- `RemoteAgentTask`
-- `InProcessTeammateTask`
-- `LocalShellTask`
+同步子代理：
 
-这层负责：
+- 先注册前景 `local_agent`
+- 再手动拉取 `runAgent()` 的 iterator
+- 如果中途被后台化，再把同一个任务 ID 续跑成 async
 
-- 任务状态
-- 前后台切换
-- 通知
-- kill
-- 恢复
-- 轮询
+也就是说：
 
-这也是为什么同步 subagent 也会先注册前台 `LocalAgentTask`，而不是直接裸跑。
+- “一开始就是后台”
+- “先前台跑，后面转后台”
+
+最终都落在同一个：
+
+- `LocalAgentTaskState`
+
+而不是两套不同 task 类型。
+
+### 7. `tasks/` 是 runtime representation layer
+
+`tasks/` 的作用不是替模型推理，而是把运行中的对象统一成可显示、可恢复、可停止的状态。
+
+当前快照里能直接确认的任务形态包括：
+
+- `local_agent`
+- `remote_agent`
+- `local_bash`
+- `in_process_teammate`
+- `dream`
+- 以及用 `agentType: 'main-session'` 区分的主会话后台任务
+
+这里还有一个需要写明的边界：
+
+- `tasks/types.ts` 仍引用 `LocalWorkflowTask` 和 `MonitorMcpTask`
+- 但这两个实现文件不在本次 `restored-src` 可读树里
+
+所以文档不能写成“当前镜像已经完整覆盖全部 task 实现”。
 
 ## 一张图看主执行链
 
@@ -178,64 +226,56 @@ sequenceDiagram
 
     U->>M: 输入请求
     M->>QE: 创建会话容器
-    QE->>QE: processUserInput / transcript / ToolUseContext
     QE->>Q: 进入 query()
-    Q->>Q: 模型输出 tool_use
-    Q->>AT: 调 AgentTool
-    AT->>RA: 组装并启动子 agent
-    RA->>Q: 子 agent 继续走 query loop
-    RA->>TS: 注册/更新任务状态
+    Q->>AT: 命中 AgentTool
+    AT->>AT: 解析 agent / fork / async / remote
+    AT->>RA: 启动本地 agent
+    RA->>Q: 子线程继续走 query loop
+    RA->>TS: 注册或更新任务状态
     TS-->>AT: 进度 / 状态 / 通知
-    AT-->>Q: tool result / attachment
+    AT-->>Q: tool result
     Q-->>QE: 本轮结果
     QE-->>U: 输出
 ```
 
-## 一张图看分层关系
+## 一张图看任务表示层
 
 ```mermaid
 flowchart TD
-    A[main.tsx] --> B[QueryEngine.ts]
-    B --> C[query.ts]
-    C --> D[ToolUseContext]
-    D --> E[AgentTool]
-    E --> F[runAgent]
-    F --> G[child query loop]
-    E --> H[LocalAgentTask]
-    E --> I[RemoteAgentTask]
-    E --> J[InProcessTeammateTask]
-    C --> K[tools.ts tool pool]
-    K --> L[built-in tools]
-    K --> M[MCP tools]
+    A[AgentTool] --> B[local_agent]
+    A --> C[remote_agent]
+    A --> D[in_process_teammate]
+    E[BashTool / shell runtime] --> F[local_bash]
+    G[Main session backgrounding] --> H[local_agent agentType=main-session]
+    I[Auto dream] --> J[dream]
 ```
 
 ## 为什么这个设计重要
 
-这套分层的重要性，不是“支持多 agent”这么简单，而是：
+这套设计的重要性，不只是“支持多 agent”，而是：
 
-- 主线程和子线程共享同一种 query runtime 语言
-- fork、resume、background 都不是临时 hack，而是源码里的正式路径
-- 本地 agent、远端 agent、teammate、shell task 都能落到统一任务表示层
+- 主线程与子线程共享同一种 query runtime
+- fork、resume、background 都是源码里的正式路径
+- 本地 agent、远端 agent、shell、主会话后台任务都能落到统一任务表示层
 
-这也是 Claude Code 的 team / worker 能力看起来更像 runtime feature，而不是几段 prompt fan-out 的原因。
+这也是 Claude Code 的 worker / team 能力看起来更像 runtime feature，而不是 prompt fan-out 的原因。
 
 ## 推荐阅读顺序
 
 1. `restored-src/src/main.tsx`
 2. `restored-src/src/QueryEngine.ts`
 3. `restored-src/src/query.ts`
-4. `restored-src/src/Tool.ts`
-5. `restored-src/src/tools.ts`
-6. `restored-src/src/tools/AgentTool/AgentTool.tsx`
-7. `restored-src/src/tools/AgentTool/runAgent.ts`
-8. `restored-src/src/tools/AgentTool/forkSubagent.ts`
-9. `restored-src/src/tools/AgentTool/resumeAgent.ts`
-10. `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
-11. `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
-12. `restored-src/src/tasks/InProcessTeammateTask/`
+4. `restored-src/src/tools/AgentTool/AgentTool.tsx`
+5. `restored-src/src/tools/AgentTool/runAgent.ts`
+6. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+7. `restored-src/src/tools/AgentTool/resumeAgent.ts`
+8. `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
+9. `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
+10. `restored-src/src/tasks/LocalMainSessionTask.ts`
+11. `restored-src/src/tasks/InProcessTeammateTask/`
 
 ## 仍待确认
 
-- `remote isolation` 的代码路径和任务模型都存在，但这份 `restored-src` 快照里，`AgentTool` 的公开 `isolation` schema 仍收窄为 `worktree`。因此不能把 remote isolation 写成“当前构建已公开可用”的事实。
-- teammate spawn 的完整执行链不在这次重点范围内；当前只能确认 `AgentTool` 的入口条件和任务表示层。
-- fork、KAIROS、coordinator、proactive 这些分支的线上默认开关状态，不能从静态源码直接推出。
+- `remote isolation` 的代码路径和远程任务模型都存在，但当前公开 schema 是否完整暴露给用户侧，仍需保守表述。
+- `requiredMcpServers` 在运行时会被检查，但本轮没有坐实自定义 markdown/json agent 是否能在 frontmatter 中稳定声明它。
+- `resumeAgentBackground()` 的调用入口不在这轮重点范围内，所以“谁负责触发恢复”不能写死。

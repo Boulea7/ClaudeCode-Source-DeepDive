@@ -2,13 +2,13 @@
 
 这一章的重点不是“Claude Code 会不会写计划”，而是：
 
-**Plan Mode、compact、todo/task 到底是怎么作为运行时机制接起来的。**
+**Plan Mode、compact、todo / task 到底是怎么作为运行时机制接起来的。**
 
-从这份公开镜像能直接看出的结论是：
+从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像里，可以直接确认几件事：
 
-- Plan Mode 不是一段提示词，而是权限模式 + attachment + plan 文件三件事同时成立
-- compact 不是单一路径，至少有三条不同实现
-- `TodoWrite` v1、`Task*` v2、后台 runtime task 不是同一套系统
+- Plan Mode 不是一段提示词，而是权限模式 + plan 文件 + attachment 保留链
+- compact 不是单一路径，而是多层上下文管理系统
+- `TodoWrite`、Task V2、runtime task 不是同一套对象
 
 ## 这部分负责什么
 
@@ -21,248 +21,279 @@
 
 ## 关键文件
 
+### Compact 主链
+
 - `restored-src/src/services/compact/microCompact.ts`
-  - 请求前的轻量上下文削减
+  - 本地消息层的轻量削减
+- `restored-src/src/services/compact/apiMicrocompact.ts`
+  - API 请求层的原生 cache edits / context-management
 - `restored-src/src/services/compact/sessionMemoryCompact.ts`
   - 用 session memory 直接替代传统摘要 compact
 - `restored-src/src/services/compact/compact.ts`
-  - full compact / partial compact 主流程
+  - full compact / partial compact
 - `restored-src/src/services/compact/autoCompact.ts`
-  - 自动 compact 的调度与优先级
-- `restored-src/src/services/compact/apiMicrocompact.ts`
-  - API 层原生 `contextManagement` / cache edits 入口
+  - 自动 compact 调度与优先级
+- `restored-src/src/services/compact/postCompactCleanup.ts`
+  - compact 后状态清理
+
+### Plan Mode
+
 - `restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
   - 进入 Plan Mode
 - `restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
   - 退出 Plan Mode
+- `restored-src/src/utils/plans.ts`
+  - plan 文件路径、恢复、remote snapshot
 - `restored-src/src/utils/attachments.ts`
-  - `plan_mode / plan_mode_reentry / plan_mode_exit` 的常规 attachment 注入
+  - `plan_mode / plan_mode_reentry / plan_mode_exit`
 - `restored-src/src/bootstrap/state.ts`
-  - 退出 Plan Mode 后的状态标记
+  - attachment 标志与模式切换辅助
+
+### Todo / Task / Runtime task
+
 - `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
   - v1 todo
 - `restored-src/src/utils/tasks.ts`
-  - v2 task list 的磁盘模型与共享逻辑
+  - Task V2 的磁盘模型
 - `restored-src/src/tools/TaskCreateTool/`
 - `restored-src/src/tools/TaskGetTool/`
 - `restored-src/src/tools/TaskListTool/`
 - `restored-src/src/tools/TaskUpdateTool/`
-  - v2 task list 工具
+  - Task V2
 - `restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
-  - 后台 runtime task 输出查看器，当前已是 deprecated 兼容层
+  - runtime task 输出读取器
 - `restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
-  - 后台 runtime task 停止器
+  - runtime task 停止器
 
 ## 执行流
 
-### 1. `microcompact` 不是小号 `compact`
+### 1. `microCompact` 与 `apiMicrocompact` 不是同一层
 
-`microCompact.ts` 这条链做的事情很克制：
+`microCompact.ts` 做的是本地消息层的轻量削减。
 
-- 优先看 time-based trigger
-- 命中时，直接把旧 `tool_result.content` 清成占位文本
-- 若没命中，再尝试 cached microcompact
-- 仍不满足，就直接 no-op
+它会优先尝试：
 
-也就是说，`microcompact` 的目标是“尽量不做摘要，只先减掉旧工具结果”，而不是生成 compact summary。
+- time-based 清理旧 `tool_result`
+- cached microcompact 记录 `pendingCacheEdits`
 
-更细一点看，还有两条不同实现：
+目标是：
 
-- time-based microcompact
-  - 真正改本地消息内容
-- cached microcompact
-  - 本地消息不变，只登记 `pendingCacheEdits`，交给 API 请求层去做 cache edits
+- 尽量不做摘要
+- 先把最占上下文的旧工具结果和思维块减掉
 
-### 2. API 层还有一条原生 context-edit 路径
+`apiMicrocompact.ts` 则是另一层：
 
-`apiMicrocompact.ts` 和 API 侧的 `contextManagement` 是另一件事。
+- 把 cache edits / clear 策略变成真正的 API 请求参数
 
-它和 `microcompactMessages()` 的关系是：
+所以这两者不能被写成“同一个 compact 功能”。
 
-- `microcompactMessages()` 决定本地消息要不要改，或要不要登记 cache edits
-- API 层再单独把这些 edits 变成真正的请求参数
-
-所以这两者不能混写成“同一个 compact 功能”。
-
-### 3. 自动 compact 会优先尝试 `session-memory compact`
+### 2. auto compact 会优先尝试 session-memory 路径
 
 `autoCompactIfNeeded()` 的顺序很明确：
 
 1. 判断是否超过 auto compact 阈值
 2. 先尝试 `trySessionMemoryCompaction()`
-3. 只有失败后才回退到 `compactConversation()`
+3. 失败后才回退到 `compactConversation()`
 
-这说明 Claude Code 不是无脑走“摘要一次”，而是先看 session memory 能不能直接承担摘要角色。
+也就是说，Claude Code 并不是一到超限就摘要全部历史，而是先看 session memory 能不能承担 compact 摘要角色。
 
-### 4. `session-memory compact` 是替代路径，不是 reinjection 完整版
+### 3. `sessionMemoryCompact` 是替代路径，不是 full compact 的等价副本
 
 `sessionMemoryCompact.ts` 会：
 
 - 读取 session memory
-- 依据 `lastSummarizedMessageId` 计算保留尾巴
-- 过滤旧 compact boundary
+- 计算保留尾巴
+- 对 `tool_use` / `tool_result` 做配对保护
 - 把 session memory 当作 summary
-- 拼出新的 boundary、summary、hooks 和保留消息
+- 重建 boundary、summary 和保留消息
 
-但它有一个很重要的边界：
+但这条链的 reinjection 范围更窄。
 
-**这条路径补回的 attachment 很窄。**
+当前明确能看到：
 
-当前源码里能看到的只有可选的 `plan_file_reference`，没有 full/partial compact 那种：
+- 它会显式补回 `plan_file_reference`
 
-- `plan_mode`
-- `invoked_skills`
-- async task
-- tool delta
-- MCP delta
+但在这一层没有直接看到：
 
-因此它更像“一条省成本、保持连续性优先的替代 compact 路径”。
+- `plan_mode` attachment 的补回
 
-### 5. full compact 与 partial compact 会显式重建后置上下文
+所以文档里更稳妥的表述是：
 
-`compactConversation()` 的职责是：
+- `sessionMemoryCompact` 是一条更省成本、以连续性优先的替代 compact 路径
 
-- 真的生成 compact summary
-- 清理 read state
-- 补回 compact 后继续工作需要的 attachment
+不要把它写成：
 
-当前可直接确认会被补回的内容包括：
+- “与 full / partial compact 完全等价”
 
-- 文件附件
+### 4. full / partial compact 会显式重建后置上下文
+
+`compactConversation()` 与 `partialCompactConversation()` 的职责更重：
+
+- 真正生成 compact summary
+- 重建 compact boundary
+- 补回 compact 之后继续工作需要的附件
+- 在结尾再做 post-compact cleanup
+
+当前可以明确写出的补回内容包括：
+
 - `plan_file_reference`
-- `plan_mode`
-- skill 附件
-- async agent 附件
-- deferred tool / agent listing / MCP delta
+- 当前仍在 plan mode 时的 `plan_mode`
+- skills 相关附件
+- async task 相关附件
+- 其他继续工作所需的 delta / listing
 
-`partialCompactConversation()` 的差别不在“会不会补”，而在“只压哪一侧”：
+两者的主要区别不在“会不会补”，而在“摘要边界在哪里”。
 
-- `from`：保留前缀，摘要后缀
-- `up_to`：摘要前缀，保留后缀
+### 5. Plan Mode 是“权限模式 + plan 文件 + attachment 保留链”
 
-它和 full compact 的 attachment 重建逻辑基本同构，只是摘要边界不同。
+这一轮最重要的收紧点之一，就是把 Plan Mode 写清楚。
 
-### 6. Plan Mode 的持续约束不只靠 permission mode
+`EnterPlanModeTool` 负责的是：
 
-Plan Mode 的本体当然是：
+- 校验当前上下文
+- 切到 `toolPermissionContext.mode = 'plan'`
+- 建立只读探索阶段的约束
 
-- `toolPermissionContext.mode === 'plan'`
+它不负责创建或写入 plan 文件。
 
-但单靠这个状态不够，因为 compact、resume 和长会话都会让模型丢失“当前仍在 plan mode”的上下文。
+真正与 plan 文件直接打交道的，是：
 
-所以源码里还专门有 attachment 体系来补这件事：
+- `utils/plans.ts`
+- `ExitPlanModeV2Tool.ts`
+
+当前 plan 文件路径可以明确写成：
+
+- 主会话：`<slug>.md`
+- 子 agent：`<slug>-agent-<agentId>.md`
+
+`ExitPlanModeV2Tool` 在退出时会：
+
+1. 读取现有 plan
+2. 如果有编辑后的 `input.plan`，写回 plan 文件
+3. remote 环境下调用 `persistFileSnapshotIfRemote()`
+4. 恢复到退出前权限模式
+
+### 6. attachment 负责把 Plan Mode 在长会话里继续告诉模型
+
+Plan Mode 的权限模式只解决“系统当前处于什么模式”。
+
+但 compact、resume 和长会话会让模型丢失这件事，所以还需要 attachment 层补充：
 
 - `plan_mode`
 - `plan_mode_reentry`
 - `plan_mode_exit`
 
-常规会话中，`attachments.ts` 会按 turn 周期性注入 `plan_mode`；退出后再发一次 `plan_mode_exit`；如果之后重新回到实现阶段再进入计划相关上下文，还可能发 `plan_mode_reentry`。
+常规 turn 中，系统会按需要注入这些 attachment。
 
-更关键的一点是：
+而 full / partial compact 之后，还会显式重新补：
 
-- compact 专用的 `createPlanModeAttachmentIfNeeded()` 固定发送 `reminderType: 'full'`
+- `plan_file_reference`
+- 当前仍在 plan mode 时的 `plan_mode`
 
-这说明 compact 后的计划约束是故意重新完整提醒一遍，而不是沿用平时的 sparse 节流策略。
+这也是为什么更准确的描述应该是：
 
-### 7. `EnterPlanMode` 与 `ExitPlanMode` 负责真正切模式
+- tool 负责切模式
+- plan 文件负责保存计划内容
+- attachment 负责在长会话里继续提醒模型
 
-`EnterPlanModeTool` 会：
+### 7. `TodoWrite`、Task V2、runtime task 是三套系统
 
-- 校验当前上下文不是 agent context
-- 准备 Plan Mode 上下文
-- 把 permission mode 切成 `plan`
-
-`ExitPlanModeV2Tool` 会：
-
-- 校验当前真的还在 `plan`
-- 处理 plan 文件与批准逻辑
-- 恢复到 `prePlanMode`
-- 设置 `hasExitedPlanMode` 与 `needsPlanModeExitAttachment`
-
-因此更准确的描述应该是：
-
-- attachment 负责把约束继续告诉模型
-- tool 负责真正切权限模式和会话状态
-
-### 8. `TodoWrite` v1 与 `Task*` v2 是两套体系
+这一点在文档里必须强分开。
 
 `TodoWrite`：
 
 - 只在 `!isTodoV2Enabled()` 时启用
 - 写到 `AppState.todos`
-- 偏会话内、轻量、非持久化
+- 更像 session / agent 级 checklist
 
-`TaskCreate/Get/List/Update`：
+Task V2：
 
-- 在 `isTodoV2Enabled()` 时启用
-- 写入磁盘 JSON task list
+- 只在 `isTodoV2Enabled()` 时启用
+- 写入磁盘 task-list JSON
 - 支持 `owner`、依赖、`metadata`
-- 可跨 teammate / team 共享
+- 面向持久化任务记录
 
-这两套东西不能混成“一个 todo 系统”。
+runtime task：
 
-### 9. `TaskOutput` / `TaskStop` 处理的是后台 runtime task
+- 运行中的 `local_bash`、`local_agent`、`remote_agent`
+- 状态在 `AppState.tasks`
+- 输出落到 `<projectTemp>/<session>/tasks/<taskId>.output`
 
-这又是第三套东西。
+所以这三者不能被混成“todo 系统”。
 
-`TaskOutputTool` 和 `TaskStopTool` 面向的是运行中的后台任务，例如：
+### 8. `TaskOutputTool` 与 `TaskStopTool` 面向 runtime task，不是 Task V2
 
-- `local_bash`
-- `local_agent`
-- `remote_agent`
+`TaskOutputTool` / `TaskStopTool` 处理的是：
 
-它们不对应 v2 task list 里的条目，而是对应 runtime task framework。
+- runtime background task
 
-当前更强的一手信号是：
+不是：
 
-- runtime task 完成时会发 `task-notification`
-- 通知里会尽量带 `output-file`
-- `task_status` attachment 也会补 `outputFilePath`
-- post-compact 提示文本会优先引导模型去 `Read` 这个输出文件
+- Task V2 的 JSON task 记录
 
-所以 `TaskOutputTool` 现在更像兼容层，而不是主路径。
+而且当前源码还能确认一个重要边界：
+
+- `TaskOutputTool` 已明显偏向 deprecated 兼容层
+- 更推荐模型直接 `Read` 输出文件路径
+
+这也是文档里需要直接写明的地方。
+
+### 9. `persistFileSnapshotIfRemote()` 当前只确认保存 plan
+
+这一点必须纠正旧文档中容易模糊的说法。
+
+虽然注释里提到：
+
+- `plan, todos`
+
+但当前实现里本轮坐实的事实是：
+
+- 这里只显式 snapshot 了 plan
+
+所以不要再写：
+
+- “remote file snapshot 会保存 plan 和 todos”
 
 ## 一张图看 compact 分层
 
 ```mermaid
 flowchart TD
-    A[query loop] --> B{context too long?}
-    B -- no --> C[继续本轮]
-    B -- yes --> D[autoCompactIfNeeded]
-    D --> E{session memory available?}
-    E -- yes --> F[sessionMemoryCompact]
-    E -- no --> G[compactConversation or partialCompactConversation]
-    A --> H[microcompact before request]
-    H --> I[time-based clear or cached cache_edits]
+    A[query loop] --> B[microCompact]
+    B --> C[apiMicrocompact cache edits]
+    A --> D{auto compact needed?}
+    D -- no --> E[继续本轮]
+    D -- yes --> F[trySessionMemoryCompaction]
+    F -- success --> G[sessionMemoryCompact]
+    F -- fallback --> H[compactConversation or partialCompactConversation]
+    G --> I[postCompactCleanup]
+    H --> I
 ```
 
-## 一张图看 Plan Mode 与 task 分层
+## 一张图看 Plan Mode 与任务分层
 
 ```mermaid
 flowchart TD
     A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
-    B --> C[plan file as session artifact]
-    B --> D[plan_mode attachments]
-    D --> E[query loop / compact / resume]
-    C --> F[ExitPlanModeV2Tool]
-    F --> G[restore prePlanMode]
-    F --> H[plan_mode_exit attachment]
+    B --> C[plan file on disk]
+    B --> D[plan attachments]
+    C --> E[ExitPlanModeV2Tool]
+    E --> F[write edited plan back]
+    E --> G[restore prePlanMode]
 
-    I[TodoWrite v1] --> J[AppState.todos]
-    K[TaskCreate/List/Get/Update v2] --> L[disk task list]
-    M[TaskOutput / TaskStop] --> N[runtime background tasks]
+    H[TodoWrite v1] --> I[AppState.todos]
+    J[TaskCreate/List/Get/Update] --> K[disk task list]
+    L[TaskOutput / TaskStop] --> M[AppState.tasks runtime tasks]
 ```
 
 ## 为什么这个设计重要
 
-这里真正重要的地方，是 Claude Code 没有把“计划”和“上下文压缩”做成一段模糊的提示词。
+这里真正重要的地方，是 Claude Code 没有把“计划”和“上下文压缩”做成一段模糊提示词。
 
-它把这些能力拆成了明确的运行时层：
+它把这些能力拆成了明确运行时层：
 
-- 计划模式是权限模式
-- 计划持续性靠 attachment 和 plan file
-- compact 至少有三条不同路径
-- todo、task list、后台 runtime task 各自独立
+- compact 有多条路径
+- Plan Mode 有权限模式、plan 文件和保留链
+- todo、task list、runtime task 各自独立
 
 这也是为什么它能在长链路工作里同时维持：
 
@@ -274,20 +305,20 @@ flowchart TD
 
 1. `restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
 2. `restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
-3. `restored-src/src/utils/attachments.ts`
-4. `restored-src/src/services/compact/microCompact.ts`
-5. `restored-src/src/services/compact/sessionMemoryCompact.ts`
-6. `restored-src/src/services/compact/compact.ts`
-7. `restored-src/src/services/compact/autoCompact.ts`
-8. `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
-9. `restored-src/src/utils/tasks.ts`
-10. `restored-src/src/tools/TaskCreateTool/`
-11. `restored-src/src/tools/TaskUpdateTool/`
+3. `restored-src/src/utils/plans.ts`
+4. `restored-src/src/utils/attachments.ts`
+5. `restored-src/src/services/compact/microCompact.ts`
+6. `restored-src/src/services/compact/apiMicrocompact.ts`
+7. `restored-src/src/services/compact/sessionMemoryCompact.ts`
+8. `restored-src/src/services/compact/compact.ts`
+9. `restored-src/src/services/compact/autoCompact.ts`
+10. `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
+11. `restored-src/src/utils/tasks.ts`
 12. `restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
 13. `restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
 
 ## 仍待确认
 
-- `session-memory compact` 不补 `plan_mode` attachment，到底是有意为之还是尚未补齐，单靠当前源码还不能下结论。
-- cached microcompact、`tengu_session_memory`、plan mode interview phase 等开关的线上默认状态，不能从静态源码推出。
-- `TaskOutputTool` 虽然已经明显走向 deprecated 兼容层，但未来是否彻底移除，当前也不能从这份快照确认。
+- `sessionMemoryCompact` 不补 `plan_mode` attachment，到底是有意为之还是尚未补齐，当前只能保守描述。
+- `EnterPlanModeTool` 不写 plan 文件，但首次把 plan 正文落盘的具体上游入口，这轮没有继续展开。
+- cached microcompact、`tengu_session_memory` 等开关的线上默认状态，不能从静态源码直接推出。

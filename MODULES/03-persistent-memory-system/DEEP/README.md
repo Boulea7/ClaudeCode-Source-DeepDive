@@ -13,35 +13,45 @@
 
 这一层主要负责四件事：
 
-1. 定义 durable memory 存在哪、怎么被注入 prompt
-2. 在当前会话内持续维护 session 级摘要
+1. 定义 durable memory 存在哪、怎么进入 system prompt 与 recall 流程
+2. 在当前会话内维护 session 级 `summary.md`
 3. 在回合结束后把值得长期保留的信息写入 durable memory
 4. 给 team memory 提供路径边界与作用域规则
 
 ## 关键文件
 
+### Session memory
+
 - `restored-src/src/services/SessionMemory/sessionMemory.ts`
-  - session 级 `summary.md` 的更新主流程
+  - session 级摘要更新主流程
 - `restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
-  - session memory 阈值、运行态、读取与等待
+  - 配置、阈值、等待与读取
 - `restored-src/src/services/SessionMemory/prompts.ts`
-  - `summary.md` 模板和更新 prompt
+  - `summary.md` 模板、更新 prompt、compact 截断
+
+### Durable memory
+
 - `restored-src/src/services/extractMemories/extractMemories.ts`
-  - turn-end durable memory 提取器
+  - turn-end durable memory writer
 - `restored-src/src/services/extractMemories/prompts.ts`
-  - durable memory 提取 prompt
+  - durable / team extraction prompt
 - `restored-src/src/memdir/memdir.ts`
-  - durable memory 的 prompt 注入层与 `MEMORY.md` 入口规则
-- `restored-src/src/memdir/memoryTypes.ts`
-  - durable taxonomy 与禁止保存项
+  - durable memory 的 prompt 注入层
 - `restored-src/src/memdir/paths.ts`
-  - auto memory 根目录解析与校验
-- `restored-src/src/memdir/teamMemPaths.ts`
-  - team memory 子树路径、键清洗与 containment 校验
+  - `getAutoMemPath()` 与 auto memory 根目录解析
+- `restored-src/src/memdir/memoryTypes.ts`
+  - taxonomy 与不该保存的内容
 - `restored-src/src/memdir/memoryScan.ts`
-  - memory frontmatter 扫描
+  - topic file 扫描
 - `restored-src/src/memdir/findRelevantMemories.ts`
-  - query-time 相关 durable memory 选择
+  - query-time recall
+
+### Team memory
+
+- `restored-src/src/memdir/teamMemPaths.ts`
+  - `team/` 子树路径、键清洗、路径校验
+- `restored-src/src/memdir/teamMemPrompts.ts`
+  - team memory prompt 文案
 
 ## 执行流
 
@@ -49,77 +59,84 @@
 
 `SessionMemory` 这条链是 session-local 的。
 
-它会在满足条件时：
+路径来自：
 
-- 创建当前 session 的 `summary.md`
-- 用 forked agent 更新它
-- 把它提供给 `sessionMemoryCompact` 和 away summary 使用
+- `getSessionMemoryDir()`
+- `getSessionMemoryPath()`
 
-这不是 durable memory，也不是 topic file。
+当前公开源码里能直接确认它落在：
 
-当前源码里能确认的物理形态，是类似：
+- `getProjectDir(getCwd()) / getSessionId() / session-memory / summary.md`
 
-- `~/.claude/projects/<project>/<sessionId>/session-memory/summary.md`
+也就是说，它在项目会话目录里，不在 durable memory 根目录里。
 
-并且它的权限是：
+它的典型使用链是：
 
-- 目录 `0700`
-- 文件 `0600`
+1. `setup.ts` 启动时调用 `initSessionMemory()`
+2. 注册 post-sampling hook
+3. 满足阈值后用 forked agent 更新 `summary.md`
+4. 后续被 `sessionMemoryCompact`、`awaySummary`、`skillify` 这类路径读取
 
-更重要的是，它的写入边界非常窄：
+这条链的边界很明确：
 
-- 更新子代理只能 `Edit` 当前这一个 `summary.md`
-- 不允许随便读写其它 memory 文件
+- 它服务会话连续性
+- 不是 durable memory
+- 也不是 topic file
 
-### 2. `SessionMemory` 的触发条件很克制
+### 2. Session memory 的写权限非常窄
 
-这条链不会每轮都跑。
+`SessionMemory` 后台 fork 的权限模型比 durable memory 更窄。
 
-它至少会看：
+当前可以直接确认：
 
-- 总 token 是否达到初始化阈值
-- 距上次摘要后增长的 token 是否够
-- 工具调用数是否够
-- 最后一轮 assistant 是否仍带 tool call
+- 更新子代理只能 `Edit` 当前这一份 `summary.md`
+- 不是在整个 memory 根里自由读写
 
-另外还有两个重要前提：
+这也是为什么文档里应把它写成：
 
-- 只在 `repl_main_thread` 运行
-- 只在 auto-compact 开启时注册 hook
+- “当前会话的摘要文件”
 
-所以它更像“为了长会话连续性服务的后台摘要器”，而不是通用 memory 引擎。
+而不是：
+
+- “通用记忆写入器”
 
 ### 3. `extractMemories` 负责 durable memory 写入
 
 `extractMemories.ts` 是另一条完全不同的链。
 
-它的触发点在 turn-end stop hook 之后，目标是：
+它的触发点在：
+
+- `query/stopHooks.ts` 的回合结束阶段
+
+目标是：
 
 - 从最近对话里提取值得长期保留的信息
-- 写入 memdir 管理的 durable memory 文件
+- 写入 auto memory 根内的 durable memory 文件
 
-这里要特别强调两个边界：
+这里要特别强调两点：
 
 - 它自己不是 memory model，本质是一个后台 writer
-- 它写的不是 session `summary.md`，而是 durable memory 树里的文件
+- 它写的不是 `session-memory/summary.md`
 
-当前源码还能确认一个关键去重逻辑：
+当前源码还能确认一个重要的去重边界：
 
-- 如果主代理这一轮已经直接写过 auto memory
-- 那么后台 extractor 会跳过这轮，避免双写
+- 如果主代理本轮已经直接写过 auto memory
+- 后台 extractor 会跳过这轮，避免重复写入
 
 ### 4. `memdir` 定义 durable memory 的制度层
 
 `memdir` 这层真正负责 durable memory 的规则：
 
-- 根目录在哪里
-- `MEMORY.md` 如何作为入口索引
-- taxonomy 有哪些
-- 什么内容不应该被写进去
-- private / team 作用域怎么区分
-- query-time 如何扫描和召回
+- 根目录在哪
+- `MEMORY.md` 怎么作为入口索引
+- taxonomy 是什么
+- recall 怎么做
+- team/private 作用域怎么区分
 
-也就是说，durable memory 的“语义”不在 `extractMemories` 里，而在 `memdir` 里。
+也就是说：
+
+- `extractMemories` 负责写
+- `memdir` 负责解释“什么叫 durable memory”
 
 ### 5. durable taxonomy 是闭集四类
 
@@ -130,80 +147,100 @@
 - `project`
 - `reference`
 
-这四类之外，没有 `session` 这一类。
+这四类定义在：
 
-同时，源码还明确要求 durable memory **不要**保存这些内容：
+- `restored-src/src/memdir/memoryTypes.ts`
 
-- 代码结构
-- 架构模式
-- git 历史
-- debug recipe
-- `CLAUDE.md` 已有内容
-- 当前会话的临时任务状态
+同时，源码还明确要求 durable memory 不要保存一些内容，例如：
 
-这恰好说明 durable memory 与 `SessionMemory` 是刻意分层的：
+- 临时任务状态
+- 短期噪声
+- 已经过时的执行细节
+
+这正好说明 durable memory 与 `SessionMemory` 是刻意分层的：
 
 - `SessionMemory` 可以保留当前会话连续性
-- durable memory 只保留未来会话仍值得记住的内容
+- durable memory 只保留未来会话仍值得复用的知识
 
-### 6. team memory 是 auto memory 根下的子树
+### 6. team memory 是 durable memory 根下的 `team/` 子域
 
-这点很重要，也很容易写错。
+这轮重新核读后，这一点可以写得更明确。
 
-当前源码里，team memory 不是独立根目录，而是：
+当前源码里，team memory 不是第三套独立根系统，而是：
 
-- `getAutoMemPath()/team/`
+- `getAutoMemPath()` 根下的 `team/` 子目录
 
-因此在 combined 模式下：
+并且：
+
+- `isTeamMemoryEnabled()` 先检查 auto memory 是否开启
+- 再检查 team gate
+
+所以更稳妥的表述是：
 
 - personal durable memory
 - team durable memory
 
-实际上位于同一棵 auto-memory 树中。
+共享同一套 auto memory 根基础设施
 
-这也是为什么 `extractMemories` 只要被允许写 `isAutoMemPath(file_path)`，就天然可以覆盖 personal 和 team 两类 durable memory。
+### 7. relevant-memory 召回会递归扫到 `team/` 子树
 
-### 7. team memory 的边界不只是字符串前缀判断
+`findRelevantMemories()` 这一层默认从：
 
-`teamMemPaths.ts` 这部分值得单独看，因为它把路径边界写得非常具体。
+- `getAutoMemPath()`
 
-当前能确认的防线包括：
+开始递归扫描 topic files。
 
-- `sanitizePathKey()`
-  - 拒绝 null byte
-  - 拒绝 URL 编码 traversal
-  - 拒绝 Unicode NFKC 归一化后的 traversal
-  - 拒绝反斜杠与绝对路径
-- `validateTeamMemKey()`
-  - 做 key 层面的基础合法性校验
-- `validateTeamMemWritePath()`
-  - 做 `resolve() + realpathDeepestExisting()` 的 containment 校验
-  - 防 symlink escape
+因此当 team memory 开启时：
 
-但这里也要保守一点：
+- `memory/team/` 下的 topic files 会进入候选集合
 
-- 当前能直接确认 team sync 写入会用到这套校验
-- 不能直接写成“所有本地 team memory 写路径都统一经过了这套 validator”
+但这里还有一个很重要的过滤：
 
-这部分应继续放进“仍待确认”。
+- basename 为 `MEMORY.md` 的索引文件不会进入这条 recall 链
 
-## 一张图看两条 memory 主线
+也就是说：
+
+- auto `MEMORY.md`
+- team `MEMORY.md`
+
+是两份独立索引文件
+
+而相关召回主要面向 topic files，不是直接把索引文件整份塞回去。
+
+### 8. private / team 归属更多体现在 prompt taxonomy，不是自动路由器
+
+这是这一轮需要特别收紧的地方。
+
+当前源码能确认：
+
+- `memoryTypes.ts` 与 team prompt 文案会描述 private / team 的归属建议
+- 但真正的硬边界主要是“目标路径是否落在 auto memory 根内”
+
+所以文档里不要写成：
+
+- “某个 type 会自动路由到 private 或 team”
+
+更准确的写法是：
+
+- type 和 scope 主要通过 prompt taxonomy 引导
+- 代码硬边界主要是路径约束
+
+## 一张图看两条 memory 链
 
 ```mermaid
 flowchart TD
     A[conversation turns] --> B[SessionMemory]
     A --> C[extractMemories]
-
-    B --> D[session summary.md]
+    B --> D[session-memory/summary.md]
     D --> E[sessionMemoryCompact]
-    D --> F[away summary]
-
-    C --> G[memdir durable memory tree]
-    G --> H[MEMORY.md index]
-    G --> I[query-time recall]
+    D --> F[awaySummary / skillify]
+    C --> G[auto memory root]
+    G --> H[topic files]
+    G --> I[MEMORY.md indexes]
+    H --> J[relevant-memory recall]
 ```
 
-## 一张图看 durable memory 结构
+## 一张图看 durable / team 结构
 
 ```mermaid
 flowchart TD
@@ -213,32 +250,31 @@ flowchart TD
     B --> E[feedback]
     B --> F[project]
     B --> G[reference]
-    C --> H[team user or shared feedback]
-    C --> I[team project]
-    C --> J[team reference]
+    C --> H[team topic files]
+    C --> I[team MEMORY.md]
 ```
 
 ## 为什么这个设计重要
 
-这套设计真正厉害的地方，不是“有记忆”，而是把不同时间尺度的记忆分开了：
+这套设计真正厉害的地方，不是“有记忆”，而是把不同时间尺度分开了：
 
 - 当前会话连续性：`SessionMemory`
-- 跨会话可复用知识：`memdir + extractMemories`
+- 跨会话可复用知识：`durable memory`
 
-这样做的直接好处是：
+这样做的好处是：
 
 - session 摘要可以大胆服务 compact 和长会话续航
-- durable memory 不会被当前会话的噪声污染
-- team memory 可以在同一套 durable 树里增加共享层，但仍保留边界控制
+- durable memory 不会被当前会话的短期噪声污染
+- team memory 可以在同一套 durable 树里增加共享层，但仍保留明确边界
 
 ## 推荐阅读顺序
 
 1. `restored-src/src/services/SessionMemory/sessionMemory.ts`
 2. `restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
 3. `restored-src/src/services/SessionMemory/prompts.ts`
-4. `restored-src/src/memdir/memoryTypes.ts`
+4. `restored-src/src/memdir/paths.ts`
 5. `restored-src/src/memdir/memdir.ts`
-6. `restored-src/src/memdir/paths.ts`
+6. `restored-src/src/memdir/memoryTypes.ts`
 7. `restored-src/src/memdir/teamMemPaths.ts`
 8. `restored-src/src/services/extractMemories/extractMemories.ts`
 9. `restored-src/src/memdir/memoryScan.ts`
@@ -246,6 +282,6 @@ flowchart TD
 
 ## 仍待确认
 
-- `validateTeamMemWritePath()` 虽然定义得很完整，但当前能直接确认的调用链主要在 team sync 路径；不能写成“所有本地写入都已统一经过它”。
-- `FileWriteTool` / `FileEditTool` 自身是否还叠加了额外的 symlink/path 安全措施，这次没有一起复核。
-- 各类 `tengu_* / TEAMMEM / EXTRACT_MEMORIES / KAIROS` gate 的线上默认状态，不能从静态源码直接推出。
+- `team memories are synced at the beginning of every session` 这句话能在 prompt 文案里看到，但真实同步机制本轮没有继续展开到 `services/teamMemorySync/`，不能写成已完全证实事实。
+- `manuallyExtractSessionMemory()` 的注释提到 `/summary`，但本轮没有在当前树里找到直接调用点。
+- `KAIROS` 相关 nightly distillation 只能写成代码线索，不应写成当前构建已完整启用的事实。
