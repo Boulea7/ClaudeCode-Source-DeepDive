@@ -39,12 +39,7 @@
 
 - 最终拼好的单段字符串
 
-标准路径里，它会先构造：
-
-- 静态前缀
-- 动态 sections
-
-然后在满足全局缓存条件时，才会在两者之间插入：
+标准路径里，它会先构造静态前缀，再求值动态 sections，并在满足全局缓存条件时才插入：
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
@@ -95,10 +90,10 @@
 - 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
 - 同一层还会从 store 现算工具池，并把 `refreshTools` 放进 `toolUseContext`
 
-当前源码里可确认的 precedence 是：
+当前源码里可确认的 precedence 更适合写成：
 
 1. `overrideSystemPrompt`
-2. `coordinator prompt`
+2. `coordinator prompt`（仅协调模式开启且没有 `mainThreadAgentDefinition` 时）
 3. `mainThreadAgentDefinition`
 4. `customSystemPrompt`
 5. `defaultSystemPrompt`
@@ -137,6 +132,7 @@ non-interactive 主线程不会走：
 
 - 只要 `customSystemPrompt` 存在
 - `queryContext.ts` 就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
+- `memoryMechanicsPrompt` 只在 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时追加
 
 这也是为什么 interactive 与 non-interactive 不能写成“一样的 prompt，只是 UI 不同”。
 
@@ -206,20 +202,26 @@ fork subagent 和普通 subagent 的差异非常大。
 
 ```mermaid
 flowchart TD
-    A[getSystemPrompt default parts] --> B[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
-    B --> C[interactive main thread]
-    C --> D[REPL.tsx]
-    D --> E[buildEffectiveSystemPrompt]
-    E --> F[renderedSystemPrompt]
+    A[getSystemPrompt default parts] --> B[static parts]
+    A --> C[resolved dynamic sections]
+    B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
+    B --> E[default prompt parts]
+    D --> E
+    C --> E
 
-    A --> G[non-interactive main thread]
-    G --> H[QueryEngine direct combine]
+    E --> F[interactive main thread]
+    F --> G[REPL.tsx]
+    G --> H[buildEffectiveSystemPrompt]
+    H --> I[renderedSystemPrompt]
 
-    I[agentDefinition.getSystemPrompt] --> J[ordinary subagent]
-    J --> K[enhanceSystemPromptWithEnvDetails]
+    E --> J[non-interactive main thread]
+    J --> K[QueryEngine direct combine<br/>or skip default parts when custom prompt exists]
 
-    L[parent renderedSystemPrompt] --> M[fork subagent]
-    M --> N[buildForkedMessages]
+    L[agentDefinition.getSystemPrompt] --> M[ordinary subagent]
+    M --> N[enhanceSystemPromptWithEnvDetails]
+
+    O[parent renderedSystemPrompt] --> P[fork subagent]
+    P --> Q[buildForkedMessages]
 ```
 
 ## 为什么这个设计重要

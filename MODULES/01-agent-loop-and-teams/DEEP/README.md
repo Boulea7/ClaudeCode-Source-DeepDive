@@ -39,7 +39,7 @@
 - `restored-src/src/Tool.ts`
   - `ToolUseContext`
 - `restored-src/src/tools.ts`
-  - `getTools()`、`assembleToolPool()` 等工具池装配
+  - `getAllBaseTools()`、`getTools()`、`assembleToolPool()`、`getMergedTools()`
 
 ### Agent 编排与执行
 
@@ -152,8 +152,8 @@ isReadOnly() {
 
 - 走 `selectedAgent.getSystemPrompt()`
 - 再做 env enhancement
-- 默认只拿到新的用户任务
 - 不自动继承完整父对话
+- 但仍可能叠加 hook context、预加载 skills 与 agent-specific MCP
 
 fork subagent：
 
@@ -175,7 +175,7 @@ fork subagent：
 4. 初始化 agent frontmatter 指定的 `mcpServers`
 5. 写 sidechain transcript 与 metadata
 6. 驱动 `query()`
-7. 清理 session hooks、todos、transcript 子目录
+7. 清理 session hooks、todos 与 transcript 映射
 8. 回收该 agent 生成的 orphan shell tasks
 
 这条链路说明：
@@ -215,9 +215,15 @@ fork subagent：
 
 - 同一个 task / transcript 身份被延续到了后台生命周期
 
-### 7. `tasks/` 是 runtime representation layer
+### 7. `tasks/` 既是任务状态层，也是运行时实现层
 
-`tasks/` 的作用不是替模型推理，而是把运行中的对象统一成可显示、可恢复、可停止的状态。
+`tasks/` 不负责模型推理本身，但也不只是一个展示层。当前可见实现里，它同时承担：
+
+- 任务注册
+- 前后台切换
+- 恢复与轮询
+- 通知与 kill
+- 状态暴露给 UI
 
 当前快照里能直接确认的任务形态包括：
 
@@ -249,9 +255,13 @@ flowchart TD
     B --> D[headless / SDK: QueryEngine.ts]
     C --> E[query.ts]
     D --> E
-    E --> F[AgentTool]
-    F --> G[runAgent]
-    G --> H[tasks/*]
+    E --> F[tool calls]
+    F -. AgentTool is one optional tool .-> G[AgentTool]
+    G --> H{launch mode}
+    H --> I[local runAgent path]
+    H --> J[remote task path]
+    I --> K[tasks/* register and update]
+    J --> K
 ```
 
 ## 一张图看任务表示层
@@ -267,6 +277,7 @@ flowchart TD
     K[tasks/types.ts] -.declares.-> B
     K -.declares.-> C
     K -.declares.-> D
+    K -.declares.-> L[local_workflow / monitor_mcp<br/>declared only in current mirror]
 ```
 
 ## 为什么这个设计重要
@@ -297,7 +308,7 @@ flowchart TD
 
 ## 仍待确认
 
-- `remote isolation` 的代码路径和远程任务模型都存在，但当前公开 schema 是否完整暴露给用户侧，仍需保守表述。
+- `AgentTool` 的输入 schema 和 `call()` 分支都能看到 ant-only 的 `isolation: 'remote'`，但更广的用户可见性与稳定性仍不外推。
 - `requiredMcpServers` 在运行时会被检查，但本轮没有坐实自定义 markdown/json agent 是否能在 frontmatter 中稳定声明它。
 - `resumeAgentBackground()` 的调用入口不在这轮重点范围内，所以“谁负责触发恢复”不能写死。
 - foreground agent 被后台化时，源码更接近“同一 task 身份重进 async 生命周期”，而不是“原来的执行实例直接切后台线程”。

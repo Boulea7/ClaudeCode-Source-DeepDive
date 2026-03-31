@@ -5,7 +5,7 @@
 但从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这四层并不是一锅粥，而是清楚分开的：
 
 - `Tool.ts / tools.ts` 负责工具协议与工具池
-- `services/mcp/` 负责外部 server 接入、实例化和热替换
+- `services/mcp/` 负责外部 server 接入、实例化和连接后刷新
 - `skills/ + commands.ts` 负责把技能资产变成 `Command(type: 'prompt')`
 - `plugins/ + utils/plugins/` 负责插件边界、路径和运行时装配
 
@@ -285,14 +285,14 @@ MCP 并不只生成远端 tools。
 - 只保留 `type === 'prompt'`
 - 排除 built-in commands
 - `disableModelInvocation` 的项不会进入 listing
-- plugin/MCP 项通常需要 `description` 或 `whenToUse`
+- plugin 项通常需要显式 `description` 或 `whenToUse`
 
 这里其实至少有 4 个不同集合：
 
 - `getAllCommands()`
   - 执行集合
 - `getSkillToolCommands()`
-  - 更接近模型可见 listing
+  - 更接近 SkillTool prompt listing
 - `getSlashCommandToolSkills()`
   - 更接近技能索引 / 菜单集合
 - `getMcpSkillCommands()`
@@ -301,13 +301,19 @@ MCP 并不只生成远端 tools。
 所以文档里要明确区分：
 
 - 执行集合
-- 模型 listing 集合
+- SkillTool prompt listing
 - 技能索引集合
 - MCP skill 补集
+
+另外还有一条单独的模型可见面：
+
+- `attachments.ts` 里的 `skill_listing`
+  - 会把本地 `getSkillToolCommands()` 与 `getMcpSkillCommands()` 合并成 attachment
 
 更直白一点说：
 
 - 模型看得到的 skill，不等于运行时真能执行到的全部 skill
+- attachment 层还能把本地与 MCP skills 的合并结果作为 `skill_listing` 暴露给模型
 
 ### 10. plugin command 与 plugin skill 入口不同，但共用同一构造器
 
@@ -398,10 +404,12 @@ flowchart TD
     E --> L[getMcpSkillCommands]
     I --> M[getSkillToolCommands]
     I --> N[getSlashCommandToolSkills]
+    M --> T[skill_listing attachment]
+    L --> T
     I --> O[SkillTool execution]
     L --> O
     O --> P[processPromptSlashCommand]
-    M --> Q[model-visible listing]
+    T --> Q[model-visible skill context]
     N --> R[skills index]
     P --> S[attachments / command_permissions]
 ```

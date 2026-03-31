@@ -95,7 +95,7 @@
 2. 先尝试 `trySessionMemoryCompaction()`
 3. 失败后才回退到 `compactConversation()`
 
-也就是说，Claude Code 并不是一到超限就摘要全部历史，而是先看 session memory 能不能承担 compact 摘要角色。
+也就是说，自动 compact 的第一选择是 session-memory 路径；只有这一条不成立时，才会回退到 full compact。
 
 ### 3. `sessionMemoryCompact` 是替代路径，不是 full compact 的等价副本
 
@@ -180,7 +180,7 @@
 
 1. 读取现有 plan
 2. 如果有编辑后的 `input.plan`，写回 plan 文件
-3. remote 环境下调用 `persistFileSnapshotIfRemote()`
+3. 在 `input.plan` 写回成功后，remote 环境会 fire-and-forget 调 `persistFileSnapshotIfRemote()`
 4. 恢复到退出前权限模式
 
 但这里还有一个需要单独写出来的边界：
@@ -232,7 +232,6 @@ Task V2：
 runtime task：
 
 - 运行中的 `local_bash`、`local_agent`、`remote_agent`
-- 也包括 `in_process_teammate`、`local_workflow`、`monitor_mcp`、`dream`
 - 状态在 `AppState.tasks`
 - 输出落到 `<projectTemp>/<session>/tasks/<taskId>.output`
 
@@ -283,7 +282,7 @@ flowchart TD
     F -- success --> G[sessionMemoryCompact]
     F -- fallback --> H[compactConversation]
     I[manual compact selection] --> J[partialCompactConversation]
-    G --> K[reinject plan_file_reference]
+    G --> K[rebuild boundary + kept tail<br/>and reinject plan_file_reference]
     H --> L[reinject post-compact attachments]
     J --> L
     M[call-site cleanup] --> N[postCompactCleanup]
@@ -303,7 +302,7 @@ flowchart TD
     D --> G[ExitPlanModeV2Tool]
     G --> H[read current plan file]
     G --> I[write edited plan back when input.plan exists]
-    G --> J[persistFileSnapshotIfRemote<br/>plan only]
+    I -. remote only, after successful write .-> J[persistFileSnapshotIfRemote<br/>plan only]
     G --> K[restore prePlanMode on normal exit]
     G --> L[plan approval branch<br/>early return for teammates]
 
@@ -314,9 +313,7 @@ flowchart TD
 
 ## 为什么这个设计重要
 
-这里更值得注意的地方，是 Claude Code 没有把“计划”和“上下文压缩”做成一段模糊提示词。
-
-它把这些能力拆成了明确运行时层：
+这里更值得注意的地方，是这些能力在源码里被拆成了明确运行时层：
 
 - compact 有多条路径
 - Plan Mode 需要同时看权限模式、plan 文件和 attachment

@@ -40,6 +40,7 @@
 - `restored-src/src/bridge/codeSessionApi.ts`
 - `restored-src/src/bridge/workSecret.ts`
 - `restored-src/src/bridge/sessionIdCompat.ts`
+- `restored-src/src/cli/print.ts`
 
 ## 执行流
 
@@ -113,7 +114,7 @@
 
 - “本地 HTTP 服务端”
 
-### 4. `bridge/` 至少有两套 core，再加 standalone / headless 运行模式
+### 4. `bridge/` 更适合拆成两套 REPL core，再加一条 standalone worker 入口
 
 当前源码里可以明确分成两套 core：
 
@@ -161,9 +162,9 @@
 
 - bridge 至少有环境式与 env-less 两种接法
 
-#### standalone / headless 路径
+#### standalone / headless worker 路径
 
-`bridgeMain.ts` 与 headless bridge 更适合写成 env-based bridge 的 standalone / headless 入口。
+`bridgeMain.ts` 更适合写成独立 remote-control worker 入口。
 
 这条路径和 REPL 的差别在于：
 
@@ -171,6 +172,12 @@
 - `sessionRunner.ts` 负责 stdin / stdout 桥接
 - 权限与控制流会经过 `bridgeMessaging.ts` 这一层
 - `cli/print.ts` 只承担 child / SDK 侧接线，不是 bridge core 本体
+
+另外，SDK / `--print` 还有一条单独的接线路径：
+
+- `cli/print.ts` 会处理 `remote_control` 控制请求
+- 把 bridge inbound message 注回本地输入队列
+- 把 bridge history replay 写进 `mutableMessages`
 
 ### 5. transport 在客户端侧至少有 v1 / v2 两种形态
 
@@ -214,6 +221,7 @@ flowchart LR
     G --> M[bridgeMain / headless entry]
     M --> O[runBridgeLoop]
     O --> P[sessionRunner child CLI]
+    P --> S[cli/print.ts SDK wiring]
     G --> Q[bridgeMessaging control flow]
     G --> R[sessionIdCompat]
 ```

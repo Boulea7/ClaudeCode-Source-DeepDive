@@ -82,7 +82,7 @@
 
 - `/skills/` 下只认目录式 `SKILL.md`
 - legacy `/commands/` 仍支持单文件 `.md` 与目录式 `SKILL.md`
-- MCP skills 不在 `getCommands()` 主注册表里，而是由 SkillTool 执行时补入
+- MCP skills 不在 `getCommands()` 主注册表里；当前可见路径至少包括 SkillTool 执行补集与 `skill_listing` attachment 补集
 
 ### 3. conditional / dynamic skills 不是 SkillTool 触发的
 
@@ -111,7 +111,6 @@
 - workflow commands
 - hard-coded commands
 
-这里要特别注意 3 个集合：
 这里要特别注意 4 个集合：
 
 #### 执行集合
@@ -128,9 +127,9 @@
 
 补进来。
 
-#### 模型 listing 集合
+#### SkillTool prompt listing
 
-模型看到的 skill listing 更窄，来自：
+这个集合更窄，来自：
 
 - `getSkillToolCommands()`
 
@@ -139,7 +138,7 @@
 - 只保留 `type === 'prompt'`
 - 排除 built-in commands
 - `disableModelInvocation` 的项不会进入 listing
-- plugin / MCP 项通常需要显式 `description` 或 `whenToUse`
+- plugin 项通常需要显式 `description` 或 `whenToUse`
 
 #### 技能索引集合
 
@@ -161,12 +160,12 @@
 - `loadedFrom === 'mcp'`
 - `disableModelInvocation !== true`
 
-所以文档里一定要把这 3 个集合分开写。
+所以文档里一定要把这 4 个集合分开写。
 
 更直白一点说：
 
 - 模型看得到的 skill，不等于运行时真能执行到的全部 skill
-- 运行时还能在本地命令集合之外，再补一层 MCP skill 集合
+- 除了 SkillTool prompt listing，模型还可能通过 `skill_listing` attachment 看到本地与 MCP skills 的合并结果
 
 ```mermaid
 flowchart LR
@@ -180,12 +179,15 @@ flowchart LR
     H --> J[getSkillToolCommands]
     H --> K[getSlashCommandToolSkills]
     G --> I
+    J --> R[skill_listing attachment]
+    G --> R
     I --> L[execution set]
-    J --> M[model-visible listing]
+    J --> M[SkillTool prompt listing]
     K --> N[skills index]
     L --> O[SkillTool]
     O --> P[processPromptSlashCommand]
     P --> Q[attachments / command_permissions]
+    R --> S[model-visible skill context]
 ```
 
 ### 5. SkillTool 是执行壳，不是 discovery 源

@@ -48,6 +48,8 @@
   - topic file 扫描
 - `restored-src/src/memdir/findRelevantMemories.ts`
   - query-time recall
+- `restored-src/src/utils/claudemd.ts`
+  - `AutoMem / TeamMem` 入口索引注入
 
 ### Team memory
 
@@ -147,6 +149,7 @@
 
 - `extractMemories` 负责写
 - `memdir` 负责 durable memory 的规则、目录初始化和 recall 基础设施
+- `claudemd.ts` 负责把 `AutoMem / TeamMem` 入口索引真正读进上下文
 
 ### 5. durable taxonomy 是闭集四类
 
@@ -190,15 +193,16 @@
 - auto memory 根目录下有普通 memory files
 - team memory 是这个根下面的 `team/` 子树
 
-### 7. relevant-memory 召回是否覆盖 `team/` 取决于调用方传入的目录
+### 7. relevant-memory 主链默认会递归覆盖 `team/` topic files
 
 `findRelevantMemories()` 本身接收一个 `memoryDir` 参数，再对这个目录下的 topic files 做递归扫描。
 
 因此更准确的说法是：
 
-- 是否覆盖 `team/`，取决于调用方传入的 `memoryDir`
-- 常见调用方会传 `getAutoMemPath()`，但这不是 `findRelevantMemories()` 自己的默认行为
-- 如果调用方传的是更窄目录，召回范围也会相应缩小
+- `findRelevantMemories()` 自己不带默认目录
+- 但主线程常见调用链是 `attachments.ts -> getAutoMemPath() -> recursive scan`
+- 因为扫描是递归的，`team/` 下 topic files 默认也在候选集里
+- 如果调用方传的是更窄目录，召回范围才会相应缩小
 
 但这里还有一个很重要的过滤：
 
@@ -249,6 +253,7 @@ flowchart TD
     C --> G[auto memory root]
     G --> H[topic files]
     C -. conditional .-> I[optional MEMORY.md index updates]
+    G --> M[claudemd.ts loads<br/>AutoMem / TeamMem MEMORY.md]
     H --> J[findRelevantMemories(memoryDir)]
     J --> K[sideQuery selection]
     K --> L[attachment surfacing]
@@ -266,6 +271,7 @@ flowchart TD
     D --> G[team MEMORY.md]
     H[memoryTypes taxonomy] --> I[user / feedback / project / reference]
     I -. prompt guidance, not hard router .-> B
+    B -. default relevant-memory scan is recursive .-> F
 ```
 
 ## 为什么这个设计重要

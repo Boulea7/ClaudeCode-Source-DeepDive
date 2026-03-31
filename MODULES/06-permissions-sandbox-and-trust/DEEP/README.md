@@ -26,6 +26,8 @@
 - `restored-src/src/utils/permissions/pathValidation.ts`
 - `restored-src/src/utils/permissions/yoloClassifier.ts`
 - `restored-src/src/utils/permissions/bashClassifier.ts`
+- `restored-src/src/hooks/useCanUseTool.tsx`
+- `restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
 - `restored-src/src/components/permissions/PermissionRequest.tsx`
 - `restored-src/src/components/permissions/PermissionPrompt.tsx`
 - `restored-src/src/components/permissions/BashPermissionRequest/`
@@ -155,14 +157,15 @@ flowchart TD
     C --> D[permissions.ts decision]
     D --> E[rule matching]
     D --> F[classifier / auto checks]
-    D --> G[sandbox override]
+    D --> G[safe-tool / acceptEdits fast-path]
     D --> H[working directory checks]
     D --> I[allow / deny / ask result]
     I --> J[useCanUseTool]
-    J --> K[interactiveHandler / bridge / channel / hooks]
+    J --> K[coordinator / swarm / interactiveHandler]
     K --> L[REPL PermissionRequest queue]
     L --> M[PermissionRequest.tsx]
     M --> N[permission UI components]
+    O[REPL sandbox queue] --> P[SandboxPermissionRequest]
 ```
 
 ## 为什么这个设计重要

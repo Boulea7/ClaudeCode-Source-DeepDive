@@ -96,10 +96,10 @@
 - 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
 - 同一层还会从 store 现算工具池，并把 `refreshTools` 挂到 `toolUseContext`
 
-当前可确认的优先级是：
+当前可确认的优先级更适合写成：
 
 1. `overrideSystemPrompt`
-2. `coordinator prompt`
+2. `coordinator prompt`（仅协调模式开启且没有 `mainThreadAgentDefinition` 时）
 3. `mainThreadAgentDefinition`
 4. `customSystemPrompt`
 5. `defaultSystemPrompt`
@@ -134,6 +134,7 @@
 同时，`queryContext.ts` 还能确认：
 
 - 只要 `customSystemPrompt` 存在，就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
+- `memoryMechanicsPrompt` 也不是普遍存在，而是 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时才会追加
 
 `main.tsx` 里还对 non-interactive custom main-thread agent 做了额外特判：
 
@@ -178,10 +179,11 @@ fork subagent：
 ```mermaid
 flowchart TD
     A[getSystemPrompt default parts] --> B[static sections]
-    A --> C[dynamic sections]
+    A --> C[resolveSystemPromptSections]
     B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
-    C --> E[resolveSystemPromptSections]
-    D --> F[default prompt parts]
+    C --> E[resolved dynamic sections]
+    B --> F[default prompt parts]
+    D --> F
     E --> F
 
     F --> G[interactive main thread]
@@ -190,7 +192,7 @@ flowchart TD
     I --> J[renderedSystemPrompt]
 
     F --> K[non-interactive main thread]
-    K --> L[QueryEngine direct combine]
+    K --> L[QueryEngine direct combine<br/>or skip default parts when custom prompt exists]
 
     M[agentDefinition.getSystemPrompt] --> N[ordinary subagent]
     N --> O[enhanceSystemPromptWithEnvDetails]
