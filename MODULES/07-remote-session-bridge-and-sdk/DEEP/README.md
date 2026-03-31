@@ -2,14 +2,12 @@
 
 这一章要回答的核心问题是：
 
-**Claude Code 的远程会话与 bridge，到底是不是一层独立运行时。**
+**Claude Code 的远程会话客户端与本地 bridge，到底是怎样分层的。**
 
-公开镜像给出的答案是：**是。**
-
-但这层运行时还要继续拆成两部分理解：
+从这轮重新核读的源码看，更稳妥的理解是：
 
 - `remote/`：附着到已有远端 session 的客户端层
-- `bridge/`：把本地 REPL 或桥接子进程接到远端控制面的本地暴露层
+- `bridge/`：把本地 REPL 或桥接子进程接到远端控制面的本地桥接层
 
 ## 这部分负责什么
 
@@ -96,22 +94,16 @@
 
 所以文档里一定要把这两层拆开写。
 
-### 3. `bridge/` 是本地 Remote Control 暴露层
+### 3. `bridge/` 是本地 Remote Control 桥接层
 
 `bridge/` 当前更准确的描述是：
 
 - 通过出站 API / WS / SSE 把本地 REPL 或桥接子进程接到远端控制面
 
-它负责的事情包括：
+但这里要马上分成两条路径去看：
 
-- 会话创建 / 恢复
-- 环境注册
-- work 轮询
-- transport 建立
-- 消息转发
-- 控制请求处理
-- 权限往返
-- 生命周期清理
+- env-based 路径：会话创建 / 恢复、环境注册、work 轮询、heartbeat、transport 建立
+- env-less 路径：`createCodeSession()`、`POST /bridge`、v2 transport、JWT 刷新与重建
 
 这里有一个需要直接写出来的保守结论：
 
@@ -121,7 +113,7 @@
 
 - “本地 HTTP 服务端”
 
-### 4. `bridge/` 有两条路径：环境式与 env-less
+### 4. `bridge/` 至少有环境式、env-less 和 standalone / headless 三类入口
 
 当前源码里可以明确分成两条 bridge 路径。
 
@@ -169,6 +161,16 @@
 
 - bridge 至少有环境式与 env-less 两种接法
 
+#### standalone / headless 路径
+
+`bridgeMain.ts` 与 headless bridge 会继续复用 bridge API、poll loop 和 transport 逻辑。
+
+这条路径和 REPL 的差别在于：
+
+- 它会实际拉起本地 child CLI
+- `sessionRunner.ts` 负责 stdin / stdout 桥接
+- 权限与控制流会经过 `bridgeMessaging.ts` 这一层
+
 ### 5. transport 在客户端侧至少有 v1 / v2 两种形态
 
 当前客户端代码显式支持两类 transport：
@@ -198,24 +200,28 @@ flowchart LR
     A[Local REPL / UI] --> B[remote/]
     B --> C[RemoteSessionManager]
     C --> D[SessionsWebSocket]
-    C --> E[sdkMessageAdapter]
-    C --> F[remotePermissionBridge]
+    B --> E[sdkMessageAdapter]
+    B --> F[remotePermissionBridge]
 
     A --> G[bridge/]
     G --> H[initReplBridge]
     H --> I[replBridge env-based]
     H --> J[remoteBridgeCore env-less]
+    I --> N[replBridgeTransport]
     I --> K[bridgeApi registerBridgeEnvironment / pollForWork / acknowledgeWork]
     J --> L[codeSessionApi createCodeSession / fetchRemoteCredentials]
-    G --> M[sessionRunner child CLI]
+    G --> M[bridgeMain / headless bridge]
+    M --> O[runBridgeLoop]
+    O --> P[sessionRunner child CLI]
+    G --> Q[bridgeMessaging control flow]
 ```
 
 ## 为什么这个设计重要
 
 这里最重要的一点是：
 
-- remote session 和 bridge 不是某个 IDE 集成附属品
-- 而是被单独建模成了会话层与桥接层
+- `remote/` 与 `bridge/` 在源码里确实被分成了不同职责的组件
+- 但“服务端实际如何组织”仍然只能保守写成客户端预期
 
 这样带来的直接结果是：
 

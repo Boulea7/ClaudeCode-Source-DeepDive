@@ -12,7 +12,7 @@
 
 - 说明 prompt 装配链
 - 说明 section 的职责
-- 说明 agent、skills、slash command、plugin 是怎么影响 prompt 的
+- 先说明 REPL 与 headless / SDK 的 prompt 装配入口，再逐步展开 agent、skills、slash command、plugin 的影响面
 - 给出关键源码路径
 
 建议阅读顺序：
@@ -22,4 +22,3 @@
 3. [agent-prompts.md](./agent-prompts.md)
 4. [skills-and-command-injection.md](./skills-and-command-injection.md)
 5. [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
-

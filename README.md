@@ -35,10 +35,10 @@ This repository is unofficial and is reconstructed from the public npm package a
 
 - [MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md](./MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md)：tool contract、MCP 动态实例化、skills / plugins 边界
 - [MODULES/01-agent-loop-and-teams/DEEP/README.md](./MODULES/01-agent-loop-and-teams/DEEP/README.md)：`AgentTool` 编排层、`runAgent` 执行链、fork 与 task 表示层
-- [MODULES/03-persistent-memory-system/DEEP/README.md](./MODULES/03-persistent-memory-system/DEEP/README.md)：`SessionMemory`、durable memory、team memory 的真实分界
-- [MODULES/02-planning-compaction-and-assistant/DEEP/README.md](./MODULES/02-planning-compaction-and-assistant/DEEP/README.md)：多路径 compact、Plan Mode 的 plan-file 链路、Todo / Task / runtime task 分层
+- [MODULES/03-persistent-memory-system/DEEP/README.md](./MODULES/03-persistent-memory-system/DEEP/README.md)：`SessionMemory`、auto memory、team subtree 与 recall 调用边界
+- [MODULES/02-planning-compaction-and-assistant/DEEP/README.md](./MODULES/02-planning-compaction-and-assistant/DEEP/README.md)：多路径 compact、plan 文件恢复链，以及 Todo / Task / runtime task 分层
 - [MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md](./MODULES/04-buddy-voice-vim-and-terminal-ui/DEEP/README.md)：companion、vim 输入内核、voice 判定与输入集成
-- [MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md](./MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md)：`remote/` 客户端层与 `bridge/` 暴露层的分界
+- [MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md](./MODULES/07-remote-session-bridge-and-sdk/DEEP/README.md)：`remote/` 会话客户端层与 `bridge/` 本地桥接层的分界
 - [MODULES/08-prompts-config-and-other-moats/DEEP/README.md](./MODULES/08-prompts-config-and-other-moats/DEEP/README.md)：prompt 装配链、dynamic boundary、`REPL.tsx` / headless / subagent 差异
 - [PROMPTS/agent-prompts.md](./PROMPTS/agent-prompts.md)：agent prompt 继承与 fork 差异
 - [PROMPTS/skills-and-command-injection.md](./PROMPTS/skills-and-command-injection.md)：skill 从 `SKILL.md` 进入命令层与模型上下文的路径
@@ -81,11 +81,11 @@ flowchart TD
 - 入口：[`MODULES/01-agent-loop-and-teams`](./MODULES/01-agent-loop-and-teams/)
 
 ### 02 Planning, Compaction, And Assistant
-- 这部分解释 `Plan Mode`、计划文件、上下文压缩和 assistant 运行时之间的关系。
+- 这部分解释多路径 compact、plan 文件恢复链，以及 Todo / Task / runtime task 的源码分层。
 - 入口：[`MODULES/02-planning-compaction-and-assistant`](./MODULES/02-planning-compaction-and-assistant/)
 
 ### 03 Persistent Memory System
-- 这部分是核心模块，讲 `CLAUDE.md`、AutoMem、Session Memory、Team Memory 为什么会组成一条完整的持久上下文链。
+- 这部分是核心模块，讲 `SessionMemory`、auto memory、team subtree 和相关 recall 在源码里的真实边界。
 - 入口：[`MODULES/03-persistent-memory-system`](./MODULES/03-persistent-memory-system/)
 
 ### 04 Buddy, Voice, Vim, And Terminal UI
@@ -101,7 +101,7 @@ flowchart TD
 - 入口：[`MODULES/06-permissions-sandbox-and-trust`](./MODULES/06-permissions-sandbox-and-trust/)
 
 ### 07 Remote Session, Bridge, And SDK
-- 这部分关注远程会话、IDE bridge、MCP bridge 和相关会话对象。
+- 这部分关注远端 session 客户端、本地 Remote Control bridge，以及相关 transport / session compat 对象。
 - 入口：[`MODULES/07-remote-session-bridge-and-sdk`](./MODULES/07-remote-session-bridge-and-sdk/)
 
 ### 08 Prompts, Config, And Other Moats

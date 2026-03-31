@@ -38,7 +38,7 @@
 - `restored-src/src/services/extractMemories/prompts.ts`
   - durable / team extraction prompt
 - `restored-src/src/memdir/memdir.ts`
-  - durable memory 的 prompt 注入层
+  - durable memory 的 instruction prompt 与目录初始化
 - `restored-src/src/memdir/paths.ts`
   - `getAutoMemPath()` 与 auto memory 根目录解析
 - `restored-src/src/memdir/memoryTypes.ts`
@@ -118,7 +118,7 @@
 
 这里要特别强调两点：
 
-- 它自己不是 memory model，本质是一个后台 writer
+- 它本质上是一个后台 extraction / writer
 - 它写的不是 `session-memory/summary.md`
 
 当前源码还能确认一个重要的去重边界：
@@ -185,22 +185,17 @@
 
 所以更稳妥的表述是：
 
-- personal durable memory
-- team durable memory
+- auto memory 根目录下有普通 memory files
+- team memory 是这个根下面的 `team/` 子树
 
-共享同一套 auto memory 根基础设施
+### 7. relevant-memory 召回是否覆盖 `team/` 取决于调用方传入的目录
 
-### 7. relevant-memory 召回会递归扫到 `team/` 子树
+`findRelevantMemories()` 本身接收一个 `memoryDir` 参数，再对这个目录下的 topic files 做递归扫描。
 
-`findRelevantMemories()` 这一层默认从：
+因此更准确的说法是：
 
-- `getAutoMemPath()`
-
-开始递归扫描 topic files。
-
-因此当 team memory 开启时：
-
-- `memory/team/` 下的 topic files 会进入候选集合
+- 如果调用方传入 `getAutoMemPath()`，`team/` 子树也会进入候选范围
+- 如果调用方传的是更窄目录，召回范围也会相应缩小
 
 但这里还有一个很重要的过滤：
 
@@ -224,12 +219,12 @@
 - `memoryTypes.ts` 与 team prompt 文案会描述 private / team 的归属建议
 - 但真正的硬边界主要是“目标路径是否落在 auto memory 根内”
 
-如果往 team 子树写入，还会额外经过：
+当前源码里可以确认 `teamMemPaths.ts` 提供了：
 
 - `validateTeamMemWritePath()`
 - `validateTeamMemKey()`
 
-这两步会做字符串 containment 和 symlink-aware containment 校验。
+但这轮不能直接把它们写成“所有 team 写路径都会统一经过”的硬事实。
 
 所以文档里不要写成：
 
@@ -248,11 +243,10 @@ flowchart TD
     A --> C[extractMemories]
     B --> D[session-memory/summary.md]
     D --> E[sessionMemoryCompact]
-    D --> F[awaySummary / skillify]
     C --> G[auto memory root]
     G --> H[topic files]
-    G --> I[MEMORY.md indexes]
-    H --> J[findRelevantMemories]
+    G --> I[optional MEMORY.md index updates]
+    H --> J[findRelevantMemories(memoryDir)]
     J --> K[sideQuery selection]
     K --> L[attachment surfacing]
 ```
@@ -261,14 +255,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[getAutoMemPath] --> B[personal durable memory]
-    A --> C[team subtree]
-    B --> D[user]
-    B --> E[feedback]
-    B --> F[project]
-    B --> G[reference]
-    C --> H[team topic files]
-    C --> I[team MEMORY.md]
+    A[getAutoMemPath] --> B[auto memory root]
+    B --> C[private-side topic files]
+    B --> D[team subtree]
+    B --> E[MEMORY.md entrypoint]
+    D --> F[team topic files]
+    D --> G[team MEMORY.md]
+    H[memoryTypes taxonomy] --> I[user / feedback / project / reference]
 ```
 
 ## 为什么这个设计重要
@@ -302,3 +295,4 @@ flowchart TD
 - `team memories are synced at the beginning of every session` 这句话能在 prompt 文案里看到，但真实同步机制本轮没有继续展开到 `services/teamMemorySync/`，不能写成已完全证实事实。
 - `manuallyExtractSessionMemory()` 的注释提到 `/summary`，但本轮没有在当前树里找到直接调用点。
 - `KAIROS` 相关 nightly distillation 只能写成代码线索，不应写成当前构建已完整启用的事实。
+- `validateTeamMemWritePath()` / `validateTeamMemKey()` 在哪些写链路里稳定生效，这一轮没有继续追到完整调用面。

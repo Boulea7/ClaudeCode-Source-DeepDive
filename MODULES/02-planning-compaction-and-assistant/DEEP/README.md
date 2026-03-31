@@ -4,17 +4,17 @@
 
 **Plan Mode、compact、todo / task 到底是怎么作为运行时机制接起来的。**
 
-从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像里，可以直接确认几件事：
+从这轮重新核读的源码里，可以直接确认几件事：
 
-- Plan Mode 不是一段提示词，而是权限模式 + plan 文件 + attachment 保留链
-- compact 不是单一路径，而是多层上下文管理系统
+- compact 不是单一路径，而是本地消息层、API context-management 层和真正替换历史的 compact 路径并存
+- `autoCompactIfNeeded()` 会先尝试 `trySessionMemoryCompaction()`，失败后才回退到 `compactConversation()`
 - `TodoWrite`、Task V2、runtime task 不是同一套对象
 
 ## 这部分负责什么
 
 这一层主要负责四件事：
 
-1. 把会话切进“先探索、先写计划”的受限模式
+1. 把会话切进更偏规划态的受限权限模式
 2. 把 plan 文件当成 session artifact 管理
 3. 在上下文过长时选择合适的 compact 路径
 4. 让 todo、task list、后台任务分别落到各自的存储和运行时层
@@ -28,7 +28,7 @@
 - `restored-src/src/services/compact/apiMicrocompact.ts`
   - API 请求层的原生 cache edits / context-management
 - `restored-src/src/services/compact/sessionMemoryCompact.ts`
-  - 用 session memory 直接替代传统摘要 compact
+  - 满足条件时优先尝试的 session-memory compact
 - `restored-src/src/services/compact/compact.ts`
   - full compact / partial compact
 - `restored-src/src/services/compact/autoCompact.ts`
@@ -76,14 +76,14 @@
 - time-based 清理旧 `tool_result`
 - cached microcompact 记录 `pendingCacheEdits`
 
-目标是：
+这里更稳妥的说法是：
 
-- 尽量不做摘要
-- 先把最占上下文的旧工具结果和思维块减掉
+- 它优先处理旧 `tool_result`
+- 在 cached microcompact 打开时把 cache edits 留给后续 API 层消费
 
 `apiMicrocompact.ts` 则是另一层：
 
-- 把 cache edits / clear 策略变成真正的 API 请求参数
+- 把 thinking / tool 清理策略编码成 API `edits` 参数
 
 所以这两者不能被写成“同一个 compact 功能”。
 
@@ -140,13 +140,13 @@
 - 当前仍在 plan mode 时的 `plan_mode`
 - skills 相关附件
 - async task 相关附件
-- 其他继续工作所需的 delta / listing
+- `deferred tools delta`
+- `agent listing delta`
+- `mcp instructions delta`
 
 两者的主要区别不在“会不会补”，而在“摘要边界在哪里”。
 
-### 5. Plan Mode 是“权限模式 + plan 文件 + attachment 保留链”
-
-这一轮最重要的收紧点之一，就是把 Plan Mode 写清楚。
+### 5. Plan Mode 要分开看权限模式、plan 文件和 attachment
 
 `EnterPlanModeTool` 负责的是：
 
@@ -172,12 +172,18 @@
 - 主会话：`<slug>.md`
 - 子 agent：`<slug>-agent-<agentId>.md`
 
-`ExitPlanModeV2Tool` 在退出时会：
+`ExitPlanModeV2Tool` 的主路径会：
 
 1. 读取现有 plan
 2. 如果有编辑后的 `input.plan`，写回 plan 文件
 3. remote 环境下调用 `persistFileSnapshotIfRemote()`
 4. 恢复到退出前权限模式
+
+但这里还有一个需要单独写出来的边界：
+
+- teammate 且 `plan_mode_required` 的分支会先发 `plan_approval_request`
+- 这一支会提前返回 `awaitingLeaderApproval`
+- 不会在这个分支里立刻恢复权限模式
 
 ### 6. attachment 负责把 Plan Mode 在长会话里继续告诉模型
 
@@ -222,6 +228,7 @@ Task V2：
 runtime task：
 
 - 运行中的 `local_bash`、`local_agent`、`remote_agent`
+- 也包括 `in_process_teammate`、`local_workflow`、`monitor_mcp`、`dream`
 - 状态在 `AppState.tasks`
 - 输出落到 `<projectTemp>/<session>/tasks/<taskId>.output`
 
@@ -264,18 +271,19 @@ runtime task：
 
 ```mermaid
 flowchart TD
-    A[query loop] --> B[microCompact]
-    B --> C[apiMicrocompact cache edits]
+    A[query loop] --> B[microCompact<br/>local message trimming or cache edits]
+    A --> C[apiMicrocompact<br/>API edits config]
     A --> D{auto compact needed?}
     D -- no --> E[继续本轮]
     D -- yes --> F[trySessionMemoryCompaction]
     F -- success --> G[sessionMemoryCompact]
-    F -- fallback --> H[compactConversation or partialCompactConversation]
-    G --> I[reinject plan_file_reference]
-    H --> I
-    H --> J[reinject plan_file_reference and plan_mode]
-    I --> K[postCompactCleanup]
-    J --> K
+    F -- fallback --> H[compactConversation]
+    I[manual compact selection] --> J[partialCompactConversation]
+    G --> K[reinject plan_file_reference]
+    H --> L[reinject post-compact attachments]
+    J --> L
+    K --> M[postCompactCleanup]
+    L --> M
 ```
 
 ## 一张图看 Plan Mode 与任务分层
@@ -283,16 +291,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
-    B --> C[plan attachments]
     B --> D[continue exploring in read-only planning state]
-    D --> E[ExitPlanModeV2Tool]
-    E --> F[read current plan file]
-    E --> G[write edited plan back when input.plan exists]
-    E --> H[restore prePlanMode]
+    C[attachments.ts] --> E[plan_mode / plan_mode_reentry / plan_mode_exit]
+    D --> F[ExitPlanModeV2Tool]
+    F --> G[read current plan file]
+    F --> H[write edited plan back when input.plan exists]
+    F --> I[persistFileSnapshotIfRemote<br/>plan only]
+    F --> J[restore prePlanMode on normal exit]
+    F --> K[plan approval branch for teammates]
 
-    I[TodoWrite v1] --> J[AppState.todos]
-    K[TaskCreate/List/Get/Update] --> L[disk task list]
-    M[TaskOutput / TaskStop] --> N[AppState.tasks runtime tasks]
+    L[TodoWrite v1] --> M[AppState.todos]
+    N[TaskCreate/List/Get/Update] --> O[disk task list]
+    P[TaskOutput / TaskStop] --> Q[AppState.tasks runtime tasks]
 ```
 
 ## 为什么这个设计重要
@@ -302,7 +312,7 @@ flowchart TD
 它把这些能力拆成了明确运行时层：
 
 - compact 有多条路径
-- Plan Mode 有权限模式、plan 文件和保留链
+- Plan Mode 需要同时看权限模式、plan 文件和 attachment
 - todo、task list、runtime task 各自独立
 
 这也是为什么它能在长链路工作里同时维持：
@@ -331,4 +341,5 @@ flowchart TD
 
 - `sessionMemoryCompact` 不补 `plan_mode` attachment，到底是有意为之还是尚未补齐，当前只能保守描述。
 - `EnterPlanModeTool` 不写 plan 文件，但首次把 plan 正文落盘的具体上游入口，这轮没有继续展开。
+- `partialCompactConversation()` 的主查询触发点，这一轮没有继续往上追到完整调用链。
 - cached microcompact、`tengu_session_memory` 等开关的线上默认状态，不能从静态源码直接推出。
