@@ -10,6 +10,7 @@
 - headless / SDK 路径主要在 `QueryEngine.ts` 里装配 turn 级上下文
 - `query.ts` 负责真正的循环，包括 compact、tool execution、attachment 回挂、stop hook 和继续下一轮
 - tools、memory、permissions、remote/bridge 都会接到主链上，但 remote/bridge 主要按具体运行路径动态接入
+- 其中不少路径还会被 `feature(...)`、GrowthBook、env flag 改写，所以“源码里有分支”不等于“公开构建一定默认启用”
 
 ## 一张图看总链路
 

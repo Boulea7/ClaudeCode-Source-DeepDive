@@ -29,6 +29,7 @@ This repository is unofficial and is reconstructed from the public npm package a
 - 想按系统拆开读：看 [MODULES](./MODULES/)
 - 想给别的 Agent 直接喂结构化资料：看 [AI-AGENT](./AI-AGENT/)
 - 想看 prompt 机制：看 [PROMPTS](./PROMPTS/)
+- 想看被 gate / 隐藏 / 未必正式发布的能力：看 [FEATURE-FLAGS](./FEATURE-FLAGS/)
 - 想补一点发布时间和竞品背景：看 [COMPARISONS](./COMPARISONS/)
 
 最近已重点补厚的入口：
@@ -42,6 +43,7 @@ This repository is unofficial and is reconstructed from the public npm package a
 - [MODULES/08-prompts-config-and-other-moats/DEEP/README.md](./MODULES/08-prompts-config-and-other-moats/DEEP/README.md)：prompt 装配链、dynamic boundary、`REPL.tsx` / headless / subagent 差异
 - [PROMPTS/agent-prompts.md](./PROMPTS/agent-prompts.md)：agent prompt 继承与 fork 差异
 - [PROMPTS/skills-and-command-injection.md](./PROMPTS/skills-and-command-injection.md)：skill 从 `SKILL.md` 进入命令层与模型上下文的路径
+- [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)：按主题整理 `feature(...)`、GrowthBook、env flag 与隐藏分支
 
 ## 仓库结构
 
@@ -55,6 +57,7 @@ This repository is unofficial and is reconstructed from the public npm package a
 ├── MODULES/
 ├── COMPARISONS/
 ├── PROMPTS/
+├── FEATURE-FLAGS/
 ├── EXAMPLES/
 └── ASSETS/
 ```

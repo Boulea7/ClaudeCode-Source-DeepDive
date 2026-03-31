@@ -8,6 +8,7 @@
   "reading_order": [
     "README.md",
     "ARCHITECTURE.md",
+    "FEATURE-FLAGS/README.md",
     "MODULES/01-agent-loop-and-teams/README.md",
     "MODULES/03-persistent-memory-system/README.md",
     "MODULES/02-planning-compaction-and-assistant/README.md",
@@ -18,6 +19,14 @@
     "MODULES/08-prompts-config-and-other-moats/README.md",
     "PROMPTS/README.md"
   ],
+  "feature_flags": {
+    "status": "confirmed",
+    "focus": [
+      "feature-call-vs-growthbook-vs-env-flag",
+      "gated-paths-are-not-public-release-proof",
+      "hidden-capability-audit-by-runtime-memory-and-remote"
+    ]
+  },
   "modules": [
     {
       "id": "01",

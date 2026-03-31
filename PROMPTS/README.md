@@ -14,6 +14,7 @@
 - 说明 section 的职责
 - 先说明 REPL 与 headless / SDK 的 prompt 装配入口，再展开其它 prompt 影响面
 - 给出关键源码路径
+- 必要时指出哪些 prompt 路径仍受 feature gate 控制
 
 建议阅读顺序：
 
@@ -22,3 +23,5 @@
 3. [agent-prompts.md](./agent-prompts.md)
 4. [skills-and-command-injection.md](./skills-and-command-injection.md)
 5. [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
+
+如果你想单独看 gate / 隐藏分支，请再读 [../FEATURE-FLAGS/README.md](../FEATURE-FLAGS/README.md)。

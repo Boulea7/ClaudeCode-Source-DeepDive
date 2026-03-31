@@ -1,13 +1,14 @@
 1. Read README.md for project scope.
 2. Read ARCHITECTURE.md for the global map.
-3. Read MODULES/01-agent-loop-and-teams first.
-4. Read MODULES/03-persistent-memory-system next for SessionMemory, auto memory, team subtree, and recall boundaries.
-5. Read MODULES/02-planning-compaction-and-assistant for multi-path compact, plan attachments, and Todo/Task/runtime-task splits.
-6. Read MODULES/05-tools-mcp-skills-and-plugins for extensibility.
-7. Read MODULES/06-permissions-sandbox-and-trust before remote flows.
-8. Read MODULES/07-remote-session-bridge-and-sdk for remote client vs bridge runtime, transport, and session compat.
-9. Read MODULES/04-buddy-voice-vim-and-terminal-ui for companion, vim state machine, and voice integration points.
-10. Read MODULES/08-prompts-config-and-other-moats for prompt assembly, the conditional dynamic boundary, and REPL vs headless differences.
-11. Read PROMPTS/README.md before the prompt deep dives.
-12. Read PROMPTS/system-prompt-assembly.md and PROMPTS/system-prompt-sections.md.
-13. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear, especially for ordinary subagent vs fork and SkillTool listing vs attachment-based listing.
+3. Read FEATURE-FLAGS/README.md for the gate audit lens before you treat hidden branches as shipped behavior.
+4. Read MODULES/01-agent-loop-and-teams first.
+5. Read MODULES/03-persistent-memory-system next for SessionMemory, auto memory, team subtree, and recall boundaries.
+6. Read MODULES/02-planning-compaction-and-assistant for multi-path compact, plan attachments, and Todo/Task/runtime-task splits.
+7. Read MODULES/05-tools-mcp-skills-and-plugins for extensibility.
+8. Read MODULES/06-permissions-sandbox-and-trust before remote flows.
+9. Read MODULES/07-remote-session-bridge-and-sdk for remote client vs bridge runtime, transport, and session compat.
+10. Read MODULES/04-buddy-voice-vim-and-terminal-ui for companion, vim state machine, and voice integration points.
+11. Read MODULES/08-prompts-config-and-other-moats for prompt assembly, the conditional dynamic boundary, and REPL vs headless differences.
+12. Read PROMPTS/README.md before the prompt deep dives.
+13. Read PROMPTS/system-prompt-assembly.md and PROMPTS/system-prompt-sections.md.
+14. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear, especially for ordinary subagent vs fork and SkillTool listing vs attachment-based listing.
