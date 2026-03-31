@@ -140,6 +140,10 @@
 4. 根据 work secret 选择 v1 / v2 transport
 5. 必要时把工作交给本地 child session
 
+这一条更像：
+
+- 先注册环境，再持续拿活
+
 #### env-less 路径
 
 入口是：
@@ -152,6 +156,10 @@
 2. 再调 `/bridge` 拿 `worker_jwt / api_base_url / worker_epoch`
 3. 建立 v2 transport
 4. 做 JWT 刷新与 transport 重建
+
+这一条更像：
+
+- 先建 code session，再拿 `/bridge` 凭证直接接远端
 
 所以这里不该写成：
 
@@ -197,8 +205,8 @@ flowchart LR
     G --> H[initReplBridge]
     H --> I[replBridge env-based]
     H --> J[remoteBridgeCore env-less]
-    I --> K[bridgeApi / work poll]
-    J --> L[codeSessionApi / bridge credentials]
+    I --> K[bridgeApi registerBridgeEnvironment / pollForWork / acknowledgeWork]
+    J --> L[codeSessionApi createCodeSession / fetchRemoteCredentials]
     G --> M[sessionRunner child CLI]
 ```
 

@@ -142,6 +142,10 @@
 
 所以文档里一定要把这两个集合分开写。
 
+更直白一点说：
+
+- 模型看得到的 skill，不等于运行时真能执行到的全部 skill
+
 ```mermaid
 flowchart LR
     A[skills dir] --> E[createSkillCommand]
@@ -154,6 +158,9 @@ flowchart LR
     H --> J[getSkillToolCommands]
     I --> K[execution set]
     J --> L[model-visible listing]
+    K --> M[SkillTool]
+    M --> N[processPromptSlashCommand]
+    N --> O[attachments / command_permissions]
 ```
 
 ### 5. SkillTool 是执行壳，不是 discovery 源
@@ -171,6 +178,7 @@ flowchart LR
 - `loadSkillsDir.ts` 负责发现与生产
 - `commands.ts` 负责装配
 - `SkillTool.ts` 负责执行
+- `processPromptSlashCommand()` 负责把 skill 展开成正文、metadata、attachment 和 `command_permissions`
 
 而不是：
 
@@ -226,12 +234,13 @@ flowchart LR
 
 这轮复核还能更明确写出：
 
+- `main.tsx` 启动阶段会调用 `initBuiltinPlugins()`
 - `initBuiltinPlugins()` 在当前镜像里是空实现
 - 本轮没有看到实际 `registerBuiltinPlugin(...)` 调用
 
 所以可以写：
 
-- 当前支持 built-in plugin registry / scaffold
+- 当前支持 built-in plugin registry / scaffold，且启动接线已经存在
 
 但不要写：
 
@@ -255,6 +264,7 @@ flowchart LR
 - skill 可以像命令一样被治理
 - plugin / bundled / MCP skill 可以共享同一套执行壳
 - listing 与执行集合可以分开控制
+- built-in plugin 虽然当前没有实际注册项，但启动入口已经固定在 `main.tsx`
 
 ## 推荐阅读顺序
 

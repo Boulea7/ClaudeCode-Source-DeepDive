@@ -10,7 +10,7 @@
 
 1. `buddy/` 里的 companion 子系统
 2. `vim/` 里的 modal 输入内核
-3. `voice/` 里的可见性 / 可用性 gating
+3. `voice/` 里的可用性判定、输入集成与录音 / STT 接点
 
 换句话说，这一层解决的是“用户怎么在终端里和 Claude Code 交互”，而不是“模型主循环怎么运行”。
 
@@ -37,11 +37,16 @@
 - `restored-src/src/hooks/useVimInput.ts`
 - `restored-src/src/components/VimTextInput.tsx`
 
-### Voice gating
+### Voice 相关链路
 
 - `restored-src/src/voice/voiceModeEnabled.ts`
 - `restored-src/src/hooks/useVoiceEnabled.ts`
+- `restored-src/src/hooks/useVoiceIntegration.tsx`
+- `restored-src/src/context/voice.tsx`
 - `restored-src/src/commands/voice/index.ts`
+- `restored-src/src/commands/voice/voice.ts`
+- `restored-src/src/services/voice.ts`
+- `restored-src/src/services/voiceStreamSTT.ts`
 - `restored-src/src/tools/ConfigTool/ConfigTool.ts`
 
 ## 执行流
@@ -86,17 +91,16 @@
 
 所以文档不能把 companion reaction 的生成机制、模型来源、`/buddy pet` 行为写死。
 
-### 2. `voice/` 当前主要体现为 gating，不是完整语音栈
+### 2. `voice` 不只是 gating，但也不能写成完整语音产品栈
 
-当前 `src/voice/` 范围里能直接确认的核心文件是：
+这轮重新核读后，`voice` 最稳妥的说法是：
 
-- `voiceModeEnabled.ts`
+- `voice/voiceModeEnabled.ts` 负责能不能开
+- `/voice` 命令负责开关和预检
+- `useVoiceIntegration.tsx` 负责把按键保持、输入框插入和 UI 状态接起来
+- `services/voice.ts` 与 `services/voiceStreamSTT.ts` 提供录音和 STT 接点
 
-它解决的问题不是“怎么录音、怎么转写、怎么播报”，而是：
-
-- voice mode 当前是否可见
-- 是否满足 auth
-- 是否真正允许进入交互态
+这说明当前树里已经不只是“能不能显示 voice 按钮”的 gating。
 
 当前源码里能明确看到 3 层条件：
 
@@ -112,11 +116,13 @@
 - `/voice` 命令的 `isEnabled` 与 `isHidden` 不是同一条件
 - `ConfigTool` 对 `voiceEnabled` 也会再次做 runtime gate
 - 默认 push-to-talk 键位是 `space -> voice:pushToTalk`
+- `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
+- `useVoiceEnabled()` 会把 `settings.voiceEnabled === true` 和 auth / kill-switch 合并成最终 UI 可见状态
 
 因此更稳妥的表述是：
 
-- `voice/voiceModeEnabled.ts` 是运行时 gate
-- 不要把它直接扩写成完整音频链路
+- 这套代码至少已经覆盖了“判定 + 输入集成 + 录音 / STT 接点”
+- 但不要把它直接扩写成完整语音产品闭环
 
 ### 3. `vim/` 采用“五段式”结构
 
@@ -188,6 +194,19 @@ flowchart TD
     C --> H[PersistentState / lastChange / lastFind]
 ```
 
+## 一张图看 voice 相关链路
+
+```mermaid
+flowchart LR
+    A[/voice command] --> B[voiceModeEnabled.ts]
+    B --> C[useVoiceEnabled]
+    C --> D[useVoiceIntegration]
+    D --> E[context/voice.tsx]
+    D --> F[services/voice.ts]
+    F --> G[services/voiceStreamSTT.ts]
+    G --> H[insert transcript back into input]
+```
+
 ## 为什么这个设计重要
 
 这部分代码很能说明 Claude Code 的一个特点：
@@ -198,7 +217,7 @@ flowchart TD
 几个最值得记住的点：
 
 - `buddy` 不是一张静态贴图，而是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
-- `voice` 在当前范围里首先是 gating 体系，而不是完整音频后端
+- `voice` 在当前范围里已经不只是 gating，还能看到输入集成、录音和 STT 接点
 - `vim` 不是零散快捷键，而是一套清楚拆层的 modal 输入引擎
 
 ## 推荐阅读顺序
@@ -208,18 +227,22 @@ flowchart TD
 3. `restored-src/src/buddy/prompt.ts`
 4. `restored-src/src/buddy/useBuddyNotification.tsx`
 5. `restored-src/src/voice/voiceModeEnabled.ts`
-6. `restored-src/src/hooks/useVoiceEnabled.ts`
-7. `restored-src/src/vim/types.ts`
-8. `restored-src/src/vim/transitions.ts`
-9. `restored-src/src/vim/motions.ts`
-10. `restored-src/src/vim/textObjects.ts`
-11. `restored-src/src/vim/operators.ts`
-12. `restored-src/src/hooks/useVimInput.ts`
+6. `restored-src/src/commands/voice/voice.ts`
+7. `restored-src/src/hooks/useVoiceEnabled.ts`
+8. `restored-src/src/hooks/useVoiceIntegration.tsx`
+9. `restored-src/src/services/voice.ts`
+10. `restored-src/src/services/voiceStreamSTT.ts`
+11. `restored-src/src/vim/types.ts`
+12. `restored-src/src/vim/transitions.ts`
+13. `restored-src/src/vim/motions.ts`
+14. `restored-src/src/vim/textObjects.ts`
+15. `restored-src/src/vim/operators.ts`
+16. `restored-src/src/hooks/useVimInput.ts`
 
 ## 仍待确认
 
 - `Buddy` 是否就是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这些文件定论。
 - `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
 - `companionPetAt` 的写入点当前没有确认到。
-- `voice` 的完整实现范围仍然不能从这轮范围推出，包括音频采集、流式传输、TTS、设备管理等。
+- `voice` 的完整产品语义仍然不能从这轮范围推出，包括 TTS、播放链、服务端策略和设备管理的全貌。
 - `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。

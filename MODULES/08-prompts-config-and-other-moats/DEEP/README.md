@@ -26,6 +26,7 @@
 - `restored-src/src/constants/prompts.ts`
 - `restored-src/src/constants/systemPromptSections.ts`
 - `restored-src/src/utils/systemPrompt.ts`
+- `restored-src/src/screens/REPL.tsx`
 - `restored-src/src/utils/queryContext.ts`
 - `restored-src/src/QueryEngine.ts`
 - `restored-src/src/tools/AgentTool/AgentTool.tsx`
@@ -45,7 +46,7 @@
 - 静态前缀
 - 动态 sections
 
-然后在两者之间插入：
+然后在满足全局缓存条件时，才会在两者之间插入：
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
@@ -75,9 +76,13 @@
 
 - `mcp_instructions` 是标准路径里最明确的 uncached section
 
-### 3. interactive 主线程会再走一次 `buildEffectiveSystemPrompt()`
+### 3. interactive 主线程会在 `REPL.tsx` 里再走一次 `buildEffectiveSystemPrompt()`
 
 `utils/systemPrompt.ts` 负责 interactive 主线程的最终 precedence。
+
+真正触发这一步的 interactive 装配点，更适合直接落在：
+
+- `screens/REPL.tsx`
 
 当前可确认的优先级是：
 
@@ -168,13 +173,14 @@ flowchart TD
     E --> F
 
     F --> G[interactive main thread]
-    G --> H[buildEffectiveSystemPrompt]
+    G --> H[REPL.tsx]
+    H --> I[buildEffectiveSystemPrompt]
 
-    F --> I[non-interactive main thread]
-    I --> J[QueryEngine direct combine]
+    F --> J[non-interactive main thread]
+    J --> K[QueryEngine direct combine]
 
-    K[agentDefinition.getSystemPrompt] --> L[ordinary subagent]
-    M[parent renderedSystemPrompt] --> N[fork subagent]
+    L[agentDefinition.getSystemPrompt] --> M[ordinary subagent]
+    N[parent renderedSystemPrompt] --> O[fork subagent]
 ```
 
 ## 为什么这个设计重要
@@ -201,11 +207,12 @@ flowchart TD
 1. `restored-src/src/constants/prompts.ts`
 2. `restored-src/src/constants/systemPromptSections.ts`
 3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/utils/queryContext.ts`
-5. `restored-src/src/main.tsx`
-6. `restored-src/src/QueryEngine.ts`
-7. `restored-src/src/tools/AgentTool/runAgent.ts`
-8. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+4. `restored-src/src/screens/REPL.tsx`
+5. `restored-src/src/utils/queryContext.ts`
+6. `restored-src/src/main.tsx`
+7. `restored-src/src/QueryEngine.ts`
+8. `restored-src/src/tools/AgentTool/runAgent.ts`
+9. `restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 

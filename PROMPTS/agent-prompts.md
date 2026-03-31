@@ -21,6 +21,7 @@
 ## 关键文件
 
 - `restored-src/src/utils/systemPrompt.ts`
+- `restored-src/src/screens/REPL.tsx`
 - `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
 - `restored-src/src/tools/AgentTool/runAgent.ts`
 - `restored-src/src/tools/AgentTool/forkSubagent.ts`
@@ -43,7 +44,7 @@
 
 这四条路径都和 prompt 相关，但装配规则并不相同。
 
-### 2. 交互式主线程会走 `buildEffectiveSystemPrompt()`
+### 2. 交互式主线程会在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
 
 在交互式主线程里，`buildEffectiveSystemPrompt()` 会按优先级决定最终生效内容：
 
@@ -82,14 +83,15 @@
 
 因此文档里如果把“所有主线程 prompt 都走同一条链”写死，会和源码不一致。
 
-### 4. 普通 subagent 的 prompt 起点在 agent definition
+### 4. 普通 subagent 的 prompt 起点更适合直接落在 `runAgent.ts`
 
 普通 subagent 走的是 `runAgent.ts`：
 
-1. 调 agent 自己的 `getSystemPrompt(...)`
-2. 把结果包装成数组
-3. 交给 `enhanceSystemPromptWithEnvDetails(...)`
-4. 若失败则 fallback 到 `DEFAULT_AGENT_PROMPT`
+1. 进入 `getAgentSystemPrompt(...)`
+2. 在里面调 agent 自己的 `getSystemPrompt(...)`
+3. 把结果包装成数组
+4. 交给 `enhanceSystemPromptWithEnvDetails(...)`
+5. 若失败则 fallback 到 `DEFAULT_AGENT_PROMPT`
 
 这里最重要的结论是：
 
@@ -191,12 +193,13 @@ flowchart TD
 ## 推荐阅读顺序
 
 1. `restored-src/src/utils/systemPrompt.ts`
-2. `restored-src/src/main.tsx`
-3. `restored-src/src/QueryEngine.ts`
-4. `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
-5. `restored-src/src/tools/AgentTool/runAgent.ts`
-6. `restored-src/src/tools/AgentTool/forkSubagent.ts`
-7. `restored-src/src/tools/AgentTool/AgentTool.tsx`
+2. `restored-src/src/screens/REPL.tsx`
+3. `restored-src/src/main.tsx`
+4. `restored-src/src/QueryEngine.ts`
+5. `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+6. `restored-src/src/tools/AgentTool/runAgent.ts`
+7. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+8. `restored-src/src/tools/AgentTool/AgentTool.tsx`
 
 ## 仍待确认
 
