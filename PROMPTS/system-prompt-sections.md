@@ -125,6 +125,7 @@ uncached section：
 
 - boundary 之前是静态块
 - boundary 之后是 `resolvedDynamicSections`
+- 但这条 boundary 是按条件插入的，不是每次必有
 
 像下面这些段落，应该理解成 dynamic side：
 
@@ -169,6 +170,7 @@ flowchart TD
 - 动态段可以按名管理
 - `cacheBreak` 是显式语义，不靠注释猜
 - `/clear` 与 `/compact` 的失效边界清楚
+- boundary 是否出现，取决于当前路径是否启用全局缓存边界
 
 ## 推荐阅读顺序
 

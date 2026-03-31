@@ -156,6 +156,12 @@
 
 它不负责创建或写入 plan 文件。
 
+换句话说，更稳妥的理解是：
+
+- 进入 Plan Mode，不等于立刻把计划正文落盘
+- 它先切模式
+- 计划正文由 plan 文件和退出工具继续接手
+
 真正与 plan 文件直接打交道的，是：
 
 - `utils/plans.ts`
@@ -265,8 +271,11 @@ flowchart TD
     D -- yes --> F[trySessionMemoryCompaction]
     F -- success --> G[sessionMemoryCompact]
     F -- fallback --> H[compactConversation or partialCompactConversation]
-    G --> I[postCompactCleanup]
+    G --> I[reinject plan_file_reference]
     H --> I
+    H --> J[reinject plan_file_reference and plan_mode]
+    I --> K[postCompactCleanup]
+    J --> K
 ```
 
 ## 一张图看 Plan Mode 与任务分层
@@ -274,15 +283,16 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
-    B --> C[plan file on disk]
-    B --> D[plan attachments]
-    C --> E[ExitPlanModeV2Tool]
-    E --> F[write edited plan back]
-    E --> G[restore prePlanMode]
+    B --> C[plan attachments]
+    B --> D[continue exploring in read-only planning state]
+    D --> E[ExitPlanModeV2Tool]
+    E --> F[read current plan file]
+    E --> G[write edited plan back when input.plan exists]
+    E --> H[restore prePlanMode]
 
-    H[TodoWrite v1] --> I[AppState.todos]
-    J[TaskCreate/List/Get/Update] --> K[disk task list]
-    L[TaskOutput / TaskStop] --> M[AppState.tasks runtime tasks]
+    I[TodoWrite v1] --> J[AppState.todos]
+    K[TaskCreate/List/Get/Update] --> L[disk task list]
+    M[TaskOutput / TaskStop] --> N[AppState.tasks runtime tasks]
 ```
 
 ## 为什么这个设计重要

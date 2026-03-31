@@ -62,6 +62,8 @@
 
 ### Plugins 与 runtime plugin root
 
+- `restored-src/src/main.tsx`
+  - `initBuiltinPlugins()` 与 `initBundledSkills()` 的启动接线
 - `restored-src/src/plugins/builtinPlugins.ts`
   - built-in plugin registry 定义
 - `restored-src/src/plugins/bundled/index.ts`
@@ -280,6 +282,10 @@ MCP 并不只生成远端 tools。
 - 执行集合
 - listing 集合
 
+更直白一点说：
+
+- 模型看得到的 skill，不等于运行时真能执行到的全部 skill
+
 ### 10. plugin command 与 plugin skill 是两条独立加载链
 
 `utils/plugins/loadPluginCommands.ts` 里，这两条链并不相同。
@@ -315,9 +321,9 @@ MCP 并不只生成远端 tools。
 
 而且本轮重新核读后，可以更明确地写：
 
-- built-in plugin scaffolding 存在
+- `main.tsx` 启动阶段确实会调用 `initBuiltinPlugins()`
 - 但当前树里没有看到实际 `registerBuiltinPlugin(...)` 调用
-- `initBuiltinPlugins()` 在当前镜像里是空实现
+- `initBuiltinPlugins()` 在当前镜像里仍是空实现
 
 所以文档里不应再写：
 
@@ -325,8 +331,28 @@ MCP 并不只生成远端 tools。
 
 更稳妥的写法是：
 
-- 当前镜像里可以确认 registry/scaffold
+- 当前镜像里可以确认 registry/scaffold，而且启动接线已经存在
 - 看不到实际注册项
+
+### 12. `processPromptSlashCommand()` 是 skill 进入模型上下文的关键桥
+
+`SkillTool` 不会直接把技能 markdown 原文塞回会话。
+
+真正把 skill 展开成对话消息的，是：
+
+- `utils/processUserInput/processSlashCommand.tsx -> processPromptSlashCommand()`
+
+这条链除了正文，还会生成：
+
+- 结构化 metadata
+- attachment
+- `command_permissions` attachment
+
+所以更准确的顺序是：
+
+- skill 先变成 `Command`
+- 再由 `processPromptSlashCommand()` 展开成消息与附件
+- 最后进入模型可见面
 
 ## 一张图看扩展层关系
 
@@ -343,6 +369,8 @@ flowchart TD
     K[skills/bundledSkills.ts] --> I
     I --> L[getSkillToolCommands]
     I --> M[SkillTool execution]
+    M --> N[processPromptSlashCommand]
+    N --> O[attachments / command_permissions]
 ```
 
 ## 为什么这个设计重要
@@ -361,6 +389,11 @@ flowchart TD
 - 通过 MCP 动态下发
 - 作为 skill 进入 prompt command 层
 - 再由 plugin 打包成可启停单元
+
+同时它还保留了一个很有用的边界：
+
+- built-in plugin 当前虽然没有实际注册项
+- 但启动时机和接线位置已经在 `main.tsx` 里留好了
 
 这比“只有插件系统”或者“只有工具调用”都要灵活得多。
 

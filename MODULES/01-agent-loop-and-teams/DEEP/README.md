@@ -7,6 +7,7 @@
 从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这套能力并不是几段 prompt fan-out，而是明确落在：
 
 - `main.tsx`
+- `screens/REPL.tsx`
 - `QueryEngine.ts`
 - `query.ts`
 - `AgentTool.tsx`
@@ -29,6 +30,8 @@
 
 - `restored-src/src/main.tsx`
   - interactive / non-interactive 分流、built-in tools 与 MCP 接入
+- `restored-src/src/screens/REPL.tsx`
+  - interactive 主线程的 prompt 装配、工具池合并与 `query()` 入口
 - `restored-src/src/QueryEngine.ts`
   - headless / SDK turn orchestrator
 - `restored-src/src/query.ts`
@@ -65,18 +68,32 @@
   - 主会话后台化
 - `restored-src/src/tasks/InProcessTeammateTask/`
   - 同进程 teammate 的状态镜像
+- `restored-src/src/tasks/types.ts`
+  - `TaskState` 联合类型与任务形态声明
 - `restored-src/src/tasks/stopTask.ts`
   - 通用 stop 路径
 
 ## 执行流
 
-### 1. 主线程先把 query runtime 立起来
+### 1. 主线程其实有 interactive / headless 两条入口
 
-`main.tsx -> QueryEngine.ts -> query.ts` 这三层分别负责：
+这一层最容易写粗的地方，是把 `main.tsx -> QueryEngine.ts -> query.ts` 说成唯一主链。
 
-- 启动与模式分流
-- turn 级 orchestration
-- 真正的 query loop
+更准确的写法是：
+
+- interactive 主线程主要落在 `main.tsx -> REPL.tsx -> query.ts`
+- headless / SDK 主线程主要落在 `main.tsx -> QueryEngine.ts -> query.ts`
+
+各层分工大致是：
+
+- `main.tsx`
+  - 做启动、模式分流、插件与 MCP 预备装配
+- `REPL.tsx`
+  - 负责 interactive prompt 装配、工具池合并、输入处理与 `query()` 调用
+- `QueryEngine.ts`
+  - 负责 headless / SDK turn orchestration
+- `query.ts`
+  - 负责真正的 turn loop
 
 这也是为什么文档里要把 “主循环” 和 “agent tool” 分开写：
 
@@ -215,27 +232,15 @@ fork subagent：
 ## 一张图看主执行链
 
 ```mermaid
-sequenceDiagram
-    participant U as User
-    participant M as main.tsx
-    participant QE as QueryEngine
-    participant Q as query.ts
-    participant AT as AgentTool
-    participant RA as runAgent
-    participant TS as tasks/*
-
-    U->>M: 输入请求
-    M->>QE: 创建会话容器
-    QE->>Q: 进入 query()
-    Q->>AT: 命中 AgentTool
-    AT->>AT: 解析 agent / fork / async / remote
-    AT->>RA: 启动本地 agent
-    RA->>Q: 子线程继续走 query loop
-    RA->>TS: 注册或更新任务状态
-    TS-->>AT: 进度 / 状态 / 通知
-    AT-->>Q: tool result
-    Q-->>QE: 本轮结果
-    QE-->>U: 输出
+flowchart TD
+    A[main.tsx] --> B{session type}
+    B --> C[interactive: REPL.tsx]
+    B --> D[headless / SDK: QueryEngine.ts]
+    C --> E[query.ts]
+    D --> E
+    E --> F[AgentTool]
+    F --> G[runAgent]
+    G --> H[tasks/*]
 ```
 
 ## 一张图看任务表示层
@@ -248,6 +253,9 @@ flowchart TD
     E[BashTool / shell runtime] --> F[local_bash]
     G[Main session backgrounding] --> H[local_agent agentType=main-session]
     I[Auto dream] --> J[dream]
+    K[tasks/types.ts] -.declares.-> B
+    K -.declares.-> C
+    K -.declares.-> D
 ```
 
 ## 为什么这个设计重要
@@ -272,7 +280,8 @@ flowchart TD
 8. `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
 9. `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
 10. `restored-src/src/tasks/LocalMainSessionTask.ts`
-11. `restored-src/src/tasks/InProcessTeammateTask/`
+11. `restored-src/src/tasks/types.ts`
+12. `restored-src/src/tasks/InProcessTeammateTask/`
 
 ## 仍待确认
 

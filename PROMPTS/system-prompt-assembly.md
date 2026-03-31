@@ -20,6 +20,7 @@
 - `restored-src/src/constants/prompts.ts`
 - `restored-src/src/constants/systemPromptSections.ts`
 - `restored-src/src/utils/systemPrompt.ts`
+- `restored-src/src/screens/REPL.tsx`
 - `restored-src/src/utils/queryContext.ts`
 - `restored-src/src/QueryEngine.ts`
 - `restored-src/src/tools/AgentTool/AgentTool.tsx`
@@ -43,7 +44,7 @@
 - 静态前缀
 - 动态 sections
 
-然后在两者之间插入：
+然后在满足全局缓存条件时，才会在两者之间插入：
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
@@ -69,9 +70,13 @@
 
 所以文档里要把“标准路径”与“特化路径”分开写，不要混成一个通用流程。
 
-### 3. interactive 主线程才走 `buildEffectiveSystemPrompt()`
+### 3. interactive 主线程在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
 
 `utils/systemPrompt.ts` 负责 interactive 主线程的最终折叠。
+
+真正调用它的 interactive 装配点，更适合直接落在：
+
+- `screens/REPL.tsx`
 
 当前源码里可确认的 precedence 是：
 
@@ -187,19 +192,20 @@ flowchart TD
     A[getSystemPrompt default parts] --> B{session type}
 
     B --> C[interactive main thread]
-    C --> D[buildEffectiveSystemPrompt]
-    D --> E[renderedSystemPrompt]
+    C --> D[REPL.tsx]
+    D --> E[buildEffectiveSystemPrompt]
+    E --> F[renderedSystemPrompt]
 
-    B --> F[non-interactive main thread]
-    F --> G[QueryEngine direct combine]
+    B --> G[non-interactive main thread]
+    G --> H[QueryEngine direct combine]
 
-    B --> H[ordinary subagent]
-    H --> I[agentDefinition.getSystemPrompt]
-    I --> J[enhanceSystemPromptWithEnvDetails]
+    B --> I[ordinary subagent]
+    I --> J[agentDefinition.getSystemPrompt]
+    J --> K[enhanceSystemPromptWithEnvDetails]
 
-    B --> K[fork subagent]
-    K --> L[reuse renderedSystemPrompt]
-    L --> M[buildForkedMessages]
+    B --> L[fork subagent]
+    L --> M[reuse renderedSystemPrompt]
+    M --> N[buildForkedMessages]
 ```
 
 ## 为什么这个设计重要
@@ -218,11 +224,12 @@ flowchart TD
 1. `restored-src/src/constants/prompts.ts`
 2. `restored-src/src/constants/systemPromptSections.ts`
 3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/utils/queryContext.ts`
-5. `restored-src/src/QueryEngine.ts`
-6. `restored-src/src/tools/AgentTool/AgentTool.tsx`
-7. `restored-src/src/tools/AgentTool/runAgent.ts`
-8. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+4. `restored-src/src/screens/REPL.tsx`
+5. `restored-src/src/utils/queryContext.ts`
+6. `restored-src/src/QueryEngine.ts`
+7. `restored-src/src/tools/AgentTool/AgentTool.tsx`
+8. `restored-src/src/tools/AgentTool/runAgent.ts`
+9. `restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 

@@ -28,6 +28,8 @@
   - 配置、阈值、等待与读取
 - `restored-src/src/services/SessionMemory/prompts.ts`
   - `summary.md` 模板、更新 prompt、compact 截断
+- `restored-src/src/utils/permissions/filesystem.ts`
+  - `session-memory/summary.md` 的真实路径定义
 
 ### Durable memory
 
@@ -67,6 +69,7 @@
 当前公开源码里能直接确认它落在：
 
 - `getProjectDir(getCwd()) / getSessionId() / session-memory / summary.md`
+- 这条路径定义在 `utils/permissions/filesystem.ts`
 
 也就是说，它在项目会话目录里，不在 durable memory 根目录里。
 
@@ -122,6 +125,11 @@
 
 - 如果主代理本轮已经直接写过 auto memory
 - 后台 extractor 会跳过这轮，避免重复写入
+
+而且这条链还有一个很实用的收边：
+
+- 它不会把自己写成新的会话摘要
+- 它写的是 auto memory 根里的 durable files
 
 ### 4. `memdir` 定义 durable memory 的制度层
 
@@ -216,6 +224,13 @@
 - `memoryTypes.ts` 与 team prompt 文案会描述 private / team 的归属建议
 - 但真正的硬边界主要是“目标路径是否落在 auto memory 根内”
 
+如果往 team 子树写入，还会额外经过：
+
+- `validateTeamMemWritePath()`
+- `validateTeamMemKey()`
+
+这两步会做字符串 containment 和 symlink-aware containment 校验。
+
 所以文档里不要写成：
 
 - “某个 type 会自动路由到 private 或 team”
@@ -237,7 +252,9 @@ flowchart TD
     C --> G[auto memory root]
     G --> H[topic files]
     G --> I[MEMORY.md indexes]
-    H --> J[relevant-memory recall]
+    H --> J[findRelevantMemories]
+    J --> K[sideQuery selection]
+    K --> L[attachment surfacing]
 ```
 
 ## 一张图看 durable / team 结构
