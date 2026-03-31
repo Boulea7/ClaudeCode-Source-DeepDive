@@ -9,6 +9,8 @@
     "MODULES/03-persistent-memory-system/README.md",
     "MODULES/02-planning-compaction-and-assistant/README.md",
     "MODULES/05-tools-mcp-skills-and-plugins/README.md",
+    "MODULES/06-permissions-sandbox-and-trust/README.md",
+    "MODULES/07-remote-session-bridge-and-sdk/README.md",
     "MODULES/04-buddy-voice-vim-and-terminal-ui/README.md",
     "MODULES/08-prompts-config-and-other-moats/README.md",
     "PROMPTS/README.md"
@@ -22,12 +24,22 @@
     {
       "id": "02",
       "name": "planning-compaction-and-assistant",
-      "status": "confirmed"
+      "status": "confirmed",
+      "focus": [
+        "multi-path-compact-layers",
+        "plan-mode-attachments-and-plan-file-lifecycle",
+        "todo-v1-vs-task-v2-vs-runtime-task"
+      ]
     },
     {
       "id": "03",
       "name": "persistent-memory-system",
-      "status": "confirmed"
+      "status": "confirmed",
+      "focus": [
+        "sessionmemory-vs-extractmemories-vs-memdir",
+        "auto-memory-root-and-team-subtree",
+        "query-time-recall-vs-entrypoint-injection"
+      ]
     },
     {
       "id": "04",
@@ -55,7 +67,7 @@
       "status": "mixed",
       "focus": [
         "remote-session-client-layer",
-        "bridge-exposure-layer",
+        "local-bridge-control-layer",
         "server-behavior-stays-conservative"
       ]
     },

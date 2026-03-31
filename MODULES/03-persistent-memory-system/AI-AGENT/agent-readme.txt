@@ -1,9 +1,8 @@
-Module 03 is the persistent context plane.
+Module 03 explains several parallel memory mechanisms rather than one unified memory bus.
 
 Focus on:
-- CLAUDE.md loading path
-- memdir path and taxonomy
-- extractMemories background flow
-- SessionMemory as compact continuity support
-- Team memory as shared long-term context
-
+- SessionMemory as session-local summary.md
+- extractMemories as turn-end durable memory writer
+- memdir for auto-memory paths, taxonomy, scanning, and recall
+- claudemd entrypoint injection versus query-time relevant-memory surfacing
+- Team memory as the auto-memory root's team/ subtree

@@ -1,14 +1,16 @@
 {
   "module_id": "02",
   "module_name": "planning-compaction-and-assistant",
-  "summary": "Plan mode state, durable plan artifacts, and context compaction behavior.",
+  "summary": "Plan mode state, plan-file lifecycle, multi-path compact, and Todo/Task/runtime-task splits.",
   "key_paths": [
     "restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts",
     "restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
-    "restored-src/src/commands/plan/plan.tsx",
     "restored-src/src/utils/plans.ts",
+    "restored-src/src/utils/attachments.ts",
+    "restored-src/src/services/compact/autoCompact.ts",
     "restored-src/src/services/compact/compact.ts",
-    "restored-src/src/QueryEngine.ts"
+    "restored-src/src/services/compact/sessionMemoryCompact.ts",
+    "restored-src/src/utils/tasks.ts"
   ],
   "dependencies": [
     "01-agent-loop-and-teams",
@@ -17,4 +19,3 @@
   ],
   "status": "confirmed"
 }
-
