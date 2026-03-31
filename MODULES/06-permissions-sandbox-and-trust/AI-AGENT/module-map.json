@@ -1,0 +1,20 @@
+{
+  "module_id": "06",
+  "module_name": "permissions-sandbox-and-trust",
+  "summary": "Permission rules, approval UI, sandbox-related limits, and trust boundaries.",
+  "key_paths": [
+    "restored-src/src/utils/permissions/permissions.ts",
+    "restored-src/src/utils/permissions/permissionSetup.ts",
+    "restored-src/src/utils/permissions/filesystem.ts",
+    "restored-src/src/utils/permissions/pathValidation.ts",
+    "restored-src/src/components/permissions/PermissionRequest.tsx",
+    "restored-src/src/components/permissions/PermissionPrompt.tsx",
+    "restored-src/src/services/mcpServerApproval.tsx"
+  ],
+  "dependencies": [
+    "05-tools-mcp-skills-and-plugins",
+    "07-remote-session-bridge-and-sdk"
+  ],
+  "status": "confirmed"
+}
+

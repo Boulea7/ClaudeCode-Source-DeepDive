@@ -1,0 +1,21 @@
+{
+  "module_id": "01",
+  "module_name": "agent-loop-and-teams",
+  "summary": "Agent lifecycle, task runtime, and teammate-oriented coordination.",
+  "key_paths": [
+    "restored-src/src/tools/AgentTool/AgentTool.tsx",
+    "restored-src/src/tools/AgentTool/runAgent.ts",
+    "restored-src/src/tools/AgentTool/forkSubagent.ts",
+    "restored-src/src/tools/AgentTool/loadAgentsDir.ts",
+    "restored-src/src/tasks/types.ts",
+    "restored-src/src/tasks/InProcessTeammateTask",
+    "restored-src/src/coordinator/coordinatorMode.ts"
+  ],
+  "dependencies": [
+    "02-planning-compaction-and-assistant",
+    "03-persistent-memory-system",
+    "06-permissions-sandbox-and-trust"
+  ],
+  "status": "confirmed"
+}
+

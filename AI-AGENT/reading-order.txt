@@ -1,0 +1,8 @@
+1. Read README.md for project scope.
+2. Read ARCHITECTURE.md for the global map.
+3. Read MODULES/01-agent-loop-and-teams first.
+4. Read MODULES/03-persistent-memory-system next.
+5. Read MODULES/02-planning-compaction-and-assistant for runtime control.
+6. Read MODULES/05-tools-mcp-skills-and-plugins for extensibility.
+7. Read PROMPTS/* for prompt assembly only after the runtime model is clear.
+

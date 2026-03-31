@@ -1,0 +1,22 @@
+{
+  "module_id": "05",
+  "module_name": "tools-mcp-skills-and-plugins",
+  "summary": "Built-in tools, MCP runtime, resource access, skills, and plugin layering.",
+  "key_paths": [
+    "restored-src/src/services/mcp/client.ts",
+    "restored-src/src/services/mcp/config.ts",
+    "restored-src/src/services/mcp/auth.ts",
+    "restored-src/src/services/mcp/types.ts",
+    "restored-src/src/skills/loadSkillsDir.ts",
+    "restored-src/src/skills/bundledSkills.ts",
+    "restored-src/src/skills/mcpSkillBuilders.ts",
+    "restored-src/src/plugins/builtinPlugins.ts"
+  ],
+  "dependencies": [
+    "08-prompts-config-and-other-moats",
+    "06-permissions-sandbox-and-trust",
+    "07-remote-session-bridge-and-sdk"
+  ],
+  "status": "confirmed"
+}
+

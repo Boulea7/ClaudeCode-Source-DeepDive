@@ -1,0 +1,21 @@
+{
+  "module_id": "04",
+  "module_name": "buddy-voice-vim-and-terminal-ui",
+  "summary": "Terminal UI layers, companion surface, voice mode, and vim-style input.",
+  "key_paths": [
+    "restored-src/src/buddy/CompanionSprite.tsx",
+    "restored-src/src/buddy/companion.ts",
+    "restored-src/src/buddy/useBuddyNotification.tsx",
+    "restored-src/src/voice/voiceModeEnabled.ts",
+    "restored-src/src/vim/motions.ts",
+    "restored-src/src/vim/operators.ts",
+    "restored-src/src/vim/transitions.ts",
+    "restored-src/src/tools/AgentTool/UI.tsx"
+  ],
+  "dependencies": [
+    "01-agent-loop-and-teams",
+    "06-permissions-sandbox-and-trust"
+  ],
+  "status": "mixed"
+}
+

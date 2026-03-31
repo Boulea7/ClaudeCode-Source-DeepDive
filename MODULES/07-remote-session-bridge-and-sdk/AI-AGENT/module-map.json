@@ -1,0 +1,20 @@
+{
+  "module_id": "07",
+  "module_name": "remote-session-bridge-and-sdk",
+  "summary": "Remote session management, transport bridges, permission callbacks, and session runners.",
+  "key_paths": [
+    "restored-src/src/remote/RemoteSessionManager.ts",
+    "restored-src/src/remote/SessionsWebSocket.ts",
+    "restored-src/src/remote/remotePermissionBridge.ts",
+    "restored-src/src/bridge/bridgeMain.ts",
+    "restored-src/src/bridge/replBridge.ts",
+    "restored-src/src/bridge/remoteBridgeCore.ts",
+    "restored-src/src/bridge/sessionRunner.ts"
+  ],
+  "dependencies": [
+    "06-permissions-sandbox-and-trust",
+    "05-tools-mcp-skills-and-plugins"
+  ],
+  "status": "confirmed"
+}
+

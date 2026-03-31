@@ -1,0 +1,57 @@
+{
+  "repo_name": "ClaudeCode-Source-DeepDive",
+  "code_source_of_truth": "https://github.com/ChinaSiro/claude-code-sourcemap",
+  "language": "zh-CN",
+  "reading_order": [
+    "README.md",
+    "ARCHITECTURE.md",
+    "MODULES/01-agent-loop-and-teams/README.md",
+    "MODULES/03-persistent-memory-system/README.md",
+    "MODULES/02-planning-compaction-and-assistant/README.md",
+    "MODULES/05-tools-mcp-skills-and-plugins/README.md",
+    "PROMPTS/README.md"
+  ],
+  "modules": [
+    {
+      "id": "01",
+      "name": "agent-loop-and-teams",
+      "status": "confirmed"
+    },
+    {
+      "id": "02",
+      "name": "planning-compaction-and-assistant",
+      "status": "confirmed"
+    },
+    {
+      "id": "03",
+      "name": "persistent-memory-system",
+      "status": "confirmed"
+    },
+    {
+      "id": "04",
+      "name": "buddy-voice-vim-and-terminal-ui",
+      "status": "mixed"
+    },
+    {
+      "id": "05",
+      "name": "tools-mcp-skills-and-plugins",
+      "status": "confirmed"
+    },
+    {
+      "id": "06",
+      "name": "permissions-sandbox-and-trust",
+      "status": "confirmed"
+    },
+    {
+      "id": "07",
+      "name": "remote-session-bridge-and-sdk",
+      "status": "mixed"
+    },
+    {
+      "id": "08",
+      "name": "prompts-config-and-other-moats",
+      "status": "confirmed"
+    }
+  ]
+}
+

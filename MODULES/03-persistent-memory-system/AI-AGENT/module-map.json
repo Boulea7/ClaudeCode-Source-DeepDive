@@ -1,0 +1,22 @@
+{
+  "module_id": "03",
+  "module_name": "persistent-memory-system",
+  "summary": "Instruction memory, durable memory, session memory, and compact continuity.",
+  "key_paths": [
+    "restored-src/src/utils/claudemd.ts",
+    "restored-src/src/utils/config.ts",
+    "restored-src/src/memdir/memoryTypes.ts",
+    "restored-src/src/memdir/paths.ts",
+    "restored-src/src/memdir/teamMemPaths.ts",
+    "restored-src/src/services/extractMemories/extractMemories.ts",
+    "restored-src/src/services/SessionMemory/sessionMemory.ts",
+    "restored-src/src/services/compact/sessionMemoryCompact.ts"
+  ],
+  "dependencies": [
+    "02-planning-compaction-and-assistant",
+    "01-agent-loop-and-teams",
+    "08-prompts-config-and-other-moats"
+  ],
+  "status": "confirmed"
+}
+

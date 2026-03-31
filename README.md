@@ -1,0 +1,119 @@
+# Claude Code Source Deep Dive
+
+> 一个专门拆解 `Claude Code` 源码结构、运行机制和设计思路的研究仓库。  
+> 源码事实以 [`ChinaSiro/claude-code-sourcemap`](https://github.com/ChinaSiro/claude-code-sourcemap) 为唯一标准。
+
+## Warning
+
+This repository is unofficial and is reconstructed from the public npm package and source map analysis, for research purposes only. It does not represent the original internal development repository structure.
+
+本仓库为非官方整理版，基于公开 npm 发布包与 source map 分析还原，仅供研究使用。 不代表官方原始内部开发仓库结构。 一切基于L站"飘然与我同"的情报提供
+
+## 这个仓库要解决什么问题
+
+很多人知道 Claude Code 很强，但不容易快速回答下面这些问题：
+
+- 它的主循环是怎么组织的？
+- `Plan Mode` 到底只是提示词，还是运行时状态？
+- memory 为什么不只是一个 `CLAUDE.md`？
+- team / sub-agent 为什么看起来比普通 fan-out 更完整？
+- MCP、skills、plugins 这几层分别负责什么？
+- permission、sandbox、approval 是怎么串起来的？
+
+这个仓库的目标，就是把这些问题讲清楚，而且尽量讲得好读。
+
+## 阅读方式
+
+- 想先建立整体印象：看 [ARCHITECTURE.md](./ARCHITECTURE.md)
+- 想 5 分钟快速理解：看 [SIMPLE](./SIMPLE/)
+- 想按系统拆开读：看 [MODULES](./MODULES/)
+- 想给别的 Agent 直接喂结构化资料：看 [AI-AGENT](./AI-AGENT/)
+- 想看 prompt 机制：看 [PROMPTS](./PROMPTS/)
+- 想补一点发布时间和竞品背景：看 [COMPARISONS](./COMPARISONS/)
+
+## 仓库结构
+
+```text
+.
+├── README.md
+├── ARCHITECTURE.md
+├── SIMPLE/
+├── DEEP/
+├── AI-AGENT/
+├── MODULES/
+├── COMPARISONS/
+├── PROMPTS/
+├── EXAMPLES/
+└── ASSETS/
+```
+
+## 先看总图
+
+```mermaid
+flowchart TD
+    A[CLI Entry / main.tsx] --> B[System Prompt And Context]
+    B --> C[QueryEngine / Query Loop]
+    C --> D[Tools]
+    D --> E[Permissions And Sandbox]
+    C --> F[Plan / Tasks / Teams]
+    C --> G[Memory / Compact]
+    D --> H[MCP / Plugins / Skills]
+    C --> I[Terminal UI / Buddy / Voice / Vim]
+    C --> J[Remote Session / Bridge]
+```
+
+## 模块导航
+
+### 01 Agent Loop And Teams
+- 这部分解释 Claude Code 怎么管理主线程、worker、task list 和 teammate。
+- 入口：[`MODULES/01-agent-loop-and-teams`](./MODULES/01-agent-loop-and-teams/)
+
+### 02 Planning, Compaction, And Assistant
+- 这部分解释 `Plan Mode`、计划文件、上下文压缩和 assistant 运行时之间的关系。
+- 入口：[`MODULES/02-planning-compaction-and-assistant`](./MODULES/02-planning-compaction-and-assistant/)
+
+### 03 Persistent Memory System
+- 这部分是核心模块，讲 `CLAUDE.md`、AutoMem、Session Memory、Team Memory 为什么会组成一条完整的持久上下文链。
+- 入口：[`MODULES/03-persistent-memory-system`](./MODULES/03-persistent-memory-system/)
+
+### 04 Buddy, Voice, Vim, And Terminal UI
+- 这部分关注终端 UI、输入模式、voice 和 teammate 预览界面。
+- 入口：[`MODULES/04-buddy-voice-vim-and-terminal-ui`](./MODULES/04-buddy-voice-vim-and-terminal-ui/)
+
+### 05 Tools, MCP, Skills, And Plugins
+- 这部分关注 Claude Code 如何把本地工具、MCP server、skills 和 plugins 组合成一个扩展面。
+- 入口：[`MODULES/05-tools-mcp-skills-and-plugins`](./MODULES/05-tools-mcp-skills-and-plugins/)
+
+### 06 Permissions, Sandbox, And Trust
+- 这部分关注 permission rule、审批 UI、自动模式和危险命令分类。
+- 入口：[`MODULES/06-permissions-sandbox-and-trust`](./MODULES/06-permissions-sandbox-and-trust/)
+
+### 07 Remote Session, Bridge, And SDK
+- 这部分关注远程会话、IDE bridge、MCP bridge 和相关会话对象。
+- 入口：[`MODULES/07-remote-session-bridge-and-sdk`](./MODULES/07-remote-session-bridge-and-sdk/)
+
+### 08 Prompts, Config, And Other Moats
+- 这部分关注 prompt 装配、agent prompt、config 和一些不容易放进前面模块的关键设计。
+- 入口：[`MODULES/08-prompts-config-and-other-moats`](./MODULES/08-prompts-config-and-other-moats/)
+
+## 为什么很多人会研究 Claude Code
+
+这个仓库不会把重点放在“谁打赢了谁”的营销式比较上，但有几个背景值得知道：
+
+- 它不是只做补全，而是更接近一个可以自己推进任务的 `agentic coding tool`
+- 它把 `Plan Mode`、team、memory、skills、MCP、permission 这些能力放进了同一套运行时
+- 这些能力在源码里不是散碎的 feature，而是互相连接的系统
+
+这些背景放在 [COMPARISONS](./COMPARISONS/) 中做轻量补充。
+
+## 使用说明
+
+- 先看 [ARCHITECTURE.md](./ARCHITECTURE.md)
+- 再挑一个你最关心的模块进入 `SIMPLE` 或 `DEEP`
+- 如果你是 AI Agent，优先读 [`AI-AGENT/repo-map.json`](./AI-AGENT/repo-map.json) 和对应模块下的 `agent-readme.txt`
+
+## 声明
+
+- 这里的源码分析对象是公开镜像仓库 `ChinaSiro/claude-code-sourcemap`
+- 这里只做技术研究与文档整理
+- `PROMPTS/` 只解释机制，不会复制大段原始 prompt 文本
