@@ -4,9 +4,10 @@ Focus on:
 - `constants/prompts.ts` as the default section factory
 - `constants/systemPromptSections.ts` as the cache / uncached section layer
 - `utils/systemPrompt.ts` as the final precedence combiner
-- `main.tsx`, `QueryEngine.ts`, and `runAgent.ts` as the places where those prompts are actually consumed
+- `REPL.tsx`, `QueryEngine.ts`, and `runAgent.ts` as the places where those prompts are actually consumed
 
 Key distinctions to preserve:
 - interactive main thread vs non-interactive main thread
 - normal subagent vs fork subagent
 - default prompt generation vs effective prompt assembly
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` is conditional, not guaranteed on every path

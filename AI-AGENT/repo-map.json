@@ -36,7 +36,7 @@
       "focus": [
         "companion-subsystem",
         "vim-input-state-machine",
-        "voice-mode-gating-and-integration"
+        "voice-gating-plus-recording-and-stt-integration"
       ]
     },
     {
@@ -65,7 +65,7 @@
       "status": "confirmed",
       "focus": [
         "system-prompt-sections",
-        "dynamic-boundary",
+        "conditional-dynamic-boundary",
         "repl-vs-headless-vs-subagent-prompt-assembly"
       ]
     }

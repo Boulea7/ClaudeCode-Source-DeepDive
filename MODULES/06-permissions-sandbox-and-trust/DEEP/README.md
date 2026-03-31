@@ -2,12 +2,11 @@
 
 这一章要回答的核心问题是：**Claude Code 的权限系统为什么看起来像一层独立运行时。**
 
-从公开镜像来看，这套系统至少分成四层：
+从公开镜像来看，这套系统更适合拆成三层：
 
-- 规则层
-- mode setup 层
-- classifier / 自动检查层
-- 审批 UI 层
+- `utils/permissions/` 判定与上下文层
+- `useCanUseTool / interactiveHandler / REPL` 交互编排层
+- `components/permissions/*` 展示与提交编排层
 
 ## 这部分负责什么
 
@@ -67,7 +66,29 @@
 
 也就是说，这里的 permission 决策不是单一布尔值，而是一份可解释的结构化结果。
 
-### 3. classifier 是这层的一部分，不是外挂
+### 3. `PermissionRequest.tsx` 是分发入口，不是判定入口
+
+这轮重新核读后，一个很值得单独写明的边界是：
+
+- `PermissionRequest.tsx` 不负责算 allow / ask / deny
+- 它负责把已经算好的 `ToolUseConfirm` 分发到具体权限组件
+
+更完整的链路是：
+
+- `useCanUseTool` 调 `permissions.ts`
+- `interactiveHandler` 把 ask 结果放进确认队列
+- `REPL.tsx` 渲染 `<PermissionRequest />`
+- `PermissionRequest.tsx` 再按 tool 类型分发给具体组件
+
+所以它更适合写成：
+
+- 通用交互入口
+
+而不是：
+
+- 权限判定器
+
+### 4. classifier 是这层的一部分，不是外挂
 
 从 `permissions.ts`、`permissionSetup.ts`、`yoloClassifier.ts`、`bashClassifier.ts` 之间的引用关系可以确认：
 
@@ -77,7 +98,7 @@
 
 这说明 auto mode 的安全边界不是只靠规则表，而是规则加 classifier 一起工作。
 
-### 4. plan mode 会影响 permission mode
+### 5. plan mode 会影响 permission mode
 
 这一点和上一章是连起来的。
 
@@ -89,7 +110,7 @@
 
 这说明 Plan Mode 不是独立于 permissions 的，它本来就是权限状态机的一部分。
 
-### 5. 审批 UI 不是一个统一弹窗
+### 6. 审批 UI 不是一个统一弹窗
 
 `restored-src/src/components/permissions/` 的结构已经足够说明问题。
 
@@ -108,6 +129,18 @@
 
 这意味着 UI 层也知道不同工具请求需要不同展示方式，而不是一律“允许 / 拒绝”。
 
+这里还要再补一个例外：
+
+- 大部分组件偏展示层
+- 但 `ExitPlanModePermissionRequest` 属于“展示层里的厚编排组件”
+
+因为它除了渲染界面，还会直接参与：
+
+- `setAppState`
+- plan exit attachment
+- clear-context initial message
+- auto resume / fallback 选择
+
 ## 一张图看权限决策链
 
 ```mermaid
@@ -120,7 +153,10 @@ flowchart TD
     D --> G[sandbox override]
     D --> H[working directory checks]
     D --> I[allow / deny / ask result]
-    I --> J[permission UI components]
+    I --> J[useCanUseTool / interactiveHandler]
+    J --> K[REPL PermissionRequest queue]
+    K --> L[PermissionRequest.tsx]
+    L --> M[permission UI components]
 ```
 
 ## 为什么这个设计重要
@@ -132,6 +168,7 @@ flowchart TD
 - 模式切换可以直接影响权限语义
 - 不同来源的规则可以叠加
 - 自动模式下还有 classifier 兜底
+- ask 结果先经过交互编排层，再进入具体 UI
 - UI 可以针对具体工具做差异化展示
 
 所以它不像“一个安全弹窗”，更像一层独立的 trust runtime。
@@ -144,12 +181,15 @@ flowchart TD
 4. `restored-src/src/utils/permissions/filesystem.ts`
 5. `restored-src/src/utils/permissions/pathValidation.ts`
 6. `restored-src/src/utils/permissions/yoloClassifier.ts`
-7. `restored-src/src/components/permissions/PermissionRequest.tsx`
-8. `restored-src/src/components/permissions/BashPermissionRequest/`
+7. `restored-src/src/hooks/useCanUseTool.tsx`
+8. `restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
+9. `restored-src/src/components/permissions/PermissionRequest.tsx`
+10. `restored-src/src/components/permissions/BashPermissionRequest/`
 
 ## 仍待确认
 
 - 某些 classifier gate 在公开构建中的完整默认行为
 - 某些 Computer Use 相关审批组件在不同构建里的完整可达路径
+- `ExitPlanModePermissionRequest` 之外，是否还有更多权限组件承担较重的提交编排逻辑，这一页没有继续逐个展开。
 
 这些点可以继续观察，但当前已经足够说明权限系统本身是成体系的。

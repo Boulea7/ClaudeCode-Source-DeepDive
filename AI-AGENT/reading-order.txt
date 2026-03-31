@@ -5,6 +5,6 @@
 5. Read MODULES/02-planning-compaction-and-assistant for runtime control.
 6. Read MODULES/05-tools-mcp-skills-and-plugins for extensibility.
 7. Read MODULES/04-buddy-voice-vim-and-terminal-ui for companion, vim state machine, and voice integration points.
-8. Read MODULES/08-prompts-config-and-other-moats for prompt assembly, dynamic boundary, and REPL vs headless differences.
+8. Read MODULES/08-prompts-config-and-other-moats for prompt assembly, the conditional dynamic boundary, and REPL vs headless differences.
 9. Read PROMPTS/system-prompt-assembly.md and PROMPTS/system-prompt-sections.md.
-10. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear.
+10. Read PROMPTS/agent-prompts.md and PROMPTS/skills-and-command-injection.md after the runtime model is clear, especially for ordinary subagent vs fork and listing set vs execution set.
