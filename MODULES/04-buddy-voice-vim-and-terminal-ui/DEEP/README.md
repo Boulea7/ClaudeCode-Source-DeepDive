@@ -108,6 +108,8 @@
 
 - `PromptInput.tsx` 只证明 companion footer 选中后会提交 `/buddy`
 - 但这轮没有在当前可见树里复核到 `/buddy` 命令实现文件
+- `AppStateStore.ts` 的注释虽然提到 `src/buddy/observer.ts`
+- 但当前镜像里没有这个文件
 - 因此 hatch / pet / mute / rename 这类具体行为，都不该在这一页写死
 
 ### 2. `voice` 不只是 gating，但也不能写成完整语音产品栈
@@ -297,6 +299,7 @@ flowchart LR
 - `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
 - `companionPetAt` 的写入点当前没有确认到。
 - `/buddy` 命令的具体实现文件这轮没有在当前树里复核到，因此 companion 的 hatch / pet / mute 等动作边界仍不能写死。
+- `AppStateStore.ts` 里提到的 `src/buddy/observer.ts` 在当前镜像里没有复核到，因此不能把它当成已读过的实现文件。
 - `voice` 的完整产品语义仍然不能从这轮范围推出；这批文件能稳定确认的是开关、预检、按键保持、本地录音、STT 与输入框回填，不能继续外推到 TTS、播放链或 output-side 语音能力。
 - `BUDDY`、`VOICE_MODE`、`tengu_cobalt_frost` 这些 gate 在不同构建里的默认状态，静态源码不能直接推出。
 - `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。

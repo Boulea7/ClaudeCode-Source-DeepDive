@@ -271,6 +271,7 @@ flowchart LR
 - `initBuiltinPlugins()` 在当前镜像里是空实现
 - 本轮没有看到实际 `registerBuiltinPlugin(...)` 调用
 - 真正已经有实际注册内容的是 `initBundledSkills()`
+- `initBundledSkills()` 的调用时机也已经能坐实：`main.tsx` 会在 `getCommands()` 之前调用它，避免命令层过早缓存空的 bundled skills 列表
 
 所以可以写：
 
@@ -316,4 +317,4 @@ flowchart LR
 
 - `mcpSkillBuilders.ts` 明确说明 MCP skill discovery 会复用 `createSkillCommand` 和 `parseSkillFrontmatterFields`，但本轮没有继续展开 `mcpSkills.ts`，所以不能把完整 MCP skill 发现时机和缓存策略写得更细。
 - `processPromptSlashCommand()` 与 `SkillsMenu` 的内部细节，这一页不继续展开到 UI / message 级别。
-- bundled skills 与 built-in plugins 的真实启动调用点，不在本轮重点范围内；这里只确认 registry / scaffold 和装配代码存在。
+- `skills/bundled/index.ts` 里能确认 `registerDreamSkill()`、`registerHunterSkill()`、`registerLoopSkill()` 这类 gated 注册点，但具体被 `require()` 的 skill 实现文件是否都在当前镜像里完整可读，这一页不继续逐个展开。

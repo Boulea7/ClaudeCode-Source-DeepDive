@@ -57,6 +57,10 @@
   - `team/` 子树路径、键清洗、路径校验
 - `restored-src/src/memdir/teamMemPrompts.ts`
   - team memory prompt 文案
+- `restored-src/src/services/teamMemorySync/watcher.ts`
+  - startup pull、文件 watcher、push 调度
+- `restored-src/src/utils/sessionFileAccessHooks.ts`
+  - team memory 访问埋点与写后通知
 
 ## 执行流
 
@@ -242,6 +246,39 @@
 - type 和 scope 主要通过 prompt taxonomy 引导
 - 代码硬边界主要是路径约束
 
+### 9. Team memory 的同步机制至少能确认到 watcher 链
+
+这一轮可以把上一版的保守表述再收紧一点。
+
+当前源码里已经能确认：
+
+- `setup.ts` 在 `feature('TEAMMEM')` 下会启动 `startTeamMemoryWatcher()`
+- watcher 启动后会先 `pullTeamMemory(...)`
+- 再继续启动文件 watcher
+- `sessionFileAccessHooks.ts` 里，team memory 文件访问会被单独识别
+
+所以更准确的写法是：
+
+- team memory 的“会话开始时先拉一次，再继续 watch 本地改动”这条客户端同步链是能从源码坐实的
+- 但这仍然是客户端同步机制，不等于服务端侧同步策略的全部语义
+
+### 10. `/dream` 与 `autoDream` 是两条相关但不相同的线
+
+这一轮也可以把 KAIROS memory 那里的 `/dream` 线索写得更具体。
+
+当前源码里能确认：
+
+- `skills/bundled/index.ts` 会在 `feature('KAIROS') || feature('KAIROS_DREAM')` 下尝试 `registerDreamSkill()`
+- `autoDream.ts` 是后台 consolidation 链，会在时间阈值、session 数量和锁条件满足时 fork 子代理
+- `autoDream.ts` 自己明确写着：`getKairosActive()` 时直接关闭，因为 `KAIROS mode uses disk-skill dream`
+- `MemoryFileSelector.tsx` 还能看到 `Auto-dream` 状态和 `/dream to run` 的 UI 文案
+
+因此更稳妥的说法是：
+
+- `/dream` 不是只有注释线索，当前镜像里至少能确认到 skill 注册点、后台 `autoDream` 链路和 UI 提示
+- 但 `skills/bundled/index.ts` 里引用的 `dream.js` 实现文件，这一轮仍没有在当前镜像里复核到
+- 所以“手动 `/dream` 技能的完整实现”仍不能写成已完整坐实
+
 ## 一张图看两条 memory 链
 
 ```mermaid
@@ -302,7 +339,8 @@ flowchart TD
 
 ## 仍待确认
 
-- `team memories are synced at the beginning of every session` 这句话能在 prompt 文案里看到，但真实同步机制本轮没有继续展开到 `services/teamMemorySync/`，不能写成已完全证实事实。
+- team memory 的客户端同步链现在已经能确认到“startup pull + watcher + 写后通知”，但服务端侧同步策略、冲突处理和最终一致性语义，这一页仍不继续外推。
 - `manuallyExtractSessionMemory()` 的注释提到 `/summary`，但本轮没有在当前树里找到直接调用点。
-- `KAIROS` 相关 nightly distillation 只能写成代码线索，不应写成当前构建已完整启用的事实。
+- `skills/bundled/index.ts` 里能看到 `registerDreamSkill()` 的注册点，但 `dream.js` 实现文件这轮没有在当前镜像里复核到，因此手动 `/dream` 的完整实现仍不能写死。
+- `KAIROS` 相关 nightly distillation 仍只能写成代码线索，不应写成当前构建已完整启用的事实。
 - `validateTeamMemWritePath()` / `validateTeamMemKey()` 在哪些写链路里稳定生效，这一轮没有继续追到完整调用面。

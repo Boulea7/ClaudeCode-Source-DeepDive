@@ -177,6 +177,12 @@ export function getMergedTools(...) {
 - `plugin:<pluginName>:` 前缀
 - `scope: 'dynamic'`
 
+这里还可以补一个这轮新确认的边界：
+
+- `CHICAGO_MCP` 不是“所有 MCP 行为的总开关”
+- 当前更像 Computer Use / Chicago MCP 那一组保留 server name、tool override 与 wrapper 的 gated 分支
+- 所以不要把它写成 MCP 客户端主链本身
+
 ### 5. resources 与 auth pseudo-tool 都是宿主侧额外补入
 
 MCP 并不只生成远端 tools。
@@ -459,4 +465,4 @@ flowchart TD
 
 - `MCP_SKILLS` 这条桥接分支在当前镜像里能看到 call site，但未在这轮完整展开 `mcpSkills.ts`，因此不能把 resource 到 MCP skill 的完整映射时机写得太死。
 - 运行时 401 后是否会立即把 auth pseudo-tool 热替换回模型可见工具池，这轮没有直接坐实。
-- bundled skills 与 built-in plugins 的真实启动调用点不在这一轮重点范围内；这里只能确认 registry/scaffold 和装配代码存在。
+- `CHICAGO_MCP` 相关 wrapper / reserved-name / tool-override 分支已经能在 `services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里看到，但它和普通 MCP server 的服务端行为关系，这一页不继续外推。
