@@ -213,17 +213,20 @@ MCP 并不只生成远端 tools。
 3. 调这个伪工具后才执行 `performMCPOAuthFlow()`
 4. 成功后再用 `reconnectMcpServerImpl()` 拉回真实 `tools / commands / resources`
 
-这里有一个容易写大的点：
+这里最好再把 connect 阶段和 tool-call 阶段分开写：
 
-- 运行时 401 的确会把 client 状态改成 `needs-auth`
-- 但“401 之后模型立刻拿到 auth tool”这件事，这轮复核没有直接坐实
+- connect / reconnect 阶段如果命中 401，会直接落成 `client.type = 'needs-auth'`
+- 这一条路径会向模型暴露 `mcp__<server>__authenticate`
+- tool-call 阶段如果命中 401，会抛 `McpAuthError`
+- 上层当前只能确认会把 `client` 状态改成 `needs-auth`
 
-所以文档里只能写：
+也就是说，这轮能直接坐实的是：
 
 - 连接/重连枚举路径会注入 auth pseudo-tool
-- 运行时 401 会把状态切到 `needs-auth`
+- tool-call 阶段 401 会把状态切到 `needs-auth`
+- `McpAuthTool` 自己在 OAuth 成功后会通过 server 前缀替换把真实 `tools / commands / resources` 写回 `appState.mcp`
 
-不要把两者合成一个自动热替换承诺。
+但不要把这几步合并写成“所有 transport 都会自动无缝恢复”。
 
 ### 7. `skills/` 的核心不是执行，而是生产 `Command`
 
@@ -463,6 +466,6 @@ flowchart TD
 
 ## 仍待确认
 
-- `MCP_SKILLS` 这条桥接分支在当前镜像里已经能确认到 cache 失效点：`clearServerCache()`、server `onclose`、`resources/list_changed` 都会删除 `fetchMcpSkillsForClient!.cache`，但 `mcpSkills.ts` 本体仍缺失，因此 resource 到 MCP skill 的 discover 规则、缓存键和映射细节仍不能写死。
-- 运行时 401 后的 auth 恢复链现在可以写得更具体：`needs-auth` 会向模型暴露 `mcp__<server>__authenticate`，`McpAuthTool` 在 `http` / `sse` 场景下完成 OAuth 后会调用 reconnect，并通过 server 前缀替换把真实 tools / commands / resources 写回 `appState.mcp`；但这仍只是客户端状态层热更新，不应外推成所有 transport 的统一恢复语义。
+- `MCP_SKILLS` 这条桥接分支目前只能写到调用侧边界：`clearServerCache()`、server `onclose`、`resources/list_changed` 会删除 `fetchMcpSkillsForClient!.cache`，而 `prompts/list_changed` 明确不会失效这层 cache；但 `mcpSkills.ts` / `mcpSkills.js` 实现文件仍未在当前镜像里复核到，因此 resource 到 MCP skill 的 discover 规则、内部缓存键和映射细节仍不能写死。
+- tool-call 阶段 401 之后，当前源码只直接坐实到“把 client 状态改成 `needs-auth`”；是否还有别的 UI effect 会立刻把 auth pseudo-tool 补回模型可见工具池，这一轮没有继续看到独立证据，因此不能写成统一自动热替换承诺。
 - `CHICAGO_MCP` 相关 wrapper / reserved-name / tool-override 分支已经能在 `services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里看到；当前更稳妥的说法是“本地 computer-use MCP 分支”，不是普通 MCP server 的服务端实现说明。
