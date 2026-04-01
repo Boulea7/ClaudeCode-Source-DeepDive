@@ -1,84 +1,52 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # MODULES
 
-这里是仓库的主内容，也是最适合按主题系统阅读的入口。
+这里是按系统阅读全仓的主入口。
 
-如果你已经知道自己更关心哪一类问题，可以直接从对应模块进去；如果还没有方向，先读前 3 章通常最容易建立整体感觉。
+## 这页能帮你做什么
 
-## 怎么读最省力
+- 先决定从哪一组问题开始
+- 再决定看总览、简单版还是深读版
+- 最后顺着源码路径继续往下追
 
-1. `01-agent-loop-and-teams`
-2. `03-persistent-memory-system`
-3. `02-planning-compaction-and-assistant`
-4. `05-tools-mcp-skills-and-plugins`
-5. `06-permissions-sandbox-and-trust`
-6. `04-buddy-voice-vim-and-terminal-ui`
-7. `07-remote-session-bridge-and-sdk`
-8. `08-prompts-config-and-other-moats`
+## 建议阅读顺序
 
-## 按问题选模块
+1. [01-agent-loop-and-teams](./01-agent-loop-and-teams/)
+2. [03-persistent-memory-system](./03-persistent-memory-system/)
+3. [02-planning-compaction-and-assistant](./02-planning-compaction-and-assistant/)
+4. [05-tools-mcp-skills-and-plugins](./05-tools-mcp-skills-and-plugins/)
+5. [06-permissions-sandbox-and-trust](./06-permissions-sandbox-and-trust/)
+6. [04-buddy-voice-vim-and-terminal-ui](./04-buddy-voice-vim-and-terminal-ui/)
+7. [07-remote-session-bridge-and-sdk](./07-remote-session-bridge-and-sdk/)
+8. [08-prompts-config-and-other-moats](./08-prompts-config-and-other-moats/)
 
-### 想先看主循环和多 agent
+## 按问题选择模块
 
-- `01-agent-loop-and-teams`
-- `02-planning-compaction-and-assistant`
-
-### 想先看 memory / compact / 长会话
-
-- `03-persistent-memory-system`
-- `02-planning-compaction-and-assistant`
-
-### 想先看扩展面
-
-- `05-tools-mcp-skills-and-plugins`
-- `06-permissions-sandbox-and-trust`
-
-### 想先看远端与 bridge
-
-- `07-remote-session-bridge-and-sdk`
-
-### 想先看 prompt 和 feature gate
-
-- `08-prompts-config-and-other-moats`
-- `../PROMPTS/`
-- `../FEATURE-FLAGS/`
+| 你想先解决什么问题 | 建议入口 |
+| --- | --- |
+| 主循环、agent、team、tasks | [01-agent-loop-and-teams](./01-agent-loop-and-teams/) |
+| plan、compact、todo、task | [02-planning-compaction-and-assistant](./02-planning-compaction-and-assistant/) |
+| memory、SessionMemory、team memory | [03-persistent-memory-system](./03-persistent-memory-system/) |
+| companion、voice、vim、终端输入 | [04-buddy-voice-vim-and-terminal-ui](./04-buddy-voice-vim-and-terminal-ui/) |
+| tools、MCP、skills、plugins | [05-tools-mcp-skills-and-plugins](./05-tools-mcp-skills-and-plugins/) |
+| permissions、sandbox、approval | [06-permissions-sandbox-and-trust](./06-permissions-sandbox-and-trust/) |
+| remote session、bridge、SDK | [07-remote-session-bridge-and-sdk](./07-remote-session-bridge-and-sdk/) |
+| prompts、config、dynamic boundary | [08-prompts-config-and-other-moats](./08-prompts-config-and-other-moats/) |
 
 ## 每个模块里怎么继续读
 
-- 第一次看：先读每章 `README.md`
-- 想快速理解：读各章 `SIMPLE/README.md`
-- 想跟源码：读各章 `DEEP/README.md`
-- 想给 Agent 用：读各章 `AI-AGENT/agent-readme.txt`
+- `README.md`
+  - 先看模块定位与关键文件
+- `SIMPLE/README.md`
+  - 先建立心智模型
+- `DEEP/README.md`
+  - 再顺着源码追细节
+- `comparison.md`
+  - 最后看这章和常见说法的差异
 
-## 模块一览
+## 机器可读入口
 
-### `01-agent-loop-and-teams`
+给 agent 使用的结构化材料仍保留在：
 
-- 主线程、subagent、task list、fork / teammate 编排。
-
-### `02-planning-compaction-and-assistant`
-
-- Plan Mode、compact 路径、TodoWrite / Task V2 / runtime task 分层。
-
-### `03-persistent-memory-system`
-
-- `SessionMemory`、durable memory、team memory、daily-log / distilled index 边界。
-
-### `04-buddy-voice-vim-and-terminal-ui`
-
-- companion、vim 输入状态机、voice gating 与终端交互层。
-
-### `05-tools-mcp-skills-and-plugins`
-
-- tool contract、MCP 客户端链、skills 命令化、plugin 装配。
-
-### `06-permissions-sandbox-and-trust`
-
-- 权限规则、审批 UI、classifier、安全边界与 sandbox。
-
-### `07-remote-session-bridge-and-sdk`
-
-- `remote/` 现有 session attach 层、`bridge/` 本地出站桥接层、SDK 接线边界。
-
-### `08-prompts-config-and-other-moats`
-
-- system prompt sections、dynamic boundary、main-thread / subagent prompt 装配与若干 feature gate。
+- [AI-AGENT](../AI-AGENT/)

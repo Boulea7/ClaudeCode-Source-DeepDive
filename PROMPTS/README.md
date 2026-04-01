@@ -1,52 +1,42 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # PROMPTS
 
-这一部分只解释 **prompt 是怎么被组织、拼接和注入的**。
+这一组文档解释 Claude Code 的 prompt 装配与注入机制。
 
-它更适合在你已经看过 [ARCHITECTURE.md](../ARCHITECTURE.md) 或至少知道 `main.tsx -> REPL.tsx / QueryEngine.ts -> query.ts` 这条主链之后再读。
+这里重点回答四类问题：
 
-如果从 `Codex` 的阅读习惯来说，这一组文档更像“把 prompt 从黑盒拆回装配链”的地方：不靠猜测它想说什么，而是回到源码看它从哪里来、在哪一层被改写、最后怎样进入模型上下文。
+- default prompt parts 从哪里来
+- interactive 与 non-interactive 主线程怎样组装 system prompt
+- ordinary subagent 与 fork subagent 在 prompt 来源上有什么差异
+- skills、attachments、gates 怎样影响模型可见上下文
 
-不会做的事：
-
-- 不复制大段原始 system prompt
-- 不复制大段 tool prompt
-- 不复制整份 skill body 或 agent body
-
-会做的事：
-
-- 说明 prompt 装配链
-- 说明 section 的职责
-- 先说明 REPL 与 headless / SDK 的 prompt 装配入口，再展开其它 prompt 影响面
-- 给出关键源码路径
-- 必要时指出哪些 prompt 路径仍受 feature gate 控制
-
-## 建议怎么读
-
-### 第一步：先看主线程 prompt 怎么装
+## 建议阅读顺序
 
 1. [system-prompt-assembly.md](./system-prompt-assembly.md)
 2. [agent-prompts.md](./agent-prompts.md)
-
-### 第二步：再看 section 和技能注入
-
 3. [system-prompt-sections.md](./system-prompt-sections.md)
 4. [skills-and-command-injection.md](./skills-and-command-injection.md)
+5. [system-prompt-source-index.md](./system-prompt-source-index.md)
+6. [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
 
-### 第三步：最后看暴露面与风险
+## 术语说明
 
-5. [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
+- `default prompt parts`
+  - `getSystemPrompt()` 返回的一组 prompt 片段
+- `interactive main thread`
+  - `main.tsx -> REPL.tsx -> query.ts`
+- `non-interactive main thread`
+  - `main.tsx -> QueryEngine.ts -> query.ts`
+- `ordinary subagent`
+  - 使用 agent 自己的 prompt 起点
+- `fork subagent`
+  - 优先复用父线程已经渲染的 prompt 与消息前缀
+- `dynamic boundary`
+  - 条件插入的 `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
-## 这组文档分别在回答什么
+## 这组文档不做什么
 
-- [system-prompt-assembly.md](./system-prompt-assembly.md)
-  - default prompt parts、interactive 与 headless 的装配差异、fork 继承模型
-- [system-prompt-sections.md](./system-prompt-sections.md)
-  - section registry、dynamic boundary、哪些 section 会按运行时变化
-- [agent-prompts.md](./agent-prompts.md)
-  - 主线程、普通 subagent、fork subagent 三类 prompt 起点
-- [skills-and-command-injection.md](./skills-and-command-injection.md)
-  - `SKILL.md` 如何变成 `Command`、attachment 和模型可见上下文
-- [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
-  - prompt 暴露面、注入边界与高风险误写点
-
-如果你想单独看 gate / 隐藏分支，请再读 [../FEATURE-FLAGS/README.md](../FEATURE-FLAGS/README.md)。
+- 不贴大段 raw prompt
+- 不把 feature-gated 分支写成公开发布结论
+- 不把 prompt 装配说明写成唯一固定流程

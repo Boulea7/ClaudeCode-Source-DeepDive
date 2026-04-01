@@ -1,14 +1,16 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # EXAMPLES
 
-这一部分放可抄的模式，而不是完整复刻源码。
+这里放的是可以迁移到自己项目里的模式，不是对 Claude Code 的完整复刻。
 
-它更像“把研究结果迁移到自己项目里”的中转站。
+## 这一层适合放什么
 
-后续适合补的内容：
+- agent runtime 伪代码
+- memory pipeline 伪代码
+- permission flow 检查清单
+- MCP 接入检查清单
 
-- `agent-runtime-pseudocode.md`
-- `memory-pipeline-pseudocode.md`
-- `permission-flow-pseudocode.md`
-- `mcp-integration-checklist.md`
+## 当前状态
 
-目的只有一个：帮助读者把设计思路迁移到自己的产品里。
+这一层还在建设中，后续会优先补更贴近源码结构的示例。
