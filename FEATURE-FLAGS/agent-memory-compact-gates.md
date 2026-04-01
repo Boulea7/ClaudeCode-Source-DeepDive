@@ -75,6 +75,8 @@
 - 这里能确认的是：KAIROS 会改变“新 memory 写到哪里”的提示逻辑；`MEMORY.md` 仍会被当成 distilled index 读入上下文。
 - 当前还能确认另一条边界：`autoDream` 会在 `getKairosActive()` 时直接关闭，所以不能把 KAIROS daily-log 与当前可见的 `autoDream` 机制混成同一条实现链。
 - `skills/bundled/index.ts` 里还能看到：`feature('KAIROS') || feature('KAIROS_DREAM')` 时会尝试 `registerDreamSkill()`，说明 `/dream` 至少有 skill 注册点，不只是注释里的名字。
+- `consolidationPrompt.ts` 文件头还明确写着它是从 `dream.ts` 拆出来的；`consolidationLock.ts` 里也保留了面向 manual `/dream` 的 `recordConsolidation()` 注释接口。
+- `components/memory/MemoryFileSelector.tsx` 还能看到 `/dream to run` 的 UI 提示，因此 manual `/dream` 至少已有注册点和界面线索，不只是注释名词。
 - 不能把它直接写成 nightly distillation 已经在当前公开构建里稳定上线，更不能写成完整长期记忆产品已发布。
 
 ### `tengu_coral_fern` / `tengu_moth_copse`
@@ -110,9 +112,10 @@
 ## 不能确认的发布状态
 
 - 这份镜像能证明相关分支存在，但不能证明这些 gate 在当前正式版全都打开。
-- `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 更像 prompt / 注释里的运行线索，不能确认完整公开范围。
+- `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 这组关系在当前镜像里已经不只是名字线索，还能看到 skill 注册点、shared consolidation prompt、manual stamp helper 注释和 UI 提示，但 `dream.js` / `dream.ts` 实现文件仍缺失，因此完整执行细节仍不能写死。
 - `autoDream` 是 opportunistic consolidation 机制，不是固定 nightly job；同时它在 `getKairosActive()` 时会关闭，所以不能拿它当作 KAIROS daily-log 的直接后台实现。
-- `/dream` 这条线现在能确认到 skill 注册点、后台 autoDream 链路、UI 文案，以及两个更强的代码线索：`consolidationPrompt.ts` 文件头明确写着它是从 `dream.ts` 抽出来的，`consolidationLock.ts` 还保留了面向 manual `/dream` 的 `recordConsolidation()` 注释接口；但 `dream.js` / `dream.ts` 实现文件这轮仍未在当前镜像里复核到，因此手动 `/dream` 的完整执行细节仍不能写死。
+- `/dream` 这条线目前还不能确认两件事：一是 `dream.js` / `dream.ts` 的真实 skill body 是否在当前镜像别处存在，二是 `recordConsolidation()` 是否真有调用点；因此仍不能把 manual `/dream` 写成已完整坐实的执行链。
+- `flushOnDateChange()` 当前只确认是 KAIROS 跨天时触发的 transcript flush 调用点，不能把它写成 `/dream` 已坐实的一部分。
 - TeamMem 的本地同步链已经能确认到 `startup pull + watcher + 写后通知`，但 push 仍有 debounce / suppression / shutdown best-effort 语义，不能写成强一致同步承诺。
 - Task V2 的默认启用逻辑在交互式会话里可见，但不能仅凭静态代码推出所有入口的一致产品策略。
 

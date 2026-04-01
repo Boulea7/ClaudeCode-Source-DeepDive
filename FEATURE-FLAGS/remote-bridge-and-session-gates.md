@@ -98,10 +98,11 @@
 ## 不能确认的发布状态
 
 - `RemoteSessionManager` 能证明已有 session 的客户端层存在，但不能证明所有用户都可创建对应远端 session。
-- `bridge/` 里 env-based / env-less / standalone worker 三条路径都存在，但默认启用条件仍受 build / entitlement / runtime gate 控制。
+- `bridge/` 里 env-based / env-less / standalone worker 三条路径都存在，但默认启用条件仍受 build / entitlement / runtime gate 控制；当前更准确的运行时分层是 `initReplBridge()` 负责 REPL 包装，`initBridgeCore()` 负责 env-based core，`initEnvLessBridgeCore()` 负责 env-less core，`runBridgeHeadless()` 负责 daemon worker 入口。
 - v1 `HybridTransport` 与 v2 `SSETransport + CCRClient` 能确认是客户端 transport 形态，不能写成服务端架构承诺。
 - `entrypoints/agentSdkTypes.ts` 里虽然有 remote-control 类型与注释，但当前镜像中的 `connectRemoteControl()` 仍是 stub，不能把它写成已证实可用的公开 SDK 方法。
 - `query.enableRemoteControl` 这轮也继续缩小了边界：在当前镜像范围里，只能在 `entrypoints/agentSdkTypes.ts` 与 `bridge/initReplBridge.ts` 的注释里看到这个名字，没有看到同名字段、方法或 runtime 开关实现，因此不能把它写成已完整坐实的公开 SDK API。
+- `remote/` 当前更适合写成“已有 CCR session 的 attach / subscribe / message-adapter 层”；这轮没有看到把它直接接成 `connectRemoteControl()` SDK glue 的证据。
 
 ## 容易误写的点
 

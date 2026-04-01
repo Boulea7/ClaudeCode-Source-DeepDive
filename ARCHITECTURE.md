@@ -308,8 +308,9 @@ sequenceDiagram
 以下点在当前公开镜像里有代码线索，但不建议在文档里写成过重结论：
 
 - `KAIROS` 的完整产品语义
-- `Buddy` 是否等价于某个公开命名功能
-- `voice/` 在公开镜像中的完整能力范围
-- coordinator mode 在不同构建形态下的完整暴露方式
+- `Buddy` 是否等价于某个公开命名功能；当前只能确认 companion sprite、reaction callback 与部分 watcher 线索
+- `voice/` 在公开镜像中的完整能力范围；当前更稳妥的边界仍是本地录音、STT、输入框回填，以及少量未继续坐实的 output-side 线索
+- coordinator mode 在不同构建形态下的完整暴露方式；当前能确认它会改写 prompt、主线程工具池和 worker 集合，但不能直接外推 rollout 状态
+- remote-control SDK 的公开形态；当前镜像能确认 bridge runtime core 已存在，但 `connectRemoteControl()` 仍是 stub，`query.enableRemoteControl` 仍只在注释中出现
 
 这些内容后续只在“有代码线索，但不能过度下结论”的边界内写。

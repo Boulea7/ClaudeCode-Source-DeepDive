@@ -246,5 +246,5 @@ flowchart TD
 
 - 不同 feature gate 下 fork / proactive / coordinator / built-in agent 的真实启用状态。
 - 某个具体运行时里 agent prompt 的最终字节内容。
-- fork fallback 重算时与父线程 prompt 的实际偏差范围。源码只说明“可能 diverge”，不能写成绝对一致。
+- fork fallback 重算时与父线程 prompt 的实际偏差范围。源码当前只能确认 fork 优先复用父 `renderedSystemPrompt` 与父消息前缀，并在 fallback 重算场景下提示“可能 diverge”，不能写成绝对一致。
 - `COORDINATOR_MODE`、`PROACTIVE`、`KAIROS` 这些名字当前只能稳定证明它们会改写主线程 / agent prompt 路径，不能直接当成公开产品档位。

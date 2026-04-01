@@ -258,6 +258,6 @@ flowchart TD
 ## 仍待确认
 
 - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 在 API 层如何切分 prompt block，这一页没有继续展开到 API 实现。
-- `isForkSubagentEnabled()` 的完整判定条件，这一页只确认它与 non-interactive / fork gate 有关，不继续展开所有开关。
+- `isForkSubagentEnabled()` 的完整判定条件，这一页当前只继续收紧到“它至少受 `FORK_SUBAGENT`、coordinator mode 和 non-interactive 路径共同影响”，不继续展开所有 gate 组合。
 - `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 名字带 `fork`，但不能直接等同于 fork 子代理主装配链。
 - proactive / KAIROS / coordinator 在不同构建里的默认 rollout 状态，这一页也不外推；当前只能确认它们会改写 prompt 路径，不证明公开构建一定启用。
