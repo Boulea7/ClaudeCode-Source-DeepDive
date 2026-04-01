@@ -4,6 +4,8 @@
 
 **主线程、main-thread agent、普通 subagent、fork subagent 的 prompt 是怎么来的。**
 
+如果你读 prompt 文档时最容易混淆“哪条链是主线程、哪条链是子线程”，这一页就是专门把这几条路径拆开的。
+
 不做的事：
 
 - 不复制大段原始 agent prompt

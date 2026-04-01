@@ -10,6 +10,8 @@
 - `autoCompactIfNeeded()` 会先尝试 `trySessionMemoryCompaction()`，失败后才回退到 `compactConversation()`
 - `TodoWrite`、Task V2、runtime task 不是同一套对象
 
+如果你只是模糊地觉得“它会计划、会压缩、还会记住任务”，这一章就是把这几件事拆开的地方。
+
 ## 这部分负责什么
 
 这一层主要负责四件事：
@@ -68,6 +70,8 @@
 ## 执行流
 
 ### 1. `microCompact` 与 `apiMicrocompact` 不是同一层
+
+这一步最好先记住一个简单判断：名字很像，不代表职责相同。
 
 `microCompact.ts` 做的是本地消息层的轻量削减。
 

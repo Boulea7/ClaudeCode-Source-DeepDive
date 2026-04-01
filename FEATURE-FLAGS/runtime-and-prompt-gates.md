@@ -8,6 +8,8 @@
 - runtime 入口分支
 - 交互层 / companion / voice 这类会直接影响模型可见能力或终端交互的 gate
 
+如果你第一次读 feature gate，可以先把这页当成“主链上最常见的条件分支地图”。
+
 ## 关键文件
 
 - `restored-src/src/main.tsx`

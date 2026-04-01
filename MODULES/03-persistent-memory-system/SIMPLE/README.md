@@ -2,6 +2,8 @@
 
 先把 Claude Code 的 memory 想成几条并行链：
 
+如果你最关心“它为什么像是能持续记住东西”，先记住这页的分层通常就够了。
+
 ```mermaid
 flowchart TD
     A[claudemd entrypoints] --> B[user context injection]
@@ -22,3 +24,8 @@ flowchart TD
 ## 为什么重要
 
 这不是“多放几个笔记文件”，而是几条在不同阶段参与运行时的上下文机制。
+
+## 下一步去哪里
+
+- 想先建立整体感觉：回到 `README.md`
+- 想真正搞清边界：读 `DEEP/README.md`

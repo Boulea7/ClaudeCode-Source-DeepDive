@@ -10,6 +10,8 @@
 
 这些能力在源码里确实有分支，但大多数都不能直接外推为“已公开默认能力”。
 
+如果你已经把 `remote/` 和 `bridge/` 的职责分开，这一页读起来会更像“这些分层还会被哪些 gate 改写”。
+
 ## 关键文件
 
 - `restored-src/src/remote/RemoteSessionManager.ts`

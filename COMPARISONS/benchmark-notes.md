@@ -2,6 +2,8 @@
 
 公开 benchmark 可以提供参考，但不能代替源码分析。
 
+如果你是为了理解 Claude Code 为什么会被频繁比较，这页够用；如果你是为了理解它到底怎么实现，还是应该回到源码章节。
+
 ## 可以得出的结论
 
 - 模型 benchmark 能说明模型能力趋势
@@ -21,4 +23,3 @@
 - OpenAI `Introducing upgrades to Codex`
 - CursorBench 说明
 - Aider benchmarks
-

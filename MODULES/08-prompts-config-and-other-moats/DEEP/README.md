@@ -12,6 +12,8 @@
 - non-interactive 主线程的另一条装配链
 - 普通 subagent 与 fork subagent 的不同继承模型
 
+如果你已经看过前面几章，这一章读起来会更像“补全说明书”，把 prompt、config 和 feature gate 的连接方式一次讲清。
+
 ## 这部分负责什么
 
 这一层主要负责三件事：
@@ -36,6 +38,8 @@
 ## 执行流
 
 ### 1. `getSystemPrompt()` 先生成 default prompt parts
+
+这一步最值得先记住的，是“default prompt”和“最终 prompt”不是同一个东西。
 
 `constants/prompts.ts` 里的 `getSystemPrompt()` 返回的不是单段最终文本，而是：
 

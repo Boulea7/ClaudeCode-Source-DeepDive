@@ -1,5 +1,7 @@
 # Claude Code 与竞品的时间线
 
+这页只保留最能帮助阅读源码的时间点，不追求做一份完整行业年表。
+
 ## Claude Code
 
 - `2025-02-24`：Anthropic 在 `Claude 3.7 Sonnet and Claude Code` 中首次发布 `Claude Code`，定位是 `limited research preview`

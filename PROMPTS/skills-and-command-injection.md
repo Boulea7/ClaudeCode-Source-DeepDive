@@ -12,6 +12,8 @@
 - `utils/processUserInput/processSlashCommand.tsx`
 - `utils/attachments.ts`
 
+如果你第一次看这页，建议先盯住两个动作：先“变成 Command”，再“进入模型可见上下文”。
+
 ## 这部分负责什么
 
 这一页主要讲五件事：
@@ -100,6 +102,8 @@
 也就是说，“读 / 写 / 编辑文件后 skill 集合发生变化”这件事，主要是文件工具侧触发的，不是 SkillTool 自己扫描出来的。
 
 ### 4. `commands.ts` 决定命令层与 listing
+
+这一节会有点密，但核心其实很简单：执行集合、展示集合、索引集合，不是同一个集合。
 
 `commands.ts` 会把多路技能合并进统一命令系统：
 

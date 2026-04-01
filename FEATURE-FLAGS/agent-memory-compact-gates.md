@@ -8,6 +8,8 @@
 - SessionMemory、memdir、team memory 相关 gate
 - compact、Task V2、Plan Mode 周边的 gate 与 env 开关
 
+这一页最适合在你已经看过 `MODULES/01`、`MODULES/02`、`MODULES/03` 之后再回来读，因为它讲的是“这些链路还会被哪些条件改写”。
+
 ## 关键文件
 
 - `restored-src/src/tools/AgentTool/AgentTool.tsx`

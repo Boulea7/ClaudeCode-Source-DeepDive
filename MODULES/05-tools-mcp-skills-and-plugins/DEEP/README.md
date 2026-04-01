@@ -9,6 +9,8 @@
 - `skills/ + commands.ts` 负责把技能资产变成 `Command(type: 'prompt')`
 - `plugins/ + utils/plugins/` 负责插件边界、路径和运行时装配
 
+如果你总觉得这一章术语很多，可以先只记一句：Claude Code 把“能执行什么”“能读取什么”“怎样把能力暴露给模型”拆成了不同层。
+
 ## 这部分负责什么
 
 这一层主要负责四件事：
@@ -252,6 +254,8 @@ MCP 并不只生成远端 tools。
 - 目录式 `SKILL.md`
 
 ### 8. `SkillTool` 是执行壳，不是 discovery 源
+
+这一节最容易帮你减少混乱，因为很多人第一次看都会把“发现 skill”和“执行 skill”混在一起。
 
 `SkillTool.ts` 做的事情是：
 

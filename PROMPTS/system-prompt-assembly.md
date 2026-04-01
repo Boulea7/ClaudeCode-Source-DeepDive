@@ -6,6 +6,8 @@
 
 这里不贴大段 raw prompt，只讲装配机制、优先级和边界。
 
+如果你只想抓主线，可以把这一页理解成：Claude Code 会先得到一份 default prompt，再按交互模式、agent 类型和 feature gate 把它继续改写。
+
 ## 这部分负责什么
 
 这一页主要说明四件事：
@@ -120,6 +122,8 @@
 所以“agent prompt 是否替换默认 prompt”本身也是运行时相关的。
 
 ### 4. non-interactive 主线程不是同一条 precedence
+
+这一节最容易帮你避免一个常见误解：交互式和非交互式不是“同一份 prompt 换个入口”。
 
 这一点很容易被写错。
 

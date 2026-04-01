@@ -8,6 +8,8 @@
 - `useCanUseTool / interactiveHandler / REPL` 交互编排层
 - `components/permissions/*` 展示与提交编排层
 
+换句话说，这一章讲的不是“要不要弹窗”，而是 Claude Code 如何把信任边界做成一条完整的运行链。
+
 ## 这部分负责什么
 
 这部分主要负责：
@@ -38,6 +40,8 @@
 ## 执行流
 
 ### 1. `permissionSetup.ts` 先准备 permission context
+
+读这一节时，先把它理解成“准备环境”，而不是“直接做最终裁决”。
 
 `restored-src/src/utils/permissions/permissionSetup.ts` 不是简单读配置。
 
