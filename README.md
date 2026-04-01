@@ -1,61 +1,71 @@
-# Claude Code Source Deep Dive
+<div align="center">
+  <h1>Claude Code Source Deep Dive</h1>
+  <p><strong>一个专门拆解 <code>Claude Code</code> 源码结构、运行机制和实现边界的研究仓库。</strong></p>
+  <p>尽量把每个重要判断挂回源码路径，把“已经确认”和“仍待确认”分开写清楚。</p>
+  <p>
+    <a href="./ARCHITECTURE.md">整体总览</a> ·
+    <a href="./MODULES/README.md">模块导航</a> ·
+    <a href="./PROMPTS/README.md">Prompt 机制</a> ·
+    <a href="./FEATURE-FLAGS/README.md">Feature Flags</a> ·
+    <a href="./DISCLAIMER.md">免责声明</a>
+  </p>
+  <p>
+    <img alt="Source-backed" src="https://img.shields.io/badge/source--backed-ChinaSiro%2Fclaude--code--sourcemap-2ea44f">
+    <img alt="Docs focus" src="https://img.shields.io/badge/focus-architecture%20%7C%20runtime%20%7C%20prompts-0969da">
+    <img alt="Unofficial" src="https://img.shields.io/badge/status-unofficial%20research-f78166">
+  </p>
+</div>
 
-> 一个专门拆解 `Claude Code` 源码结构、运行机制和设计思路的研究仓库。  
-> 源码事实以 [`ChinaSiro/claude-code-sourcemap`](https://github.com/ChinaSiro/claude-code-sourcemap) 为唯一标准。
+> 本仓库是一个面向开发者的非官方研究仓库。<br>
+> 源码相关事实以 [`ChinaSiro/claude-code-sourcemap`](https://github.com/ChinaSiro/claude-code-sourcemap) 与本地镜像 `_upstream/claude-code-sourcemap/` 为边界，不代表 Anthropic 官方内部仓库结构或发布口径。完整边界说明见 [DISCLAIMER.md](./DISCLAIMER.md)。
 
-## Warning
+---
 
-This repository is unofficial and is intended for source-level research only. It does not represent Anthropic's internal repository layout or release position.
+## 如果你第一次来
 
-本仓库为非官方研究仓库，只做源码结构与运行机制整理，不代表官方内部仓库结构或发布口径。完整边界说明见 [DISCLAIMER.md](./DISCLAIMER.md)。
-
-## 快速入口
-
-| 入口 | 适合什么场景 | 去哪里 |
+| 你现在最想看什么 | 建议入口 | 会得到什么 |
 | --- | --- | --- |
-| 整体总览 | 想先知道这套运行时的大图 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| 模块化阅读 | 想按系统逐块拆开看 | [MODULES/README.md](./MODULES/README.md) |
-| Prompt 机制 | 想看 prompt / agent / skill 注入 | [PROMPTS/README.md](./PROMPTS/README.md) |
-| Hidden Branch | 想看 feature gate / 隐藏能力 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) |
-| AI 辅助入口 | 想给别的 Agent 直接喂结构化资料 | [AI-AGENT](./AI-AGENT/) |
+| 先建立整体地图 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 主执行链、核心分层、模块之间怎么接起来 |
+| 按系统逐块细读 | [MODULES/README.md](./MODULES/README.md) | 8 个模块的 `SIMPLE` / `DEEP` 阅读入口 |
+| 只看 prompt / agent / skill 注入 | [PROMPTS/README.md](./PROMPTS/README.md) | prompt section、agent prompt、skill 注入路径 |
+| 只看被 gate 的隐藏分支 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | `feature(...)`、GrowthBook、env flag 的专题整理 |
+| 想让 AI 先读结构化资料 | [AI-AGENT](./AI-AGENT/) | repo map、reading order、模块摘要 |
 
-## 这个仓库要解决什么问题
+## 这个仓库在解决什么问题
 
-很多人知道 Claude Code 很强，但不容易快速回答下面这些问题：
+很多人知道 Claude Code 很强，但不容易快速回答下面这些更具体的问题：
 
-- 它的主循环是怎么组织的？
-- `Plan Mode` 到底只是提示词，还是运行时状态？
+- 它的主循环到底是怎么组织的？
+- `Plan Mode` 是提示词行为，还是运行时状态切换？
 - memory 为什么不只是一个 `CLAUDE.md`？
 - team / sub-agent 为什么看起来比普通 fan-out 更完整？
-- MCP、skills、plugins 这几层分别负责什么？
+- MCP、skills、plugins 到底各管哪一层？
 - permission、sandbox、approval 是怎么串起来的？
 
-这个仓库的目标，就是把这些问题讲清楚，而且尽量讲得好读。
-
-更具体一点说，这个仓库想做的是：
-
-- 用更像文档站的方式整理源码阅读结果
-- 把结论尽量挂回具体源码路径
-- 把“已确认事实”和“仍待确认”明确分开
-- 保持重心在源码架构、运行逻辑、实现细节，而不是营销式比较
+这个仓库想做的，就是把这些问题拆开讲清楚，而且尽量讲得好读、可复核、方便继续追源码。
 
 ## 你会在这里看到什么
 
-- 主执行链：`main.tsx -> REPL.tsx / QueryEngine.ts -> query.ts`
-- 工具体系：built-in tools、MCP、skills、plugins 的组合方式
-- 长会话能力：memory、compact、Task / Todo / Plan Mode 的边界
-- Prompt 装配：主线程、普通 subagent、fork subagent 的差异
-- 受 gate 控制的隐藏分支：`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`CHICAGO_MCP` 等
+| 主题 | 你会看到的内容 |
+| --- | --- |
+| 主执行链 | `main.tsx -> REPL.tsx / QueryEngine.ts -> query.ts` 的连接方式 |
+| 工具体系 | built-in tools、MCP、skills、plugins 的组合与边界 |
+| 长会话能力 | memory、compact、Task / Todo / Plan Mode 的分层关系 |
+| Prompt 装配 | 主线程、普通 subagent、fork subagent 的装配差异 |
+| Hidden Branch | `KAIROS`、`PROACTIVE`、`voice`、`bridge`、`CHICAGO_MCP` 等 gated path |
 
 ## 阅读方式
 
-- 想先建立整体印象：看 [ARCHITECTURE.md](./ARCHITECTURE.md)
-- 想 5 分钟快速理解：看 [SIMPLE](./SIMPLE/)
-- 想按系统拆开读：看 [MODULES](./MODULES/)
-- 想给别的 Agent 直接喂结构化资料：看 [AI-AGENT](./AI-AGENT/)
-- 想看 prompt 机制：看 [PROMPTS](./PROMPTS/)
-- 想看被 gate / 隐藏 / 未必正式发布的能力：看 [FEATURE-FLAGS](./FEATURE-FLAGS/)
-- 想补一点发布时间和竞品背景：看 [COMPARISONS](./COMPARISONS/)
+| 场景 | 去哪里 |
+| --- | --- |
+| 想 5 分钟快速理解 | [SIMPLE](./SIMPLE/) |
+| 想按系统拆开读 | [MODULES](./MODULES/) |
+| 想直接看 prompt 机制 | [PROMPTS](./PROMPTS/) |
+| 想看隐藏能力与 feature gate | [FEATURE-FLAGS](./FEATURE-FLAGS/) |
+| 想补一点发布时间和轻量比较背景 | [COMPARISONS](./COMPARISONS/) |
+| 想给别的 Agent 直接喂结构化资料 | [AI-AGENT](./AI-AGENT/) |
+
+---
 
 ## 推荐阅读路线
 
@@ -79,6 +89,8 @@ This repository is unofficial and is intended for source-level research only. It
 | [PROMPTS/agent-prompts.md](./PROMPTS/agent-prompts.md) | agent prompt 继承与 fork 差异 |
 | [PROMPTS/skills-and-command-injection.md](./PROMPTS/skills-and-command-injection.md) | skill 从 `SKILL.md` 进入命令层与模型上下文的路径 |
 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | 按主题整理 `feature(...)`、GrowthBook、env flag 与隐藏分支 |
+
+---
 
 ## 仓库结构
 
@@ -126,6 +138,8 @@ flowchart TD
 | 07 Remote Session, Bridge, And SDK | 远端 session 客户端、REPL / standalone bridge、SDK 接线边界 | [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/) |
 | 08 Prompts, Config, And Other Moats | prompt section、dynamic boundary、主线程 / subagent prompt 装配 | [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/) |
 
+---
+
 ## 为什么很多人会研究 Claude Code
 
 这个仓库不会把重点放在“谁打赢了谁”的营销式比较上，但有几个背景值得知道：
@@ -134,7 +148,7 @@ flowchart TD
 - 它把 `Plan Mode`、team、memory、skills、MCP、permission 这些能力放进了同一套运行时
 - 这些能力在源码里也会彼此连接，而不是完全独立的 feature
 
-这些背景放在 [COMPARISONS](./COMPARISONS/) 中做轻量补充。
+这些背景放在 [COMPARISONS](./COMPARISONS/) 中做轻量补充；这里的主线仍然是源码结构和运行机制。
 
 ## 使用说明
 
@@ -142,6 +156,8 @@ flowchart TD
 - 再挑一个你最关心的模块进入 `SIMPLE` 或 `DEEP`
 - 如果你是 AI Agent，优先读 [`AI-AGENT/repo-map.json`](./AI-AGENT/repo-map.json) 和对应模块下的 `agent-readme.txt`
 - 如果你准备引用这里的结论，先看 [DISCLAIMER.md](./DISCLAIMER.md)
+
+---
 
 ## 声明
 
