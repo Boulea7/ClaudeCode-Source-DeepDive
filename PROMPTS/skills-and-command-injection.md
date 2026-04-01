@@ -315,6 +315,6 @@ flowchart LR
 
 ## 仍待确认
 
-- `mcpSkillBuilders.ts` 明确说明 MCP skill discovery 会复用 `createSkillCommand` 和 `parseSkillFrontmatterFields`，但本轮没有继续展开 `mcpSkills.ts`，所以不能把完整 MCP skill 发现时机和缓存策略写得更细。
+- `mcpSkillBuilders.ts` 明确说明 MCP skill discovery 会复用 `createSkillCommand` 和 `parseSkillFrontmatterFields`；这轮还补确认了 `fetchMcpSkillsForClient!.cache` 会在 clear / reconnect / `resources/list_changed` 时失效，但 `mcpSkills.ts` 本体仍缺失，所以完整的 MCP skill 发现时机、discover 规则和缓存键仍不能写得更细。
 - `processPromptSlashCommand()` 与 `SkillsMenu` 的内部细节，这一页不继续展开到 UI / message 级别。
 - `skills/bundled/index.ts` 里能确认 `registerDreamSkill()`、`registerHunterSkill()`、`registerLoopSkill()` 这类 gated 注册点，但具体被 `require()` 的 skill 实现文件是否都在当前镜像里完整可读，这一页不继续逐个展开。

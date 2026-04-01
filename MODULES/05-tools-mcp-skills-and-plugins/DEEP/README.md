@@ -463,6 +463,6 @@ flowchart TD
 
 ## 仍待确认
 
-- `MCP_SKILLS` 这条桥接分支在当前镜像里能看到 call site，但未在这轮完整展开 `mcpSkills.ts`，因此不能把 resource 到 MCP skill 的完整映射时机写得太死。
-- 运行时 401 后是否会立即把 auth pseudo-tool 热替换回模型可见工具池，这轮没有直接坐实。
+- `MCP_SKILLS` 这条桥接分支在当前镜像里已经能确认到 cache 失效点：`clearServerCache()`、server `onclose`、`resources/list_changed` 都会删除 `fetchMcpSkillsForClient!.cache`，但 `mcpSkills.ts` 本体仍缺失，因此 resource 到 MCP skill 的 discover 规则、缓存键和映射细节仍不能写死。
+- 运行时 401 后的 auth 恢复链现在可以写得更具体：`needs-auth` 会向模型暴露 `mcp__<server>__authenticate`，`McpAuthTool` 在 `http` / `sse` 场景下完成 OAuth 后会调用 reconnect，并通过 server 前缀替换把真实 tools / commands / resources 写回 `appState.mcp`；但这仍只是客户端状态层热更新，不应外推成所有 transport 的统一恢复语义。
 - `CHICAGO_MCP` 相关 wrapper / reserved-name / tool-override 分支已经能在 `services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里看到；当前更稳妥的说法是“本地 computer-use MCP 分支”，不是普通 MCP server 的服务端实现说明。

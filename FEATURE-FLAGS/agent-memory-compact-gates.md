@@ -112,7 +112,7 @@
 - 这份镜像能证明相关分支存在，但不能证明这些 gate 在当前正式版全都打开。
 - `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 更像 prompt / 注释里的运行线索，不能确认完整公开范围。
 - `autoDream` 是 opportunistic consolidation 机制，不是固定 nightly job；同时它在 `getKairosActive()` 时会关闭，所以不能拿它当作 KAIROS daily-log 的直接后台实现。
-- `/dream` 这条线现在能确认到 skill 注册点、后台 autoDream 链路和 UI 文案，但 `dream.js` 实现文件这轮仍未在当前镜像里复核到，因此手动 `/dream` 的完整执行细节仍不能写死。
+- `/dream` 这条线现在能确认到 skill 注册点、后台 autoDream 链路、UI 文案，以及两个更强的代码线索：`consolidationPrompt.ts` 文件头明确写着它是从 `dream.ts` 抽出来的，`consolidationLock.ts` 还保留了面向 manual `/dream` 的 `recordConsolidation()` 注释接口；但 `dream.js` / `dream.ts` 实现文件这轮仍未在当前镜像里复核到，因此手动 `/dream` 的完整执行细节仍不能写死。
 - TeamMem 的本地同步链已经能确认到 `startup pull + watcher + 写后通知`，但 push 仍有 debounce / suppression / shutdown best-effort 语义，不能写成强一致同步承诺。
 - Task V2 的默认启用逻辑在交互式会话里可见，但不能仅凭静态代码推出所有入口的一致产品策略。
 

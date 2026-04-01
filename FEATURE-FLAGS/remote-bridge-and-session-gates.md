@@ -101,7 +101,7 @@
 - `bridge/` 里 env-based / env-less / standalone worker 三条路径都存在，但默认启用条件仍受 build / entitlement / runtime gate 控制。
 - v1 `HybridTransport` 与 v2 `SSETransport + CCRClient` 能确认是客户端 transport 形态，不能写成服务端架构承诺。
 - `entrypoints/agentSdkTypes.ts` 里虽然有 remote-control 类型与注释，但当前镜像中的 `connectRemoteControl()` 仍是 stub，不能把它写成已证实可用的公开 SDK 方法。
-- `query.enableRemoteControl` 在当前镜像里主要出现在 `entrypoints/agentSdkTypes.ts` 的注释对照项里，不能写成已完整坐实的公开 SDK API。
+- `query.enableRemoteControl` 这轮也继续缩小了边界：在当前镜像范围里，只能在 `entrypoints/agentSdkTypes.ts` 与 `bridge/initReplBridge.ts` 的注释里看到这个名字，没有看到同名字段、方法或 runtime 开关实现，因此不能把它写成已完整坐实的公开 SDK API。
 
 ## 容易误写的点
 
