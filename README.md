@@ -5,9 +5,9 @@
 
 ## Warning
 
-This repository is unofficial and is reconstructed from the public npm package and source map analysis, for research purposes only. It does not represent the original internal development repository structure.
+This repository is unofficial and is intended for source-level research only. It does not represent Anthropic's internal repository layout or release position.
 
-本仓库为非官方整理版，基于公开 npm 发布包与 source map 分析还原，仅供研究使用。 不代表官方原始内部开发仓库结构。 一切基于L站"飘然与我同"的情报提供
+本仓库为非官方研究仓库，只做源码结构与运行机制整理，不代表官方内部仓库结构或发布口径。完整边界说明见 [DISCLAIMER.md](./DISCLAIMER.md)。
 
 ## 这个仓库要解决什么问题
 
@@ -32,6 +32,28 @@ This repository is unofficial and is reconstructed from the public npm package a
 - 想看被 gate / 隐藏 / 未必正式发布的能力：看 [FEATURE-FLAGS](./FEATURE-FLAGS/)
 - 想补一点发布时间和竞品背景：看 [COMPARISONS](./COMPARISONS/)
 
+## 推荐阅读路线
+
+### 路线 A：先建立整体地图
+
+1. [ARCHITECTURE.md](./ARCHITECTURE.md)
+2. [MODULES/README.md](./MODULES/README.md)
+3. 任选一个你最关心的模块进入 `SIMPLE/` 或 `DEEP/`
+
+### 路线 B：想追主执行链
+
+1. [ARCHITECTURE.md](./ARCHITECTURE.md)
+2. [MODULES/01-agent-loop-and-teams](./MODULES/01-agent-loop-and-teams/)
+3. [MODULES/02-planning-compaction-and-assistant](./MODULES/02-planning-compaction-and-assistant/)
+4. [MODULES/03-persistent-memory-system](./MODULES/03-persistent-memory-system/)
+5. [MODULES/05-tools-mcp-skills-and-plugins](./MODULES/05-tools-mcp-skills-and-plugins/)
+
+### 路线 C：想追 prompt 与隐藏分支
+
+1. [PROMPTS/README.md](./PROMPTS/README.md)
+2. [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
+3. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
+
 最近已重点补厚的入口：
 
 - [MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md](./MODULES/05-tools-mcp-skills-and-plugins/DEEP/README.md)：tool contract、MCP 动态实例化、skills / plugins 边界
@@ -50,6 +72,7 @@ This repository is unofficial and is reconstructed from the public npm package a
 ```text
 .
 ├── README.md
+├── DISCLAIMER.md
 ├── ARCHITECTURE.md
 ├── SIMPLE/
 ├── DEEP/
@@ -126,9 +149,11 @@ flowchart TD
 - 先看 [ARCHITECTURE.md](./ARCHITECTURE.md)
 - 再挑一个你最关心的模块进入 `SIMPLE` 或 `DEEP`
 - 如果你是 AI Agent，优先读 [`AI-AGENT/repo-map.json`](./AI-AGENT/repo-map.json) 和对应模块下的 `agent-readme.txt`
+- 如果你准备引用这里的结论，先看 [DISCLAIMER.md](./DISCLAIMER.md)
 
 ## 声明
 
 - 这里的源码分析对象是公开镜像仓库 `ChinaSiro/claude-code-sourcemap`
 - 这里只做技术研究与文档整理
 - `PROMPTS/` 只解释机制，不会复制大段原始 prompt 文本
+- feature gate / hidden branch 只按源码证据写，不等于公开发布状态

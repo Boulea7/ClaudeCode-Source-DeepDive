@@ -35,6 +35,23 @@ flowchart LR
     K --> F
 ```
 
+## 如何使用这一页
+
+这一页更像本仓库的 `00-overview`。
+
+推荐用法是：
+
+1. 先读这里，建立主执行链的总图。
+2. 再去 [MODULES/README.md](./MODULES/README.md) 挑对应模块细读。
+3. 如果你更关心 prompt、技能注入或 hidden branch，再继续读 [PROMPTS/README.md](./PROMPTS/README.md) 和 [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)。
+
+如果你只想抓主链，优先盯住：
+
+- `main.tsx`
+- `REPL.tsx`
+- `QueryEngine.ts`
+- `query.ts`
+
 ## Prompt 与技能如何挂到主链上
 
 ```mermaid
@@ -302,6 +319,15 @@ sequenceDiagram
 11. `MODULES/04-buddy-voice-vim-and-terminal-ui`
 12. `MODULES/08-prompts-config-and-other-moats`
 13. `PROMPTS/`
+
+如果你想按主题走，而不是按文件走，可以直接对应到下面几组：
+
+- 主循环与 agent runtime：`MODULES/01` + `MODULES/02`
+- memory 与 compact：`MODULES/03` + `MODULES/02`
+- tools / MCP / skills / plugins：`MODULES/05`
+- permissions：`MODULES/06`
+- remote / bridge / SDK：`MODULES/07`
+- prompts / hidden branch：`MODULES/08` + `PROMPTS/` + `FEATURE-FLAGS/`
 
 ## 仍待确认
 
