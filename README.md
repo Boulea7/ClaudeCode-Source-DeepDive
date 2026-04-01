@@ -3,9 +3,6 @@
 > 一个专门拆解 `Claude Code` 源码结构、运行机制和设计思路的研究仓库。  
 > 源码事实以 [`ChinaSiro/claude-code-sourcemap`](https://github.com/ChinaSiro/claude-code-sourcemap) 为唯一标准。
 
-> 如果说有的参考仓库更像“Claude 为 Claude 写分析”，
-> 这里更接近：**Codex 为 Claude 写分析**。
-
 ## Warning
 
 This repository is unofficial and is intended for source-level research only. It does not represent Anthropic's internal repository layout or release position.
