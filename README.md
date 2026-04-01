@@ -3,6 +3,9 @@
 > 一个专门拆解 `Claude Code` 源码结构、运行机制和设计思路的研究仓库。  
 > 源码事实以 [`ChinaSiro/claude-code-sourcemap`](https://github.com/ChinaSiro/claude-code-sourcemap) 为唯一标准。
 
+> 如果说有的参考仓库更像“Claude 为 Claude 写分析”，
+> 这里更接近：**Codex 为 Claude 写分析**。
+
 ## Warning
 
 This repository is unofficial and is intended for source-level research only. It does not represent Anthropic's internal repository layout or release position.
@@ -21,6 +24,13 @@ This repository is unofficial and is intended for source-level research only. It
 - permission、sandbox、approval 是怎么串起来的？
 
 这个仓库的目标，就是把这些问题讲清楚，而且尽量讲得好读。
+
+更具体一点说，这个仓库想做的是：
+
+- 用更像文档站的方式整理源码阅读结果
+- 把结论尽量挂回具体源码路径
+- 把“已确认事实”和“仍待确认”明确分开
+- 保持重心在源码架构、运行逻辑、实现细节，而不是营销式比较
 
 ## 阅读方式
 
