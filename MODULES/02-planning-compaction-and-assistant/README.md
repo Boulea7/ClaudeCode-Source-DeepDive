@@ -1,8 +1,10 @@
 # 02 Planning, Compaction, And Assistant
 
-这一章解释 Claude Code 如何把 Plan Mode、plan 文件、多路径 compact，以及 Todo / Task / runtime task 变成一组并行运行时机制。
+这一章解释 Claude Code 如何把 `Plan Mode`、plan 文件、多路径 compact，以及 Todo / Task / runtime task 接到同一条长会话链上。
 
-## 这一章回答什么问题
+如果你经常好奇“为什么它会记住计划、还能在长会话里继续工作”，这一章会比较对口。
+
+## 读完这一章，你会更清楚什么
 
 - `Plan Mode` 到底是什么？
 - 计划文件为什么能跨会话存在？
@@ -20,7 +22,7 @@
 - `restored-src/src/services/compact/sessionMemoryCompact.ts`
 - `restored-src/src/utils/tasks.ts`
 
-## 阅读入口
+## 从哪里开始读
 
 - 快速版：[`SIMPLE/README.md`](./SIMPLE/README.md)
 - 深度版：[`DEEP/README.md`](./DEEP/README.md)

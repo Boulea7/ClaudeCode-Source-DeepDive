@@ -4,6 +4,8 @@
 
 **把源码里被 gate、被隐藏、未必正式发布的能力单独摘出来。**
 
+这一部分会保留一点技术密度，但写法仍然尽量克制：只说源码里能确认的分支，不把名字写成产品公告。
+
 这里不做的事：
 
 - 不把 gate 名字直接写成产品公告
@@ -17,13 +19,13 @@
 - 区分“源码能确认的行为”和“不能确认的上线状态”
 - 提醒哪些名字容易被误写成完整产品能力
 
-## 阅读顺序
+## 建议阅读顺序
 
 1. [runtime-and-prompt-gates.md](./runtime-and-prompt-gates.md)
 2. [agent-memory-compact-gates.md](./agent-memory-compact-gates.md)
 3. [remote-bridge-and-session-gates.md](./remote-bridge-and-session-gates.md)
 
-## 先记住的边界
+## 先记住三条边界
 
 - `feature(...)` 更接近编译期 tree-shaking 边界，不等于“当前二进制一定开启”。
 - `getFeatureValue_CACHED_MAY_BE_STALE(...)` / `getDynamicConfig_*` 说明有运行时 gate，不等于“该能力已经公开发布”。

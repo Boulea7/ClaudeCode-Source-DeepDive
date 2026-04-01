@@ -2,6 +2,8 @@
 
 这一页先回答一个更具体的问题：**Claude Code 的差异，不在某一个功能点，而在一条完整的运行链。**
 
+如果从 `Codex` 的视角看，这也是最值得先抓住的地方：不是先去记单个 feature，而是先看这套运行时怎样把 prompt、tools、memory、permissions、tasks、remote 能力接成一个持续工作的系统。
+
 如果只看表面，会觉得它像“能调工具的 CLI”。  
 但从 `ChinaSiro/claude-code-sourcemap` 的公开镜像来看，真正重要的是这些部分已经被接成一个持续运行的系统：
 
@@ -51,6 +53,8 @@ flowchart LR
 - `REPL.tsx`
 - `QueryEngine.ts`
 - `query.ts`
+
+如果你不想一上来就被术语淹没，可以把这一页当成“先看总图，再挑模块”的入口，而不是一次性吃完整套细节。
 
 ## Prompt 与技能如何挂到主链上
 

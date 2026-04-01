@@ -21,6 +21,24 @@
 
 ---
 
+## Codex 眼中的 Claude Code
+
+这份仓库可以看成是 **Codex 写给开发者的 Claude Code 源码分析**。
+
+如果从 `Codex` 的角度看 `Claude Code`，最显眼的并不是某一个单点功能，而是它把很多原本容易分散的能力接成了一条持续运行的链：
+
+- 一边是 prompt、tools、permissions、memory、tasks 这些运行时部件
+- 另一边是 MCP、skills、plugins、remote/bridge 这些扩展面
+- 中间再用 `query.ts`、compact、attachment、resume 把长会话维持起来
+
+所以这份仓库的写法会有一个很明确的偏好：
+
+- 少一点“它很强”的空话
+- 多一点“这条链是怎么接起来的”
+- 尽量把复杂机制写成开发者能顺着读下去的文档
+
+---
+
 ## 如果你第一次来
 
 | 你现在最想看什么 | 建议入口 | 会得到什么 |

@@ -1,8 +1,10 @@
 # 07 Remote Session, Bridge, And SDK
 
-这一章解释 Claude Code 如何把“远端 session 客户端”和“本地 bridge/control layer”分开建模。
+这一章解释 Claude Code 如何把“远端 session 客户端”和“本地 bridge 控制层”分开建模。
 
-## 这一章回答什么问题
+如果你看到 `remote/` 和 `bridge/` 总觉得容易混，这一章就是专门帮你把边界理顺的。
+
+## 读完这一章，你会更清楚什么
 
 - `remote/` 目录里到底有什么？
 - `bridge/` 为什么不是本地服务端？
@@ -20,7 +22,7 @@
 - `restored-src/src/bridge/replBridge.ts`
 - `restored-src/src/bridge/remoteBridgeCore.ts`
 
-## 阅读入口
+## 从哪里开始读
 
 - 快速版：[`SIMPLE/README.md`](./SIMPLE/README.md)
 - 深度版：[`DEEP/README.md`](./DEEP/README.md)

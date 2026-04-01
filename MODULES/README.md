@@ -2,7 +2,9 @@
 
 这里是仓库的主内容，也是最适合按主题系统阅读的入口。
 
-## 推荐顺序
+如果你已经知道自己更关心哪一类问题，可以直接从对应模块进去；如果还没有方向，先读前 3 章通常最容易建立整体感觉。
+
+## 怎么读最省力
 
 1. `01-agent-loop-and-teams`
 2. `03-persistent-memory-system`
@@ -13,7 +15,7 @@
 7. `07-remote-session-bridge-and-sdk`
 8. `08-prompts-config-and-other-moats`
 
-## 按问题选择章节
+## 按问题选模块
 
 ### 想先看主循环和多 agent
 
@@ -40,14 +42,14 @@
 - `../PROMPTS/`
 - `../FEATURE-FLAGS/`
 
-## 阅读建议
+## 每个模块里怎么继续读
 
 - 第一次看：先读每章 `README.md`
 - 想快速理解：读各章 `SIMPLE/README.md`
 - 想跟源码：读各章 `DEEP/README.md`
 - 想给 Agent 用：读各章 `AI-AGENT/agent-readme.txt`
 
-## 章节定位
+## 模块一览
 
 ### `01-agent-loop-and-teams`
 

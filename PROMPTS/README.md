@@ -4,6 +4,8 @@
 
 它更适合在你已经看过 [ARCHITECTURE.md](../ARCHITECTURE.md) 或至少知道 `main.tsx -> REPL.tsx / QueryEngine.ts -> query.ts` 这条主链之后再读。
 
+如果从 `Codex` 的阅读习惯来说，这一组文档更像“把 prompt 从黑盒拆回装配链”的地方：不靠猜测它想说什么，而是回到源码看它从哪里来、在哪一层被改写、最后怎样进入模型上下文。
+
 不会做的事：
 
 - 不复制大段原始 system prompt
@@ -18,7 +20,7 @@
 - 给出关键源码路径
 - 必要时指出哪些 prompt 路径仍受 feature gate 控制
 
-## 建议阅读路线
+## 建议怎么读
 
 ### 第一步：先看主线程 prompt 怎么装
 
@@ -34,7 +36,7 @@
 
 5. [exposure-surfaces-and-risks.md](./exposure-surfaces-and-risks.md)
 
-## 这一组文档分别回答什么
+## 这组文档分别在回答什么
 
 - [system-prompt-assembly.md](./system-prompt-assembly.md)
   - default prompt parts、interactive 与 headless 的装配差异、fork 继承模型
