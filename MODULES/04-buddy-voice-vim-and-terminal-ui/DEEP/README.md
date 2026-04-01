@@ -20,38 +20,38 @@
 
 ### Companion 子系统
 
-- `restored-src/src/buddy/companion.ts`
-- `restored-src/src/buddy/types.ts`
-- `restored-src/src/buddy/sprites.ts`
-- `restored-src/src/buddy/CompanionSprite.tsx`
-- `restored-src/src/buddy/useBuddyNotification.tsx`
-- `restored-src/src/buddy/prompt.ts`
-- `restored-src/src/components/PromptInput/PromptInput.tsx`
-- `restored-src/src/screens/REPL.tsx`
-- `restored-src/src/state/AppStateStore.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/companion.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/types.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/sprites.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/useBuddyNotification.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/prompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/PromptInput/PromptInput.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/state/AppStateStore.ts`
 
 ### Vim 输入内核
 
-- `restored-src/src/vim/types.ts`
-- `restored-src/src/vim/motions.ts`
-- `restored-src/src/vim/textObjects.ts`
-- `restored-src/src/vim/operators.ts`
-- `restored-src/src/vim/transitions.ts`
-- `restored-src/src/hooks/useVimInput.ts`
-- `restored-src/src/components/VimTextInput.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/types.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/motions.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/textObjects.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/operators.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/transitions.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVimInput.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/VimTextInput.tsx`
 
 ### Voice 相关链路
 
-- `restored-src/src/voice/voiceModeEnabled.ts`
-- `restored-src/src/hooks/useVoiceEnabled.ts`
-- `restored-src/src/hooks/useVoiceIntegration.tsx`
-- `restored-src/src/hooks/useVoice.ts`
-- `restored-src/src/context/voice.tsx`
-- `restored-src/src/commands/voice/index.ts`
-- `restored-src/src/commands/voice/voice.ts`
-- `restored-src/src/services/voice.ts`
-- `restored-src/src/services/voiceStreamSTT.ts`
-- `restored-src/src/tools/ConfigTool/ConfigTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceEnabled.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceIntegration.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoice.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/context/voice.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/index.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/voice.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/voice.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/ConfigTool/ConfigTool.ts`
 
 ## 执行流
 
@@ -282,28 +282,28 @@ flowchart LR
 
 几个最值得记住的点：
 
-- `buddy` 不是一张静态贴图，而是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
+- `buddy` 是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
 - `voice` 在当前范围里已经不只是 gating，还能看到开关、预检、输入集成、录音和 STT 接点
-- `vim` 不是零散快捷键，而是一套清楚拆层的 modal 输入引擎
+- `vim` 是一套清楚拆层的 modal 输入引擎
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/buddy/companion.ts`
-2. `restored-src/src/buddy/CompanionSprite.tsx`
-3. `restored-src/src/buddy/prompt.ts`
-4. `restored-src/src/buddy/useBuddyNotification.tsx`
-5. `restored-src/src/voice/voiceModeEnabled.ts`
-6. `restored-src/src/commands/voice/voice.ts`
-7. `restored-src/src/hooks/useVoiceEnabled.ts`
-8. `restored-src/src/hooks/useVoiceIntegration.tsx`
-9. `restored-src/src/services/voice.ts`
-10. `restored-src/src/services/voiceStreamSTT.ts`
-11. `restored-src/src/vim/types.ts`
-12. `restored-src/src/vim/transitions.ts`
-13. `restored-src/src/vim/motions.ts`
-14. `restored-src/src/vim/textObjects.ts`
-15. `restored-src/src/vim/operators.ts`
-16. `restored-src/src/hooks/useVimInput.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/buddy/companion.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
+3. `_upstream/claude-code-sourcemap/restored-src/src/buddy/prompt.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/buddy/useBuddyNotification.tsx`
+5. `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/voice.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceEnabled.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceIntegration.tsx`
+9. `_upstream/claude-code-sourcemap/restored-src/src/services/voice.ts`
+10. `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
+11. `_upstream/claude-code-sourcemap/restored-src/src/vim/types.ts`
+12. `_upstream/claude-code-sourcemap/restored-src/src/vim/transitions.ts`
+13. `_upstream/claude-code-sourcemap/restored-src/src/vim/motions.ts`
+14. `_upstream/claude-code-sourcemap/restored-src/src/vim/textObjects.ts`
+15. `_upstream/claude-code-sourcemap/restored-src/src/vim/operators.ts`
+16. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVimInput.ts`
 
 ## 仍待确认
 

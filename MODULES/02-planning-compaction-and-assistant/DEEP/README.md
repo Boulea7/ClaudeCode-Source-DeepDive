@@ -1,12 +1,12 @@
 # 深度拆解：Planning, Compaction, And Assistant
 
-这一章的重点不是“Claude Code 会不会写计划”，而是：
+这一章的重点是：
 
 **Plan Mode、compact、todo / task 到底是怎么作为运行时机制接起来的。**
 
 从这轮重新核读的源码里，可以直接确认几件事：
 
-- compact 不是单一路径，而是本地消息层、API context-management 层和真正替换历史的 compact 路径并存
+- compact 包含本地消息层、API context-management 层和真正替换历史的 compact 路径
 - `autoCompactIfNeeded()` 会先尝试 `trySessionMemoryCompaction()`，失败后才回退到 `compactConversation()`
 - `TodoWrite`、Task V2、runtime task 不是同一套对象
 
@@ -25,46 +25,46 @@
 
 ### Compact 主链
 
-- `restored-src/src/services/compact/microCompact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/microCompact.ts`
   - 本地消息层的轻量削减
-- `restored-src/src/services/compact/apiMicrocompact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/apiMicrocompact.ts`
   - API 请求层的原生 cache edits / context-management
-- `restored-src/src/services/compact/sessionMemoryCompact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/sessionMemoryCompact.ts`
   - 满足条件时优先尝试的 session-memory compact
-- `restored-src/src/services/compact/compact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/compact.ts`
   - full compact / partial compact
-- `restored-src/src/services/compact/autoCompact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/autoCompact.ts`
   - 自动 compact 调度与优先级
-- `restored-src/src/services/compact/postCompactCleanup.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/postCompactCleanup.ts`
   - compact 后状态清理
 
 ### Plan Mode
 
-- `restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
   - 进入 Plan Mode
-- `restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
   - 退出 Plan Mode
-- `restored-src/src/utils/plans.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/plans.ts`
   - plan 文件路径、恢复、remote snapshot
-- `restored-src/src/utils/attachments.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
   - `plan_mode / plan_mode_reentry / plan_mode_exit`
-- `restored-src/src/bootstrap/state.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bootstrap/state.ts`
   - attachment 标志与模式切换辅助
 
 ### Todo / Task / Runtime task
 
-- `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
   - v1 todo
-- `restored-src/src/utils/tasks.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/tasks.ts`
   - Task V2 的磁盘模型
-- `restored-src/src/tools/TaskCreateTool/`
-- `restored-src/src/tools/TaskGetTool/`
-- `restored-src/src/tools/TaskListTool/`
-- `restored-src/src/tools/TaskUpdateTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskCreateTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskGetTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskListTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskUpdateTool/`
   - Task V2
-- `restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
   - runtime task 输出读取器
-- `restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
   - runtime task 停止器
 
 ## 执行流
@@ -331,19 +331,19 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
-2. `restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
-3. `restored-src/src/utils/plans.ts`
-4. `restored-src/src/utils/attachments.ts`
-5. `restored-src/src/services/compact/microCompact.ts`
-6. `restored-src/src/services/compact/apiMicrocompact.ts`
-7. `restored-src/src/services/compact/sessionMemoryCompact.ts`
-8. `restored-src/src/services/compact/compact.ts`
-9. `restored-src/src/services/compact/autoCompact.ts`
-10. `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
-11. `restored-src/src/utils/tasks.ts`
-12. `restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
-13. `restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/tools/EnterPlanModeTool/EnterPlanModeTool.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/utils/plans.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/services/compact/microCompact.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/services/compact/apiMicrocompact.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/services/compact/sessionMemoryCompact.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/services/compact/compact.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/services/compact/autoCompact.ts`
+10. `_upstream/claude-code-sourcemap/restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
+11. `_upstream/claude-code-sourcemap/restored-src/src/utils/tasks.ts`
+12. `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskOutputTool/TaskOutputTool.tsx`
+13. `_upstream/claude-code-sourcemap/restored-src/src/tools/TaskStopTool/TaskStopTool.ts`
 
 ## 仍待确认
 

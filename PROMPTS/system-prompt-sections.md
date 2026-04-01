@@ -6,7 +6,7 @@
 
 **Claude Code 怎么把动态 prompt 段注册、缓存、失效，再重新求值。**
 
-可以先把它理解成：不是为了排版好看，而是为了缓存、动态更新和按运行时组合。
+可以先把它理解成：它服务于缓存、动态更新和按运行时组合。
 
 ## 这部分负责什么
 
@@ -19,8 +19,8 @@
 
 ## 关键文件
 
-- `restored-src/src/constants/systemPromptSections.ts`
-- `restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
 
 ## 执行流
 
@@ -32,7 +32,7 @@
 - `DANGEROUS_uncachedSystemPromptSection(name, compute, reason)`
 - `resolveSystemPromptSections(sections)`
 
-这说明 dynamic prompt 不是 scattered string builder，而是有注册表语义的一等结构。
+这说明 dynamic prompt 具备带注册表语义的一等结构。
 
 ### 2. `cacheBreak` 决定 section 的缓存语义
 
@@ -121,7 +121,7 @@ uncached section：
 
 ### 6. static boundary / dynamic boundary 不是审美问题
 
-`SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 的作用不是“看起来更整齐”，而是把：
+`SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 的作用，是把：
 
 - 跨组织可缓存的静态内容
 - 用户 / 会话 / 运行时相关的动态内容
@@ -203,10 +203,10 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/constants/systemPromptSections.ts`
-2. `restored-src/src/constants/prompts.ts`
-3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/utils/queryContext.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
 
 ## 仍待确认
 

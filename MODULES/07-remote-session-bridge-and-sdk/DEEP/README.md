@@ -24,26 +24,26 @@
 
 ### 远端会话客户端层
 
-- `restored-src/src/remote/RemoteSessionManager.ts`
-- `restored-src/src/remote/SessionsWebSocket.ts`
-- `restored-src/src/remote/sdkMessageAdapter.ts`
-- `restored-src/src/remote/remotePermissionBridge.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/remote/RemoteSessionManager.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/remote/SessionsWebSocket.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/remote/sdkMessageAdapter.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/remote/remotePermissionBridge.ts`
 
 ### 本地 bridge 暴露层
 
-- `restored-src/src/bridge/initReplBridge.ts`
-- `restored-src/src/bridge/replBridge.ts`
-- `restored-src/src/bridge/remoteBridgeCore.ts`
-- `restored-src/src/bridge/bridgeMain.ts`
-- `restored-src/src/bridge/bridgeMessaging.ts`
-- `restored-src/src/bridge/replBridgeTransport.ts`
-- `restored-src/src/bridge/sessionRunner.ts`
-- `restored-src/src/bridge/bridgeApi.ts`
-- `restored-src/src/bridge/codeSessionApi.ts`
-- `restored-src/src/bridge/workSecret.ts`
-- `restored-src/src/bridge/sessionIdCompat.ts`
-- `restored-src/src/cli/print.ts`
-- `restored-src/src/entrypoints/agentSdkTypes.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/initReplBridge.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/replBridge.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/remoteBridgeCore.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/bridgeMain.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/bridgeMessaging.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/replBridgeTransport.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/sessionRunner.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/bridgeApi.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/codeSessionApi.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/workSecret.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/bridge/sessionIdCompat.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/cli/print.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/entrypoints/agentSdkTypes.ts`
 
 ## 执行流
 
@@ -100,7 +100,7 @@
 
 ### 3. `bridge/` 是本地 Remote Control 桥接层
 
-这里可以先记一句简单版：`bridge/` 不是本地服务端，而是本地这一侧的桥。
+这里可以先记一句简单版：`bridge/` 更适合写成本地这一侧的桥接层。
 
 `bridge/` 当前更准确的描述是：
 
@@ -223,7 +223,7 @@
 - 拉起本地 `claude --print --sdk-url --session-id ...` 子进程
 - 通过 stdin / stdout 做桥接
 
-这也说明 `bridge/` 的职责不只是“转一下消息”，而是会管理真正的本地 worker 进程。
+这也说明 `bridge/` 的职责不只停在消息转发，它还会管理真正的本地 worker 进程。
 
 ## 一张图看 `remote/` 与 `bridge/` 的分层
 
@@ -265,15 +265,15 @@ flowchart LR
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/remote/RemoteSessionManager.ts`
-2. `restored-src/src/remote/SessionsWebSocket.ts`
-3. `restored-src/src/remote/sdkMessageAdapter.ts`
-4. `restored-src/src/bridge/initReplBridge.ts`
-5. `restored-src/src/bridge/replBridge.ts`
-6. `restored-src/src/bridge/remoteBridgeCore.ts`
-7. `restored-src/src/bridge/replBridgeTransport.ts`
-8. `restored-src/src/bridge/sessionRunner.ts`
-9. `restored-src/src/bridge/bridgeMain.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/remote/RemoteSessionManager.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/remote/SessionsWebSocket.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/remote/sdkMessageAdapter.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/bridge/initReplBridge.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/bridge/replBridge.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/bridge/remoteBridgeCore.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/bridge/replBridgeTransport.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/bridge/sessionRunner.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/bridge/bridgeMain.ts`
 
 ## 仍待确认
 

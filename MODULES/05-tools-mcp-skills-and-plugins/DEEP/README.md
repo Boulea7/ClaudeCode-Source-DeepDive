@@ -2,7 +2,7 @@
 
 这一章最容易写乱，因为 `tools`、`MCP`、`skills`、`plugins` 都在扩展 Claude Code 的能力。
 
-但从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这四层并不是一锅粥，而是清楚分开的：
+从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这四层可以清楚分开：
 
 - `Tool.ts / tools.ts` 负责工具协议与工具池
 - `services/mcp/` 负责外部 server 接入、实例化和连接后刷新
@@ -24,64 +24,64 @@
 
 ### 工具协议与工具池
 
-- `restored-src/src/Tool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/Tool.ts`
   - `ToolPermissionContext`、`ToolUseContext`、`Tool`、`findToolByName()`
-- `restored-src/src/tools.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools.ts`
   - `getAllBaseTools()`、`getTools()`、`assembleToolPool()`、`getMergedTools()`
 
 ### MCP 客户端链路
 
-- `restored-src/src/services/mcp/client.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/client.ts`
   - transport 建连、`tools/list` / `prompts/list` / `resources/list`、动态实例化、重连
-- `restored-src/src/services/mcp/auth.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/auth.ts`
   - OAuth / XAA provider、token 存取、step-up scope 检测
-- `restored-src/src/services/mcp/useManageMCPConnections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/useManageMCPConnections.ts`
   - `AppState.mcp` 写入、按 server 前缀替换旧产物、`list_changed`
-- `restored-src/src/services/mcp/headersHelper.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/headersHelper.ts`
   - 动态 header helper 与 workspace trust 检查
-- `restored-src/src/tools/MCPTool/MCPTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/MCPTool/MCPTool.ts`
   - MCP tool 模板
-- `restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
   - `mcp__<server>__authenticate` 伪工具
-- `restored-src/src/tools/ListMcpResourcesTool/`
-- `restored-src/src/tools/ReadMcpResourceTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/ListMcpResourcesTool/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/ReadMcpResourceTool/`
   - 资源辅助工具
 
 ### Skills 与命令层
 
-- `restored-src/src/skills/loadSkillsDir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/loadSkillsDir.ts`
   - 磁盘技能发现、frontmatter 解析、`createSkillCommand()`
-- `restored-src/src/skills/bundledSkills.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/bundledSkills.ts`
   - bundled skills 注册表
-- `restored-src/src/skills/bundled/index.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/bundled/index.ts`
   - bundled skill 初始化入口
-- `restored-src/src/skills/mcpSkillBuilders.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/mcpSkillBuilders.ts`
   - MCP skill builder 复用桥接
-- `restored-src/src/commands.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/commands.ts`
   - 总命令装配与 `getSkillToolCommands()` / `getSlashCommandToolSkills()` / `getMcpSkillCommands()`
-- `restored-src/src/tools/SkillTool/SkillTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/SkillTool.ts`
   - 技能执行壳
 
 ### Plugins 与 runtime plugin root
 
-- `restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
   - `initBuiltinPlugins()` 与 `initBundledSkills()` 的启动接线
-- `restored-src/src/plugins/builtinPlugins.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/plugins/builtinPlugins.ts`
   - built-in plugin registry 定义
-- `restored-src/src/plugins/bundled/index.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/plugins/bundled/index.ts`
   - built-in plugin scaffold
-- `restored-src/src/utils/plugins/pluginLoader.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/pluginLoader.ts`
   - plugin manifest、路径、组件装配
-- `restored-src/src/utils/plugins/loadPluginCommands.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/loadPluginCommands.ts`
   - plugin commands / plugin skills 加载
-- `restored-src/src/utils/plugins/mcpPluginIntegration.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/mcpPluginIntegration.ts`
   - plugin MCP server 注入
 
 ## 执行流
 
 ### 1. `Tool.ts` 先定义统一协议
 
-`Tool.ts` 不是某一个具体工具，而是整个工具系统的协议层。
+`Tool.ts` 是整个工具系统的协议层。
 
 这里直接定义了：
 
@@ -91,7 +91,7 @@
 - `Tools`
 - `findToolByName()`
 
-这意味着“工具”在 Claude Code 里不是一个随手塞进去的函数，而是带运行时上下文、权限语义和渲染语义的一等对象。
+这意味着“工具”在 Claude Code 里是带运行时上下文、权限语义和渲染语义的一等对象。
 
 ### 2. `tools.ts` 里有 4 种不同语义的集合
 
@@ -230,7 +230,7 @@ MCP 并不只生成远端 tools。
 
 但不要把这几步合并写成“所有 transport 都会自动无缝恢复”。
 
-### 7. `skills/` 的核心不是执行，而是生产 `Command`
+### 7. `skills/` 的核心职责是生产 `Command`
 
 `skills/loadSkillsDir.ts` 的中心职责，是把技能资产变成：
 
@@ -429,7 +429,7 @@ flowchart TD
 
 ## 为什么这个设计重要
 
-这一层真正重要的地方，不是“能不能扩展”，而是把扩展拆成了不同粒度：
+这一层真正重要的地方，在于它把扩展拆成了不同粒度：
 
 - 工具协议层
 - 工具池层
@@ -453,20 +453,20 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/Tool.ts`
-2. `restored-src/src/tools.ts`
-3. `restored-src/src/services/mcp/client.ts`
-4. `restored-src/src/services/mcp/auth.ts`
-5. `restored-src/src/services/mcp/useManageMCPConnections.ts`
-6. `restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
-7. `restored-src/src/tools/ListMcpResourcesTool/`
-8. `restored-src/src/tools/ReadMcpResourceTool/`
-9. `restored-src/src/skills/loadSkillsDir.ts`
-10. `restored-src/src/commands.ts`
-11. `restored-src/src/tools/SkillTool/SkillTool.ts`
-12. `restored-src/src/utils/plugins/loadPluginCommands.ts`
-13. `restored-src/src/utils/plugins/pluginLoader.ts`
-14. `restored-src/src/plugins/builtinPlugins.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/Tool.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/tools.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/client.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/auth.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/services/mcp/useManageMCPConnections.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/tools/McpAuthTool/McpAuthTool.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/tools/ListMcpResourcesTool/`
+8. `_upstream/claude-code-sourcemap/restored-src/src/tools/ReadMcpResourceTool/`
+9. `_upstream/claude-code-sourcemap/restored-src/src/skills/loadSkillsDir.ts`
+10. `_upstream/claude-code-sourcemap/restored-src/src/commands.ts`
+11. `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/SkillTool.ts`
+12. `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/loadPluginCommands.ts`
+13. `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/pluginLoader.ts`
+14. `_upstream/claude-code-sourcemap/restored-src/src/plugins/builtinPlugins.ts`
 
 ## 仍待确认
 

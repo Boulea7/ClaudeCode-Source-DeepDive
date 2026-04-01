@@ -26,21 +26,21 @@
 
 ## 关键文件
 
-- `restored-src/src/skills/loadSkillsDir.ts`
-- `restored-src/src/skills/bundledSkills.ts`
-- `restored-src/src/skills/mcpSkillBuilders.ts`
-- `restored-src/src/commands.ts`
-- `restored-src/src/tools/SkillTool/SkillTool.ts`
-- `restored-src/src/tools/SkillTool/prompt.ts`
-- `restored-src/src/utils/processUserInput/processSlashCommand.tsx`
-- `restored-src/src/utils/attachments.ts`
-- `restored-src/src/utils/plugins/loadPluginCommands.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/loadSkillsDir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/bundledSkills.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/skills/mcpSkillBuilders.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/commands.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/SkillTool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/prompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/processUserInput/processSlashCommand.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/loadPluginCommands.ts`
 
 ## 执行流
 
 ### 1. skill 先被生产成 `Command`
 
-`loadSkillsDir.ts` 的中心不是“直接执行 skill”，而是把 skill 解析成：
+`loadSkillsDir.ts` 的中心职责，是把 skill 解析成：
 
 - `Command(type: 'prompt')`
 
@@ -68,7 +68,7 @@
 
 真正构造命令对象。
 
-这一步很关键，因为它说明 skill 在源码里不是“附加文本”，而是先进入统一命令系统。
+这一步很关键，因为 skill 会先进入统一命令系统。
 
 ### 2. 技能来源不是单一路径
 
@@ -307,15 +307,15 @@ flowchart LR
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/skills/loadSkillsDir.ts`
-2. `restored-src/src/skills/bundledSkills.ts`
-3. `restored-src/src/commands.ts`
-4. `restored-src/src/tools/SkillTool/SkillTool.ts`
-5. `restored-src/src/tools/SkillTool/prompt.ts`
-6. `restored-src/src/utils/plugins/loadPluginCommands.ts`
-7. `restored-src/src/skills/mcpSkillBuilders.ts`
-8. `restored-src/src/utils/processUserInput/processSlashCommand.tsx`
-9. `restored-src/src/utils/attachments.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/skills/loadSkillsDir.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/skills/bundledSkills.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/commands.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/SkillTool.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/tools/SkillTool/prompt.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/utils/plugins/loadPluginCommands.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/skills/mcpSkillBuilders.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/utils/processUserInput/processSlashCommand.tsx`
+9. `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
 
 ## 仍待确认
 

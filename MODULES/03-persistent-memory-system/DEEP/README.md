@@ -25,49 +25,49 @@
 
 ### Session memory
 
-- `restored-src/src/services/SessionMemory/sessionMemory.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
   - session 级摘要更新主流程
-- `restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
   - 配置、阈值、等待与读取
-- `restored-src/src/services/SessionMemory/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/prompts.ts`
   - `summary.md` 模板、更新 prompt、compact 截断
-- `restored-src/src/utils/permissions/filesystem.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/filesystem.ts`
   - `session-memory/summary.md` 的真实路径定义
 
 ### Durable memory
 
-- `restored-src/src/services/extractMemories/extractMemories.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/extractMemories.ts`
   - turn-end durable memory writer
-- `restored-src/src/services/extractMemories/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/prompts.ts`
   - durable / team extraction prompt
-- `restored-src/src/memdir/memdir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
   - durable memory 的 instruction prompt 与目录初始化
-- `restored-src/src/memdir/paths.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/paths.ts`
   - `getAutoMemPath()` 与 auto memory 根目录解析
-- `restored-src/src/memdir/memoryTypes.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
   - taxonomy 与不该保存的内容
-- `restored-src/src/memdir/memoryScan.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryScan.ts`
   - topic file 扫描
-- `restored-src/src/memdir/findRelevantMemories.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/findRelevantMemories.ts`
   - query-time recall
-- `restored-src/src/utils/claudemd.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/claudemd.ts`
   - `AutoMem / TeamMem` 入口索引注入
 
 ### Team memory
 
-- `restored-src/src/memdir/teamMemPaths.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
   - `team/` 子树路径、键清洗、路径校验
-- `restored-src/src/memdir/teamMemPrompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPrompts.ts`
   - team memory prompt 文案
-- `restored-src/src/services/teamMemorySync/index.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/index.ts`
   - TeamMem pull / push / sync state 主逻辑
-- `restored-src/src/services/teamMemorySync/watcher.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/watcher.ts`
   - startup pull、文件 watcher、push 调度
-- `restored-src/src/utils/sessionFileAccessHooks.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/sessionFileAccessHooks.ts`
   - team memory 访问埋点与写后通知
-- `restored-src/src/services/autoDream/autoDream.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/autoDream/autoDream.ts`
   - `autoDream` 后台 consolidation 主链
-- `restored-src/src/services/autoDream/config.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/autoDream/config.ts`
   - `autoDreamEnabled` 与运行时 gate
 
 ## 执行流
@@ -176,7 +176,7 @@
 
 这四类定义在：
 
-- `restored-src/src/memdir/memoryTypes.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
 
 同时，源码还明确要求 durable memory 不要保存一些内容，例如：
 
@@ -193,7 +193,7 @@
 
 这轮重新核读后，这一点可以写得更明确。
 
-当前源码里，team memory 不是第三套独立根系统，而是：
+当前源码里，team memory 位于：
 
 - `getAutoMemPath()` 根下的 `team/` 子目录
 
@@ -328,7 +328,7 @@ flowchart TD
 
 ## 为什么这个设计重要
 
-这套分层最值得注意的地方，不是“有记忆”，而是把不同时间尺度分开了：
+这套分层最值得注意的地方，是它把不同时间尺度分开了：
 
 - 当前会话连续性：`SessionMemory`
 - 跨会话可复用知识：`durable memory`
@@ -341,16 +341,16 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/services/SessionMemory/sessionMemory.ts`
-2. `restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
-3. `restored-src/src/services/SessionMemory/prompts.ts`
-4. `restored-src/src/memdir/paths.ts`
-5. `restored-src/src/memdir/memdir.ts`
-6. `restored-src/src/memdir/memoryTypes.ts`
-7. `restored-src/src/memdir/teamMemPaths.ts`
-8. `restored-src/src/services/extractMemories/extractMemories.ts`
-9. `restored-src/src/memdir/memoryScan.ts`
-10. `restored-src/src/memdir/findRelevantMemories.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/prompts.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/memdir/paths.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/extractMemories.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryScan.ts`
+10. `_upstream/claude-code-sourcemap/restored-src/src/memdir/findRelevantMemories.ts`
 
 ## 仍待确认
 

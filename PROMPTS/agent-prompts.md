@@ -22,14 +22,14 @@
 
 ## 关键文件
 
-- `restored-src/src/utils/systemPrompt.ts`
-- `restored-src/src/screens/REPL.tsx`
-- `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
-- `restored-src/src/tools/AgentTool/runAgent.ts`
-- `restored-src/src/tools/AgentTool/forkSubagent.ts`
-- `restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `restored-src/src/main.tsx`
-- `restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
 
 ## 执行流
 
@@ -118,7 +118,7 @@ flowchart LR
 
 `forkSubagent.ts` 这条路径非常特殊。
 
-它不是“再创建一个普通 subagent”，而是更接近：
+它更接近：
 
 - 把父线程当前上下文切一份给 worker
 
@@ -157,7 +157,7 @@ fork 不是。它会调用：
 - 占位 `tool_result`
 - worker directive
 
-这条链的目标不是“生成一个新 agent prompt”，而是“尽量继承父线程已经存在的 prompt 和消息前缀”。
+这条链的目标，是尽量继承父线程已经存在的 prompt 和消息前缀。
 
 ```mermaid
 flowchart TD
@@ -172,7 +172,7 @@ flowchart TD
 
 这轮复核后，这一点可以写得更明确。
 
-`renderedSystemPrompt` 存在的意义，不只是“缓存一份字符串”，而是：
+`renderedSystemPrompt` 存在的意义，包括：
 
 - 给 fork 子代理提供稳定的父 prompt 前缀
 - 避免重算 prompt 时出现 drift
@@ -235,14 +235,14 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/utils/systemPrompt.ts`
-2. `restored-src/src/screens/REPL.tsx`
-3. `restored-src/src/main.tsx`
-4. `restored-src/src/QueryEngine.ts`
-5. `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
-6. `restored-src/src/tools/AgentTool/runAgent.ts`
-7. `restored-src/src/tools/AgentTool/forkSubagent.ts`
-8. `restored-src/src/tools/AgentTool/AgentTool.tsx`
+1. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+3. `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+4. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
 
 ## 仍待确认
 

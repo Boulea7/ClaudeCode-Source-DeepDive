@@ -2,9 +2,9 @@
 
 这一页只解释一件事：
 
-**Claude Code 的 system prompt 不是一段固定长文本，而是一套分阶段装配链。**
+**Claude Code 的 system prompt 由一套分阶段装配链生成。**
 
-这里不贴大段 raw prompt，只讲装配机制、优先级和边界。
+这里聚焦装配机制、优先级和边界，不转储大段 raw prompt。
 
 如果你只想抓主线，可以把这一页理解成：Claude Code 会先得到一份 default prompt，再按交互模式、agent 类型和 feature gate 把它继续改写。
 
@@ -19,15 +19,15 @@
 
 ## 关键文件
 
-- `restored-src/src/constants/prompts.ts`
-- `restored-src/src/constants/systemPromptSections.ts`
-- `restored-src/src/utils/systemPrompt.ts`
-- `restored-src/src/screens/REPL.tsx`
-- `restored-src/src/utils/queryContext.ts`
-- `restored-src/src/QueryEngine.ts`
-- `restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `restored-src/src/tools/AgentTool/runAgent.ts`
-- `restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 执行流
 
@@ -55,7 +55,7 @@
 - static
 - dynamic
 
-这不是排版问题，而是缓存边界设计。
+这里对应的是缓存边界设计。
 
 ### 2. 标准路径与 proactive / KAIROS 路径不是一回事
 
@@ -146,7 +146,7 @@ non-interactive 主线程不会走：
 - `queryContext.ts` 就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
 - `memoryMechanicsPrompt` 只在 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时追加
 
-这也是为什么 interactive 与 non-interactive 不能写成“一样的 prompt，只是 UI 不同”。
+这也说明 interactive 与 non-interactive 需要分开写成两条 prompt 路径。
 
 ### 5. 普通 subagent 有自己的 prompt 起点
 
@@ -208,7 +208,7 @@ fork subagent 和普通 subagent 的差异非常大。
 - fork 开启时，说明“不带 `subagent_type` 会创建 fork”
 - fork 未开启时，说明“使用 specialized agents”
 
-它被放在 dynamic boundary 之后，不是偶然，而是为了避免把这类运行时分支污染全局可缓存静态前缀。
+它被放在 dynamic boundary 之后，这样可以避免把这类运行时分支污染全局可缓存静态前缀。
 
 ## 一张图看 4 条装配路径
 
@@ -249,15 +249,15 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/constants/prompts.ts`
-2. `restored-src/src/constants/systemPromptSections.ts`
-3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/screens/REPL.tsx`
-5. `restored-src/src/utils/queryContext.ts`
-6. `restored-src/src/QueryEngine.ts`
-7. `restored-src/src/tools/AgentTool/AgentTool.tsx`
-8. `restored-src/src/tools/AgentTool/runAgent.ts`
-9. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+5. `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+8. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 

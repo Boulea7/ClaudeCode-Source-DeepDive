@@ -1,10 +1,10 @@
 # 深度拆解：Agent Loop And Teams
 
-这一章的重点不是“Claude Code 能不能开子 agent”，而是：
+这一章的重点是：
 
 **主线程、子代理、后台任务、远端任务、同进程 teammate，究竟是怎么接成一条稳定运行链的。**
 
-从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这套能力并不是几段 prompt fan-out，而是明确落在：
+从 `ChinaSiro/claude-code-sourcemap` 这份公开镜像来看，这套能力明确落在：
 
 - `main.tsx`
 - `screens/REPL.tsx`
@@ -30,49 +30,49 @@
 
 ### 主线程与 query runtime
 
-- `restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
   - interactive / non-interactive 分流、built-in tools 与 MCP 接入
-- `restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
   - interactive 主线程的 prompt 装配、工具池合并与 `query()` 入口
-- `restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
   - headless / SDK turn orchestrator
-- `restored-src/src/query.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
   - 真正的 turn loop
-- `restored-src/src/Tool.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/Tool.ts`
   - `ToolUseContext`
-- `restored-src/src/tools.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools.ts`
   - `getAllBaseTools()`、`getTools()`、`assembleToolPool()`、`getMergedTools()`
 
 ### Agent 编排与执行
 
-- `restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
   - 子代理编排入口
-- `restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
   - 子代理执行引擎
-- `restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
   - fork 路径与 `FORK_AGENT`
-- `restored-src/src/tools/AgentTool/resumeAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/resumeAgent.ts`
   - transcript 驱动的后台恢复
-- `restored-src/src/tools/AgentTool/agentToolUtils.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/agentToolUtils.ts`
   - async lifecycle、结果收尾、handoff 分类
-- `restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/loadAgentsDir.ts`
   - agent definition 来源与解析
 
 ### 任务表示层
 
-- `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
   - `local_agent` 状态、前后台切换、通知、kill
-- `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
   - `remote_agent` 轮询、恢复、review / ultraplan 状态
-- `restored-src/src/tasks/LocalShellTask/LocalShellTask.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/LocalShellTask/LocalShellTask.tsx`
   - `local_bash`
-- `restored-src/src/tasks/LocalMainSessionTask.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/LocalMainSessionTask.ts`
   - 主会话后台化
-- `restored-src/src/tasks/InProcessTeammateTask/`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/InProcessTeammateTask/`
   - 同进程 teammate 的状态镜像
-- `restored-src/src/tasks/types.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/types.ts`
   - `TaskState` 联合类型与任务形态声明
-- `restored-src/src/tasks/stopTask.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tasks/stopTask.ts`
   - 通用 stop 路径
 
 ## 执行流
@@ -167,7 +167,7 @@ fork subagent：
 - 用 `buildForkedMessages()` 重建父 assistant 前缀和占位 `tool_result`
 - 显式阻止递归 fork
 
-所以它们并不是“同一个机制的两个小变体”，而是两条行为目标不同的路径。
+所以它们对应两条行为目标不同的路径。
 
 ### 5. `runAgent()` 才是实际执行引擎
 
@@ -286,7 +286,7 @@ flowchart TD
 
 ## 为什么这个设计重要
 
-这套设计的重要性，不只是“支持多 agent”，而是：
+这套设计的重要性在于：
 
 - 主线程与子线程共享同一种 query runtime
 - fork、resume、background 都是源码里的正式路径
@@ -297,18 +297,18 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/main.tsx`
-2. `restored-src/src/QueryEngine.ts`
-3. `restored-src/src/query.ts`
-4. `restored-src/src/tools/AgentTool/AgentTool.tsx`
-5. `restored-src/src/tools/AgentTool/runAgent.ts`
-6. `restored-src/src/tools/AgentTool/forkSubagent.ts`
-7. `restored-src/src/tools/AgentTool/resumeAgent.ts`
-8. `restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
-9. `restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
-10. `restored-src/src/tasks/LocalMainSessionTask.ts`
-11. `restored-src/src/tasks/types.ts`
-12. `restored-src/src/tasks/InProcessTeammateTask/`
+1. `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+2. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+5. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/resumeAgent.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/tasks/LocalAgentTask/LocalAgentTask.tsx`
+9. `_upstream/claude-code-sourcemap/restored-src/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
+10. `_upstream/claude-code-sourcemap/restored-src/src/tasks/LocalMainSessionTask.ts`
+11. `_upstream/claude-code-sourcemap/restored-src/src/tasks/types.ts`
+12. `_upstream/claude-code-sourcemap/restored-src/src/tasks/InProcessTeammateTask/`
 
 ## 仍待确认
 

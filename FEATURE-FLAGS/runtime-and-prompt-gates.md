@@ -12,19 +12,19 @@
 
 ## 关键文件
 
-- `restored-src/src/main.tsx`
-- `restored-src/src/screens/REPL.tsx`
-- `restored-src/src/QueryEngine.ts`
-- `restored-src/src/query.ts`
-- `restored-src/src/constants/prompts.ts`
-- `restored-src/src/constants/systemPromptSections.ts`
-- `restored-src/src/utils/systemPrompt.ts`
-- `restored-src/src/voice/voiceModeEnabled.ts`
-- `restored-src/src/hooks/useVoice.ts`
-- `restored-src/src/services/voiceStreamSTT.ts`
-- `restored-src/src/buddy/CompanionSprite.tsx`
-- `restored-src/src/buddy/useBuddyNotification.tsx`
-- `restored-src/src/buddy/prompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoice.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/useBuddyNotification.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/prompt.ts`
 
 ## 代码里能确认的行为
 
@@ -54,7 +54,7 @@
 
 - `constants/prompts.ts` 会在主线程 prompt 里加入 discover-skills 指导语。
 - `query.ts` 会启动 skill discovery prefetch。
-- 这说明它不是单纯多一个工具名，而是 prompt + query 双分支。
+- 这说明它包含 prompt + query 两条分支。
 
 ### `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
 
@@ -136,11 +136,11 @@
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/constants/prompts.ts`
-2. `restored-src/src/utils/systemPrompt.ts`
-3. `restored-src/src/screens/REPL.tsx`
-4. `restored-src/src/QueryEngine.ts`
-5. `restored-src/src/query.ts`
-6. `restored-src/src/voice/voiceModeEnabled.ts`
-7. `restored-src/src/services/voiceStreamSTT.ts`
-8. `restored-src/src/buddy/CompanionSprite.tsx`
+1. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+4. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`

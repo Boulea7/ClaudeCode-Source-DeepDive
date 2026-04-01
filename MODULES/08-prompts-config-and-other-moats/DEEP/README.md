@@ -1,6 +1,6 @@
 # 深度拆解：Prompts、Config 与系统装配层
 
-这一章关注的不是“prompt 写得好不好”，而是：
+这一章关注的是：
 
 **Claude Code 怎样把 prompt 当作运行时部件来装配。**
 
@@ -24,16 +24,16 @@
 
 ## 关键文件
 
-- `restored-src/src/main.tsx`
-- `restored-src/src/constants/prompts.ts`
-- `restored-src/src/constants/systemPromptSections.ts`
-- `restored-src/src/utils/systemPrompt.ts`
-- `restored-src/src/screens/REPL.tsx`
-- `restored-src/src/utils/queryContext.ts`
-- `restored-src/src/QueryEngine.ts`
-- `restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `restored-src/src/tools/AgentTool/runAgent.ts`
-- `restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 执行流
 
@@ -41,7 +41,7 @@
 
 这一步最值得先记住的，是“default prompt”和“最终 prompt”不是同一个东西。
 
-`constants/prompts.ts` 里的 `getSystemPrompt()` 返回的不是单段最终文本，而是：
+`constants/prompts.ts` 里的 `getSystemPrompt()` 返回的是：
 
 - default prompt parts
 
@@ -80,7 +80,7 @@
 - `resolveSystemPromptSections()`
 - `clearSystemPromptSections()`
 
-这一层负责的不是“写 prompt 内容”，而是：
+这一层负责的是：
 
 - 哪些 section 可缓存
 - 哪些 section 每轮必须重算
@@ -89,7 +89,7 @@
 当前这轮可以更明确地写出：
 
 - `mcp_instructions` 是标准路径里最明确的 uncached section
-- 它不是抽象概念，而是通过 `DANGEROUS_uncachedSystemPromptSection(...)` 注册进去的
+- 它通过 `DANGEROUS_uncachedSystemPromptSection(...)` 注册进去
 
 ### 3. interactive 主线程会在 `REPL.tsx` 里再走一次 `buildEffectiveSystemPrompt()`
 
@@ -144,13 +144,13 @@
 同时，`queryContext.ts` 还能确认：
 
 - 只要 `customSystemPrompt` 存在，就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
-- `memoryMechanicsPrompt` 也不是普遍存在，而是 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时才会追加
+- `memoryMechanicsPrompt` 只会在 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时追加
 
 `main.tsx` 里还对 non-interactive custom main-thread agent 做了额外特判：
 
 - 会直接把 custom main-thread agent 的 prompt 放进 headless `systemPrompt`
 
-所以 interactive 与 non-interactive 不是“同一条 prompt 链换了个壳”，而是真有两条不同装配路径。
+所以 interactive 与 non-interactive 对应两条不同装配路径。
 
 ### 5. 普通 subagent 与 fork subagent 不共享同一条 prompt 模型
 
@@ -232,15 +232,15 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/constants/prompts.ts`
-2. `restored-src/src/constants/systemPromptSections.ts`
-3. `restored-src/src/utils/systemPrompt.ts`
-4. `restored-src/src/screens/REPL.tsx`
-5. `restored-src/src/utils/queryContext.ts`
-6. `restored-src/src/main.tsx`
-7. `restored-src/src/QueryEngine.ts`
-8. `restored-src/src/tools/AgentTool/runAgent.ts`
-9. `restored-src/src/tools/AgentTool/forkSubagent.ts`
+1. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+5. `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+7. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+8. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
 
 ## 仍待确认
 

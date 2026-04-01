@@ -8,7 +8,7 @@
 - `useCanUseTool / interactiveHandler / REPL` 交互编排层
 - `components/permissions/*` 展示与提交编排层
 
-换句话说，这一章讲的不是“要不要弹窗”，而是 Claude Code 如何把信任边界做成一条完整的运行链。
+换句话说，这一章讲 Claude Code 如何把信任边界做成一条完整的运行链。
 
 ## 这部分负责什么
 
@@ -21,21 +21,21 @@
 
 ## 关键文件
 
-- `restored-src/src/utils/permissions/permissionSetup.ts`
-- `restored-src/src/utils/permissions/permissions.ts`
-- `restored-src/src/utils/permissions/permissionRuleParser.ts`
-- `restored-src/src/utils/permissions/filesystem.ts`
-- `restored-src/src/utils/permissions/pathValidation.ts`
-- `restored-src/src/utils/permissions/yoloClassifier.ts`
-- `restored-src/src/utils/permissions/bashClassifier.ts`
-- `restored-src/src/hooks/useCanUseTool.tsx`
-- `restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
-- `restored-src/src/components/permissions/PermissionRequest.tsx`
-- `restored-src/src/components/permissions/PermissionPrompt.tsx`
-- `restored-src/src/components/permissions/BashPermissionRequest/`
-- `restored-src/src/components/permissions/FileEditPermissionRequest/`
-- `restored-src/src/components/permissions/EnterPlanModePermissionRequest/`
-- `restored-src/src/components/permissions/SandboxPermissionRequest.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissionSetup.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissions.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissionRuleParser.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/filesystem.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/pathValidation.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/yoloClassifier.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/bashClassifier.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useCanUseTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/PermissionRequest.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/PermissionPrompt.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/BashPermissionRequest/`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/FileEditPermissionRequest/`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/EnterPlanModePermissionRequest/`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/SandboxPermissionRequest.tsx`
 
 ## 执行流
 
@@ -43,7 +43,7 @@
 
 读这一节时，先把它理解成“准备环境”，而不是“直接做最终裁决”。
 
-`restored-src/src/utils/permissions/permissionSetup.ts` 不是简单读配置。
+`_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissionSetup.ts` 不是简单读配置。
 
 从源码里能直接确认：
 
@@ -56,7 +56,7 @@
 
 ### 2. `permissions.ts` 负责真正的决策
 
-`restored-src/src/utils/permissions/permissions.ts` 负责把当前上下文和规则变成具体结果。
+`_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissions.ts` 负责把当前上下文和规则变成具体结果。
 
 从文件头部和前段逻辑能确认：
 
@@ -70,7 +70,7 @@
   - `sandboxOverride`
   - `workingDir`
 
-也就是说，这里的 permission 决策不是单一布尔值，而是一份可解释的结构化结果。
+也就是说，这里的 permission 决策是一份可解释的结构化结果。
 
 ### 3. `PermissionRequest.tsx` 是分发入口，不是判定入口
 
@@ -97,7 +97,7 @@
 这一层还有一个值得补出的 gate 细节：
 
 - `PermissionRequest.tsx` 自己也会按 `feature('REVIEW_ARTIFACT')`、`feature('WORKFLOW_SCRIPTS')`、`feature('MONITOR_TOOL')` 条件加载额外请求组件
-- 这说明审批 UI 的分发表面不是固定常量，而是会随构建形态变化
+- 这说明审批 UI 的分发表面会随构建形态变化
 
 ### 4. classifier 是这层的一部分，不是外挂
 
@@ -107,7 +107,7 @@
 - denial tracking 也在同一层维护
 - dangerous patterns 会被单独识别
 
-这说明 auto mode 的安全边界不是只靠规则表，而是规则加 classifier 一起工作。
+这说明 auto mode 的安全边界由规则表和 classifier 一起工作。
 
 这一层还有一个很实用的实现细节：
 
@@ -128,7 +128,7 @@
 
 ### 6. 审批 UI 不是一个统一弹窗
 
-`restored-src/src/components/permissions/` 的结构已经足够说明问题。
+`_upstream/claude-code-sourcemap/restored-src/src/components/permissions/` 的结构已经足够说明问题。
 
 它至少包含这些专门组件：
 
@@ -193,16 +193,16 @@ flowchart TD
 
 ## 推荐阅读顺序
 
-1. `restored-src/src/utils/permissions/permissionSetup.ts`
-2. `restored-src/src/utils/permissions/permissions.ts`
-3. `restored-src/src/utils/permissions/permissionRuleParser.ts`
-4. `restored-src/src/utils/permissions/filesystem.ts`
-5. `restored-src/src/utils/permissions/pathValidation.ts`
-6. `restored-src/src/utils/permissions/yoloClassifier.ts`
-7. `restored-src/src/hooks/useCanUseTool.tsx`
-8. `restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
-9. `restored-src/src/components/permissions/PermissionRequest.tsx`
-10. `restored-src/src/components/permissions/BashPermissionRequest/`
+1. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissionSetup.ts`
+2. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissions.ts`
+3. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/permissionRuleParser.ts`
+4. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/filesystem.ts`
+5. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/pathValidation.ts`
+6. `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/yoloClassifier.ts`
+7. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useCanUseTool.tsx`
+8. `_upstream/claude-code-sourcemap/restored-src/src/hooks/toolPermission/handlers/interactiveHandler.ts`
+9. `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/PermissionRequest.tsx`
+10. `_upstream/claude-code-sourcemap/restored-src/src/components/permissions/BashPermissionRequest/`
 
 ## 仍待确认
 
