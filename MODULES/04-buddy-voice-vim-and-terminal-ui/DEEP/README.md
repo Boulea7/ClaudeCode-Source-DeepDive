@@ -26,6 +26,7 @@
 - `restored-src/src/buddy/prompt.ts`
 - `restored-src/src/components/PromptInput/PromptInput.tsx`
 - `restored-src/src/screens/REPL.tsx`
+- `restored-src/src/state/AppStateStore.ts`
 
 ### Vim 输入内核
 
@@ -42,6 +43,7 @@
 - `restored-src/src/voice/voiceModeEnabled.ts`
 - `restored-src/src/hooks/useVoiceEnabled.ts`
 - `restored-src/src/hooks/useVoiceIntegration.tsx`
+- `restored-src/src/hooks/useVoice.ts`
 - `restored-src/src/context/voice.tsx`
 - `restored-src/src/commands/voice/index.ts`
 - `restored-src/src/commands/voice/voice.ts`
@@ -107,6 +109,7 @@
 这里还可以再补一个更具体的限制：
 
 - `PromptInput.tsx` 只证明 companion footer 选中后会提交 `/buddy`
+- `commands.ts` 只证明当前树里有 `./commands/buddy/index.js` 这条命令入口引用
 - 但这轮没有在当前可见树里复核到 `/buddy` 命令实现文件
 - `AppStateStore.ts` 的注释虽然提到 `src/buddy/observer.ts`
 - 但当前镜像里没有这个文件
@@ -143,8 +146,10 @@
 - `ConfigTool` 对 `voiceEnabled` 也会再次做 runtime gate
 - 默认 push-to-talk 键位是 `space -> voice:pushToTalk`
 - `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
-- `useVoiceEnabled()` 会把 `settings.voiceEnabled === true` 和 auth / kill-switch 合并成最终 UI 可见状态
+- `useVoiceEnabled()` 会把 `settings.voiceEnabled === true`、auth 与 kill-switch 合并成最终 UI 可见状态
 - `useVoiceIntegration()` 会处理 hold threshold、尾部按键清理、voice anchor 与 interim transcript 回填
+- `useVoiceIntegration()` 也是当前可见运行时里唯一直接调用 `useVoice()` 的地方，而且显式传的是 `focusMode: false`
+- `useVoice()` 虽然保留了 focus-driven recording 分支，但这轮没有在当前树里复核到 `focusMode: true` 的实际接线
 - `services/voice.ts` 当前更像本地录音后端选择与采集层
 - `services/voiceStreamSTT.ts` 当前更像 `voice_stream` WebSocket STT 客户端
 - `TextInput.tsx` 只消费 `voiceState` / `voiceAudioLevels` 来画录音时的输入光标波形
@@ -165,7 +170,7 @@
 - `commands/voice/index.ts` 与 `commands/voice/voice.ts` 的职责都集中在开关、预检和设置切换
 - 所以更稳妥的表述仍然是“终端文本输入上的语音听写增强”，不是“双向语音助手”
 
-另外，`services/voiceStreamSTT.ts` 里还能看到 `tengu_cobalt_frost` 这类运行时 gate 线索，说明 STT 侧仍有按 rollout 变化的分支；文档里更适合写成“语音链路中仍存在 feature-gated 参数与模型分支”。
+另外，`services/voiceStreamSTT.ts` 里还能看到 `tengu_cobalt_frost` 这类运行时 gate 线索；当前可见影响范围只落在 `voice_stream` 的 query params 和 STT provider 选择，不应把它扩写成 output 侧语音能力分支。
 
 ### 3. `vim/` 采用“五段式”结构
 
@@ -217,6 +222,9 @@ flowchart LR
     C[userID / oauth uuid] --> B
     B --> D[CompanionSprite.tsx]
     D --> E[sprite / speech bubble / pet hearts]
+    K[REPL.tsx query-end] --> L[fireCompanionObserver]
+    L --> M[companionReaction]
+    M --> D
     B --> F[buddy/prompt.ts]
     F --> G[companion_intro attachment]
     G --> H[main conversation]
@@ -298,7 +306,7 @@ flowchart LR
 - `Buddy` 是否就是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这些文件定论。
 - `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
 - `companionPetAt` 的写入点当前没有确认到。
-- `/buddy` 命令的具体实现文件这轮没有在当前树里复核到，因此 companion 的 hatch / pet / mute 等动作边界仍不能写死。
+- `/buddy` 命令的具体实现文件这轮没有在当前树里复核到；当前只能确认 `commands.ts` 里有命令入口引用、`PromptInput.tsx` 会提交 `/buddy`，因此 companion 的 hatch / pet / mute 等动作边界仍不能写死。
 - `AppStateStore.ts` 里提到的 `src/buddy/observer.ts` 在当前镜像里没有复核到，因此不能把它当成已读过的实现文件。
 - `voice` 的完整产品语义仍然不能从这轮范围推出；这批文件能稳定确认的是开关、预检、按键保持、本地录音、STT 与输入框回填，不能继续外推到 TTS、播放链或 output-side 语音能力。
 - `BUDDY`、`VOICE_MODE`、`tengu_cobalt_frost` 这些 gate 在不同构建里的默认状态，静态源码不能直接推出。

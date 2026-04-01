@@ -41,6 +41,7 @@
 - `restored-src/src/bridge/workSecret.ts`
 - `restored-src/src/bridge/sessionIdCompat.ts`
 - `restored-src/src/cli/print.ts`
+- `restored-src/src/entrypoints/agentSdkTypes.ts`
 
 ## 执行流
 
@@ -189,6 +190,7 @@
 - 把 bridge inbound message 注回本地输入队列
 - 把 bridge history replay 写进 `mutableMessages`
 - `entrypoints/agentSdkTypes.ts` 里虽然有 remote-control 相关类型与注释，但当前镜像里的 `connectRemoteControl()` 仍是 stub，不能把它写成已被源码完整坐实的公开 SDK 实现
+- `entrypoints/agentSdkTypes.ts` 里的注释还能确认 `query.enableRemoteControl` 是 CHILD-process 对照项，但当前镜像里没有看到这条路径的完整公开实现
 
 ### 5. transport 在客户端侧至少有 v1 / v2 两种形态
 
@@ -208,6 +210,7 @@
 - `tengu_cobalt_harbor`、`tengu_ccr_mirror`、`feature('KAIROS')` 等 gate 会继续改变默认连接方式、mirror mode 和 CLI resume 语义
 - 文档更适合把它们写成“bridge / remote 的条件分支”，而不是“固定产品层级”
 - `entrypoints/agentSdkTypes.ts` 里还能看到一个 `@internal` helper 会跳过 `tengu_ccr_bridge` entitlement gate；这更说明源码里存在内部调用分支，不能拿它反推公开默认状态
+- `tengu_remote_backend` 这轮能直接坐实到的范围也更窄：当前可见调用点主要落在 `claude --remote` 的 TUI 入口判定，不能外推成完整 remote backend 产品形态
 
 ### 6. `sessionRunner.ts` 说明 bridge 不只是一个内存态适配层
 
@@ -275,4 +278,5 @@ flowchart LR
 - env-based 与 env-less 在真实产品入口里的默认启用条件，这一轮不继续外推。
 - `entrypoints/agentSdkTypes.ts` 里的 pre-entitled internal caller 只说明“有内部绕过 entitlement gate 的调用面”，不能写成公开 SDK 默认行为。
 - `entrypoints/agentSdkTypes.ts` 里的 `connectRemoteControl()` 在当前镜像里还是 stub，因此不能把它写成“已从源码确认可用的公开 SDK 方法”。
+- `query.enableRemoteControl` 在当前镜像里主要出现在 `entrypoints/agentSdkTypes.ts` 的注释对照项里，这一页不把它继续写成已坐实的公开 API。
 - `BRIDGE_MODE`、`tengu_ccr_bridge`、`tengu_bridge_repl_v2`、`tengu_ccr_mirror` 在不同构建里的默认 rollout 状态，静态源码不能直接推出。

@@ -18,6 +18,7 @@
 - `restored-src/src/constants/systemPromptSections.ts`
 - `restored-src/src/utils/systemPrompt.ts`
 - `restored-src/src/voice/voiceModeEnabled.ts`
+- `restored-src/src/hooks/useVoice.ts`
 - `restored-src/src/services/voiceStreamSTT.ts`
 - `restored-src/src/buddy/CompanionSprite.tsx`
 - `restored-src/src/buddy/useBuddyNotification.tsx`
@@ -34,9 +35,9 @@
 ### `COORDINATOR_MODE` + `CLAUDE_CODE_COORDINATOR_MODE`
 
 - `utils/systemPrompt.ts` 会在特定条件下让 coordinator prompt 覆盖默认 prompt。
-- `tools.ts` 会切 coordinator mode 工具集。
-- `main.tsx` / `QueryEngine.ts` 还会在 resume 和 headless 路径里匹配 coordinator mode。
-- 更稳妥的写法是：它同时作用于 prompt、context、tools。
+- `toolPool.ts` / `constants/tools.ts` 会切 coordinator mode 主线程工具集。
+- `main.tsx` / `QueryEngine.ts` / `sessionRestore.ts` 还会在 headless、resume 和模式恢复路径里匹配 coordinator mode。
+- 更稳妥的写法是：它同时作用于 prompt、context、tools、resume mode。
 - 但这条 prompt 覆盖分支还要求当前没有 `mainThreadAgentDefinition`，所以不能把它写成“永远压过 main-thread agent”。
 
 ### `PROACTIVE` / `KAIROS` / `KAIROS_BRIEF` / `KAIROS_CHANNELS`
@@ -44,6 +45,7 @@
 - `constants/prompts.ts` 在 proactive / KAIROS 激活时会走 autonomous prompt 路径，不再走标准 section registry。
 - `utils/systemPrompt.ts` 会把 main-thread agent prompt 从“替换 default”改成“追加到 default 后面”。
 - `main.tsx` 还会据此追加 proactive addendum、brief opt-in、assistant 相关状态。
+- `cli/print.ts` 还能在 idle 时注入 `<tick>`，说明 `PROACTIVE` 不只是 prompt 分支。
 - 这些名字在文档里更适合写成“源码里存在的运行时分支”，不是公开产品结论。
 
 ### `EXPERIMENTAL_SKILL_SEARCH`
@@ -81,18 +83,20 @@
 - `hasVoiceAuth()` 还要求 Claude.ai OAuth。
 - `isVoiceModeEnabled()` 最终是 auth + gate 的合成结果。
 - `/voice` 命令本身还会继续检查录音可用性、`voice_stream` 可用性、依赖和麦克风权限。
+- 当前可见运行时里，`useVoice()` 的实际 caller 是 `useVoiceIntegration.tsx`，并且显式传入 `focusMode: false`。
 - 当前检索范围里没有坐实 TTS / playback / output-side 主链，更适合写成“语音听写增强”。
 
 ### `tengu_cobalt_frost`
 
 - `services/voiceStreamSTT.ts` 里有针对 Nova 3 的 gate 日志分支。
-- 当前可以写成 STT 连接参数和模型侧能力仍受运行时 gate 控制。
+- 当前更准确的写法是：它会改写 `voice_stream` 的 query params，例如 `use_conversation_engine=true` 与 `stt_provider=deepgram-nova3`；这仍属于 STT 连接参数分支，不是 output-side 语音能力。
 
 ### `BUDDY`
 
 - `buddy/CompanionSprite.tsx`、`useBuddyNotification.tsx`、`buddy/prompt.ts` 都直接受 `feature('BUDDY')` 控制。
 - 当前能确认的是 companion sprite / notification / intro attachment 的 gated path。
 - `REPL.tsx` 还会在 query 结束后调用 `fireCompanionObserver(...)`，把回调结果写进 `companionReaction`。
+- `commands.ts` 里还能看到 `./commands/buddy/index.js` 的命令入口引用，但当前镜像未复核到对应实现文件。
 - 但这轮没有在当前树里复核到 `fireCompanionObserver(...)` 的定义，也没有确认 `companionPetAt` 的写入点。
 - 不能把这组分支直接写成完整 companion 产品闭环。
 

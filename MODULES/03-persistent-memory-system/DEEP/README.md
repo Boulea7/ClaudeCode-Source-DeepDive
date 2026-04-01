@@ -57,10 +57,16 @@
   - `team/` 子树路径、键清洗、路径校验
 - `restored-src/src/memdir/teamMemPrompts.ts`
   - team memory prompt 文案
+- `restored-src/src/services/teamMemorySync/index.ts`
+  - TeamMem pull / push / sync state 主逻辑
 - `restored-src/src/services/teamMemorySync/watcher.ts`
   - startup pull、文件 watcher、push 调度
 - `restored-src/src/utils/sessionFileAccessHooks.ts`
   - team memory 访问埋点与写后通知
+- `restored-src/src/services/autoDream/autoDream.ts`
+  - `autoDream` 后台 consolidation 主链
+- `restored-src/src/services/autoDream/config.ts`
+  - `autoDreamEnabled` 与运行时 gate
 
 ## 执行流
 
@@ -260,7 +266,8 @@
 所以更准确的写法是：
 
 - team memory 的“会话开始时先拉一次，再继续 watch 本地改动”这条客户端同步链是能从源码坐实的
-- 但这仍然是客户端同步机制，不等于服务端侧同步策略的全部语义
+- TeamMem 文件在 Edit / Write 后还会经过 `sessionFileAccessHooks.ts` 显式 `notifyTeamMemoryWrite()`
+- 但这仍然是客户端 best-effort 同步机制，不等于服务端侧同步策略、冲突处理或最终一致性语义
 
 ### 10. `/dream` 与 `autoDream` 是两条相关但不相同的线
 
@@ -277,6 +284,7 @@
 
 - `/dream` 不是只有注释线索，当前镜像里至少能确认到 skill 注册点、后台 `autoDream` 链路和 UI 提示
 - 但 `skills/bundled/index.ts` 里引用的 `dream.js` 实现文件，这一轮仍没有在当前镜像里复核到
+- `autoDream` 也不应写成固定 nightly job；它当前更像时间阈值、session 数量和锁三层 gate 下的 opportunistic consolidation
 - 所以“手动 `/dream` 技能的完整实现”仍不能写成已完整坐实
 
 ## 一张图看两条 memory 链
@@ -285,12 +293,14 @@
 flowchart TD
     A[conversation turns] --> B[SessionMemory]
     A --> C[extractMemories]
+    A --> N[teamMemorySync]
     B --> D[session-memory/summary.md]
     D --> E[sessionMemoryCompact]
     C --> G[auto memory root]
     G --> H[topic files]
     C -. conditional .-> I[optional MEMORY.md index updates]
     G --> M[claudemd.ts loads<br/>AutoMem / TeamMem MEMORY.md]
+    N --> G
     H --> J[findRelevantMemories(memoryDir)]
     J --> K[sideQuery selection]
     K --> L[attachment surfacing]
@@ -306,6 +316,7 @@ flowchart TD
     B --> E[MEMORY.md entrypoint]
     D --> F[team topic files]
     D --> G[team MEMORY.md]
+    D --> J[teamMemorySync<br/>pull / watch / push]
     H[memoryTypes taxonomy] --> I[user / feedback / project / reference]
     I -. prompt guidance, not hard router .-> B
     B -. default relevant-memory scan is recursive .-> F
@@ -342,5 +353,5 @@ flowchart TD
 - team memory 的客户端同步链现在已经能确认到“startup pull + watcher + 写后通知”，但服务端侧同步策略、冲突处理和最终一致性语义，这一页仍不继续外推。
 - `manuallyExtractSessionMemory()` 的注释提到 `/summary`，但本轮没有在当前树里找到直接调用点。
 - `skills/bundled/index.ts` 里能看到 `registerDreamSkill()` 的注册点，但 `dream.js` 实现文件这轮没有在当前镜像里复核到，因此手动 `/dream` 的完整实现仍不能写死。
-- `KAIROS` 相关 nightly distillation 仍只能写成代码线索，不应写成当前构建已完整启用的事实。
+- `KAIROS` 相关 nightly distillation 仍只能写成代码线索，不应写成当前构建已完整启用的事实；当前能直接坐实的是 KAIROS active 时 `autoDream` 会关闭，日记写入会改走 daily-log 路径。
 - `validateTeamMemWritePath()` / `validateTeamMemKey()` 在哪些写链路里稳定生效，这一轮没有继续追到完整调用面。

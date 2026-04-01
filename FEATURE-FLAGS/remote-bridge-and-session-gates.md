@@ -23,6 +23,10 @@
 - `restored-src/src/main.tsx`
 - `restored-src/src/commands/bridge/bridge.tsx`
 - `restored-src/src/commands/remote-setup/index.ts`
+- `restored-src/src/entrypoints/agentSdkTypes.ts`
+- `restored-src/src/tools/RemoteTriggerTool/RemoteTriggerTool.ts`
+- `restored-src/src/skills/bundled/scheduleRemoteAgents.ts`
+- `restored-src/src/utils/background/remote/preconditions.ts`
 
 ## 代码里能确认的行为
 
@@ -63,22 +67,27 @@
 ### `tengu_remote_backend`
 
 - `main.tsx` 里可见 remote backend TUI gate。
-- 文档只能写成“remote backend 相关 UI / runtime 分支存在”，不能写成正式产品状态。
+- 当前更准确的写法是：它主要影响 `claude --remote` 进入 TUI 时的入口判定，不能外推成完整 remote backend 产品形态。
 
 ### `KAIROS` 对 bridge CLI 形态的影响
 
 - `bridgeMain.ts` 和 `initReplBridge.ts` 里都能看到 `feature('KAIROS')` 对 `--session-id`、`--continue`、resume / perpetual bridge 的控制。
 - 更稳妥的说法是：某些 session continuity / assistant-style bridge 行为仍受 KAIROS gate 约束。
 
-### `tengu_cobalt_lantern` / `tengu_surreal_dali`
+### `tengu_cobalt_lantern`
 
-- 这些 GrowthBook key 出现在 remote setup、remote trigger、background remote preconditions 中。
-- 当前能确认的是远端触发 / GitHub 访问提醒 / background remote 有独立 rollout gate。
+- 这个 key 主要出现在 `remote-setup`、`scheduleRemoteAgents` 和 background remote preconditions 中。
+- 当前更准确的边界是：它会影响 GitHub repo access 提示与 token-sync 路径，不等于整个 remote agent 功能总开关。
+
+### `tengu_surreal_dali`
+
+- 这个 key 主要落在 `RemoteTriggerTool` 和 `scheduleRemoteAgents` 路径上。
+- 当前更准确的边界是：它更接近 scheduled / triggered remote agents 的 rollout gate，不是 bridge 核心 transport 开关。
 
 ### `CHICAGO_MCP`
 
-- `query.ts`、`query/stopHooks.ts`、`utils/computerUse/*` 里都能看到 `CHICAGO_MCP` 分支。
-- 当前更稳妥的写法是：Computer Use / Chicago MCP 相关路径受 gate 控制，公开状态不能仅凭源码判断。
+- `query.ts`、`query/stopHooks.ts`、`services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里都能看到 `CHICAGO_MCP` 分支。
+- 当前更稳妥的写法是：它更像 computer-use MCP 的 reserved-name、in-process server、tool override 和 wrapper 分支，公开状态不能仅凭源码判断。
 
 ### `agentSdkTypes` 内部桥接入口
 
@@ -92,6 +101,7 @@
 - `bridge/` 里 env-based / env-less / standalone worker 三条路径都存在，但默认启用条件仍受 build / entitlement / runtime gate 控制。
 - v1 `HybridTransport` 与 v2 `SSETransport + CCRClient` 能确认是客户端 transport 形态，不能写成服务端架构承诺。
 - `entrypoints/agentSdkTypes.ts` 里虽然有 remote-control 类型与注释，但当前镜像中的 `connectRemoteControl()` 仍是 stub，不能把它写成已证实可用的公开 SDK 方法。
+- `query.enableRemoteControl` 在当前镜像里主要出现在 `entrypoints/agentSdkTypes.ts` 的注释对照项里，不能写成已完整坐实的公开 SDK API。
 
 ## 容易误写的点
 

@@ -280,7 +280,7 @@ MCP 并不只生成远端 tools。
 执行集合更宽，主要来自：
 
 - `getAllCommands()`
-- 再加上 `AppState.mcp.commands` 里的 prompt commands
+- 再加上 `AppState.mcp.commands` 里 `loadedFrom === 'mcp'` 的 prompt commands
 
 但模型看到的 listing 来自：
 
@@ -465,4 +465,4 @@ flowchart TD
 
 - `MCP_SKILLS` 这条桥接分支在当前镜像里能看到 call site，但未在这轮完整展开 `mcpSkills.ts`，因此不能把 resource 到 MCP skill 的完整映射时机写得太死。
 - 运行时 401 后是否会立即把 auth pseudo-tool 热替换回模型可见工具池，这轮没有直接坐实。
-- `CHICAGO_MCP` 相关 wrapper / reserved-name / tool-override 分支已经能在 `services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里看到，但它和普通 MCP server 的服务端行为关系，这一页不继续外推。
+- `CHICAGO_MCP` 相关 wrapper / reserved-name / tool-override 分支已经能在 `services/mcp/config.ts`、`services/mcp/client.ts`、`utils/computerUse/*` 里看到；当前更稳妥的说法是“本地 computer-use MCP 分支”，不是普通 MCP server 的服务端实现说明。

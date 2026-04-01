@@ -19,6 +19,10 @@
 - `restored-src/src/memdir/memdir.ts`
 - `restored-src/src/memdir/paths.ts`
 - `restored-src/src/memdir/teamMemPaths.ts`
+- `restored-src/src/services/teamMemorySync/index.ts`
+- `restored-src/src/services/teamMemorySync/watcher.ts`
+- `restored-src/src/services/autoDream/autoDream.ts`
+- `restored-src/src/utils/sessionFileAccessHooks.ts`
 - `restored-src/src/services/compact/autoCompact.ts`
 - `restored-src/src/query.ts`
 - `restored-src/src/utils/tasks.ts`
@@ -62,6 +66,7 @@
 
 - `memdir/memdir.ts`、`teamMemPaths.ts`、`paths.ts` 都有 team memory 相关分支。
 - `TEAMMEM` 是编译期开关；`tengu_herring_clock` 还会影响运行时是否进入 team memory 分支。
+- `setup.ts` 和 `teamMemorySync/watcher.ts` 还能确认本地同步链：先 initial pull，再启动 watcher；`sessionFileAccessHooks.ts` 会在 TeamMem 写后显式通知同步层。
 
 ### `KAIROS` 对 memory 的影响
 
@@ -108,6 +113,7 @@
 - `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 更像 prompt / 注释里的运行线索，不能确认完整公开范围。
 - `autoDream` 是 opportunistic consolidation 机制，不是固定 nightly job；同时它在 `getKairosActive()` 时会关闭，所以不能拿它当作 KAIROS daily-log 的直接后台实现。
 - `/dream` 这条线现在能确认到 skill 注册点、后台 autoDream 链路和 UI 文案，但 `dream.js` 实现文件这轮仍未在当前镜像里复核到，因此手动 `/dream` 的完整执行细节仍不能写死。
+- TeamMem 的本地同步链已经能确认到 `startup pull + watcher + 写后通知`，但 push 仍有 debounce / suppression / shutdown best-effort 语义，不能写成强一致同步承诺。
 - Task V2 的默认启用逻辑在交互式会话里可见，但不能仅凭静态代码推出所有入口的一致产品策略。
 
 ## 容易误写的点
