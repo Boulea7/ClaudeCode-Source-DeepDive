@@ -1,13 +1,7 @@
+[简体中文](./comparison.md) | [English](./comparison.en.md)
+
 # 轻量比较
 
-很多 AI coding 工具会把重点放在编辑器里。
+很多 AI coding 工具把重点放在编辑器里。
 
-Claude Code 更特别的地方，是它在终端里自己长出了一层完整交互：
-
-- terminal UI
-- keybinding context
-- vim mode
-- voice mode
-- teammate preview / notification
-
-这让它的交互风格和传统 IDE agent 很不一样。
+这一章更值得看的地方，是 Claude Code 在终端里实现了自己的交互层，包括输入模式、companion UI 和 voice 输入链路。

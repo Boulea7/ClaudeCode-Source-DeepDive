@@ -1,26 +1,26 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 1 分钟看懂 Buddy, Voice, Vim, And Terminal UI
 
-这一章可以先这样看：
+这一章最适合先记住一件事：
 
-这部分最适合放在主执行链之后再读，因为它讲的是“体验层怎样接回运行时”，不是模型主循环本身。
+交互层不只是终端外壳，它会把 companion UI、voice 输入和 vim 模式接回运行时。
 
 ```mermaid
 flowchart TD
     A[Terminal UI] --> B[Keybindings]
     B --> C[Vim Mode]
-    B --> D[Voice Mode]
+    B --> D[Voice Input]
     A --> E[Buddy / Companion Surface]
-    A --> F[Teammate Preview]
 ```
 
-## 核心理解
+## 三个要点
 
-- Claude Code 不只是 command line parser
-- 它有自己的交互层
-- `vim/` 是输入模式的一部分
-- `buddy/` 是一个明确存在的 UI 面，但它在产品里的具体定位要谨慎下结论
+- `Buddy` 更适合写成 companion / watcher surface 线索
+- `voice` 当前更适合写成语音听写增强链路
+- `vim/` 是清楚拆层的模态输入系统
 
 ## 下一步去哪里
 
-- 想继续看 UI 与边界：读 `README.md`
-- 想确认 companion / voice 细节：读 `DEEP/README.md`
+- 总览：[README.md](../README.md)
+- 深读：[DEEP/README.md](../DEEP/README.md)

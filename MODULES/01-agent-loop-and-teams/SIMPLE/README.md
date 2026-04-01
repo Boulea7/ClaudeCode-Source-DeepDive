@@ -1,10 +1,10 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 1 分钟看懂 Agent Loop And Teams
 
-Claude Code 不只是“把一个请求拆成几个子请求”。
+先记住一个最短的心智模型：
 
-如果你想先抓住最核心的感觉，可以把这一章理解成：它把主线程、子 agent、任务状态和团队协作都放进了同一套运行链。
-
-它更像这样一套流程：
+Claude Code 把主线程、子 agent、任务状态和 team 协作放进了同一套运行链。
 
 ```mermaid
 flowchart TD
@@ -16,16 +16,13 @@ flowchart TD
     D --> G[In-Process Teammates]
 ```
 
-## 核心理解
+## 三个要点
 
 - 主线程负责整体推进
-- `AgentTool` 负责创建或恢复子 agent
-- `tasks/` 目录说明 worker 不是只存在于一条消息里
-- team 模式让多个 agent 可以在同一任务体系里工作
+- `AgentTool` 负责创建、恢复或切换子代理路径
+- `tasks/` 说明 worker 有独立状态，不只是一条消息里的临时对象
 
-## 如果只看 4 个文件
+## 下一步去哪里
 
-- `tools/AgentTool/AgentTool.tsx`
-- `tools/AgentTool/forkSubagent.ts`
-- `tasks/types.ts`
-- `tasks/InProcessTeammateTask/`
+- 总览：[README.md](../README.md)
+- 深读：[DEEP/README.md](../DEEP/README.md)

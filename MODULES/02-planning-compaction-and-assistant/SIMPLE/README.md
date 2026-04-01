@@ -1,8 +1,8 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 1 分钟看懂 Planning, Compaction, And Assistant
 
-Claude Code 的这部分更适合先拆成几条并行机制：
-
-如果你经常好奇“为什么它会记住计划、又能在长会话里继续推进”，这页就是最短入口。
+这一章可以先拆成几条并行机制来看：
 
 ```mermaid
 flowchart TD
@@ -16,14 +16,13 @@ flowchart TD
     M[runtime task] --> N[AppState.tasks + output files]
 ```
 
-## 核心理解
+## 三个要点
 
-- `Plan Mode` 不是一句提示词，而是权限态加上后续 attachment 提醒
-- plan 文件是独立 artifact，但不是进入 Plan Mode 的同步副作用
-- `compact` 至少分成 session-memory、full、partial 等几条路径
-- `TodoWrite`、Task V2、runtime task 不是同一套对象
+- `Plan Mode` 是权限状态和附件提醒的组合
+- plan 文件是独立 artifact
+- `TodoWrite`、Task V2、runtime task 是三套不同对象
 
 ## 下一步去哪里
 
-- 想先抓大意：读 `README.md`
-- 想继续跟源码：读 `DEEP/README.md`
+- 总览：[README.md](../README.md)
+- 深读：[DEEP/README.md](../DEEP/README.md)

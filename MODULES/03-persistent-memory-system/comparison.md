@@ -1,12 +1,7 @@
+[简体中文](./comparison.md) | [English](./comparison.en.md)
+
 # 轻量比较
 
-很多工具也支持规则文件、历史记录、或者长上下文。
+很多工具也支持规则文件、历史记录或长上下文。
 
-Claude Code 这一章更特别的地方是：它把下面这些对象做成了几条并行机制：
-
-- `claudemd` 入口文件注入
-- SessionMemory 会话摘要
-- auto memory / team memory 持久文件
-- query-time relevant-memory surfacing
-
-这也是为什么它的 memory 体验更像几条并行机制，而不是一个单一记忆总线。
+Claude Code 这里更值得看的地方，是它把入口注入、会话摘要、持久文件和查询时召回拆成了几条机制。

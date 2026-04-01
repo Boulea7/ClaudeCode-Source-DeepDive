@@ -1,8 +1,8 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 1 分钟看懂 Permissions, Sandbox, And Trust
 
-先用一张图看：
-
-如果你担心“它是不是能随便执行命令”，先看这一页最有帮助。
+先看最短的流程：
 
 ```mermaid
 flowchart TD
@@ -14,13 +14,13 @@ flowchart TD
     E --> F
 ```
 
-## 核心理解
+## 三个要点
 
-- permission rule 决定“该不该问”
-- 审批 UI 决定“用户怎么回答”
-- sandbox 决定“就算放行了，运行时还能做多少”
+- permission rules 决定是否需要询问
+- 审批 UI 决定用户如何回答
+- sandbox 决定放行之后的运行范围
 
 ## 下一步去哪里
 
-- 想继续看规则层：读 `README.md`
-- 想跟到源码：读 `DEEP/README.md`
+- 总览：[README.md](../README.md)
+- 深读：[DEEP/README.md](../DEEP/README.md)
