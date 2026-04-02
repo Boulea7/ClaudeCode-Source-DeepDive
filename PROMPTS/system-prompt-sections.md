@@ -1,215 +1,48 @@
+[简体中文](./system-prompt-sections.md) | [English](./system-prompt-sections.en.md)
+
 # System Prompt Sections
 
-这一页只讲 section 机制本身。
+这一页只解释 section registry，不解释每个 raw section 的正文。
 
-也就是：
-
-**Claude Code 怎么把动态 prompt 段注册、缓存、失效，再重新求值。**
-
-可以先把它理解成：它服务于缓存、动态更新和按运行时组合。
-
-## 这部分负责什么
-
-这一页主要解释四件事：
-
-1. section 是怎么注册的
-2. cacheBreak / uncached 是什么语义
-3. `resolveSystemPromptSections()` 怎么求值
-4. `/clear` 与 `/compact` 为什么会影响 section cache
-
-## 关键文件
+## 关键源码文件
 
 - `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
-
-## 执行流
-
-### 1. section 在源码里是一等结构
-
-`systemPromptSections.ts` 里最关键的三个对象是：
-
-- `systemPromptSection(name, compute)`
-- `DANGEROUS_uncachedSystemPromptSection(name, compute, reason)`
-- `resolveSystemPromptSections(sections)`
-
-这说明 dynamic prompt 具备带注册表语义的一等结构。
-
-### 2. `cacheBreak` 决定 section 的缓存语义
-
-普通 section：
-
-- `cacheBreak: false`
-
-uncached section：
-
-- `cacheBreak: true`
-
-对应到两个 helper：
-
-- `systemPromptSection()`
-  - 命中 cache 时直接复用
-- `DANGEROUS_uncachedSystemPromptSection()`
-  - 每轮都重新执行 `compute()`
-
-这里有一个需要写清的细节：
-
-- uncached 不等于“完全不写 cache”
-- 它的真实语义是“不能用旧 cache 命中直接返回”
-
-也就是说，uncached section 仍会把最新值写回缓存槽位，只是下一轮不会直接拿旧值跳过计算。
-
-### 3. `resolveSystemPromptSections()` 负责真正求值
-
-`resolveSystemPromptSections()` 的行为很简单，但很重要：
-
-1. 读取当前 section cache
-2. 逐个 section 看 `cacheBreak`
-3. 普通 section 且 cache 命中时直接复用
-4. 否则执行 `compute()`
-5. 把最新值写回 cache
-
-这也是为什么 section cache 更像：
-
-- “按 section name 的注册表缓存”
-
-而不是：
-
-- “整段 system prompt 的一次性缓存”
-
-### 4. `clearSystemPromptSections()` 会在 `/clear` 和 `/compact` 后失效
-
-`clearSystemPromptSections()` 做了两件事：
-
-- `clearSystemPromptSectionState()`
-- `clearBetaHeaderLatches()`
-
-源码注释也明确说明：
-
-- `/clear` 会调用它
-- `/compact` 也会调用它
-
-所以 compact 不只是重写消息历史，还会让 section cache 重新求值。
-
-### 5. `mcp_instructions` 是当前最明确的 uncached section
-
-这轮重新核读后，这一点可以写得更强一些。
-
-当前标准路径里，明确使用：
-
-- `DANGEROUS_uncachedSystemPromptSection(...)`
-
-的 section 是：
-
-- `mcp_instructions`
-
-原因也直接写在源码注释里：
-
-- MCP servers 可能在 turn 之间连接或断开
-
-这意味着作者在这里明确选择了：
-
-- 动态正确性优先
-
-而不是：
-
-- 缓存稳定性优先
-
-这里还要再补一个边界：
-
-- “最明确”指的是标准 section registry 路径里最容易直接坐实的一项
-- 如果 `isMcpInstructionsDeltaEnabled()` 为真，MCP instructions 还会改走 attachment / delta 路径，而不是继续以内联 section 形态出现
-
-### 6. static boundary / dynamic boundary 不是审美问题
-
-`SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 的作用，是把：
-
-- 跨组织可缓存的静态内容
-- 用户 / 会话 / 运行时相关的动态内容
-
-明确切开。
-
-当前标准路径里：
-
-- boundary 之前是静态块
-- boundary 之后是 `resolvedDynamicSections`
-- 但这条 boundary 是按条件插入的，不是每次必有
-
-像下面这些段落，应该理解成 dynamic side：
-
-- `session_guidance`
-- `memory`
-- `env_info_simple`
-- `language`
-- `output_style`
-- `mcp_instructions`
-
-所以这一页要把几个词统一好：
-
-- static sections
-- dynamic sections
-- dynamic boundary
-- cacheBreak
-
-### 7. section 集合本身也会受 gate 影响
-
-这一页还要再收紧一个边界：
-
-- section registry 本身是稳定机制
-- 但“本轮到底注册哪些 section”仍会受 build flag 和 runtime gate 影响
-
-当前源码里已经能看到几类典型分支：
-
-- proactive / KAIROS 会整体绕开标准 section registry，改走 autonomous prompt 路径
-- `mcp_instructions` 会因为 `isMcpInstructionsDeltaEnabled()` 改走 attachment / delta 路径
-- `session_guidance` 的实际内容还会受 `COORDINATOR_MODE`、fork gate、verification gate 影响
-
-所以这页更适合写成：
-
-- section 机制是稳定的
-- section 集合与具体内容是条件性的
-
-而不是：
-
-- 所有构建、所有模式都严格拥有同一份 dynamic sections 列表
-
-## 一张图看 section 生命周期
-
-```mermaid
-flowchart TD
-    A[register section] --> B{cacheBreak?}
-    B -- no --> C[check cache by name]
-    C -- hit --> D[reuse cached value]
-    C -- miss --> E[compute]
-    B -- yes --> E
-    E --> F[write latest value into cache]
-    F --> G[resolved prompt part]
-    H[/clear or /compact] --> I[clearSystemPromptSections]
-    I --> J[clear section state and beta latches]
-```
-
-## 为什么这个设计重要
-
-如果没有这层 section registry，prompt 装配会面临两个问题：
-
-- 不知道哪些段是真动态的
-- `/clear` 与 `/compact` 之后也不知道哪些值该失效
-
-现在这套机制至少带来了三点好处：
-
-- 动态段可以按名管理
-- `cacheBreak` 是显式语义，不靠注释猜
-- `/clear` 与 `/compact` 的失效边界清楚
-- boundary 是否出现，取决于当前路径是否启用全局缓存边界
-
-## 推荐阅读顺序
-
-1. `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
-2. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
-3. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
-4. `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
-
-## 仍待确认
-
-- 某些 feature gate 会不会在不同构建里增减 section 集合，这一页不展开。
-- `beta header latches` 的完整产品语义，这一页也不继续延伸。
-- `mcp_instructions` 在不同 gate 组合下最终以内联 section 还是 delta / attachment 形式出现，这一页只确认机制，不把它写成单一路径。
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/sessionRestore.ts`
+
+## 当前源码能确认的机制
+
+- `systemPromptSection(name, compute)` 创建可缓存 section。
+- `DANGEROUS_uncachedSystemPromptSection(name, compute, reason)` 创建逐轮重算 section。
+- `resolveSystemPromptSections()` 会：
+  - 命中 cache 时直接返回缓存值
+  - 未命中时执行 `compute()`
+  - 把结果写回 cache
+- `clearSystemPromptSections()` 会清空 section cache，并重置 beta header latches。
+- 源码注释明确写明 section cache 会在 `/clear` 与 `/compact` 相关路径后重置。
+- `prompts.ts` 当前注册的主要 section 名包括：
+  - `session_guidance`
+  - `memory`
+  - `ant_model_override`
+  - `env_info_simple`
+  - `language`
+  - `output_style`
+  - `mcp_instructions`
+  - `scratchpad`
+  - `frc`
+  - `summarize_tool_results`
+  - `numeric_length_anchors`
+  - `token_budget`
+  - `brief`
+- `mcp_instructions` 是显式的 `DANGEROUS_uncachedSystemPromptSection()`。
+
+## 当前源码不能确认的内容
+
+- 某个 section 在公开构建里的默认启用状态。
+- 某个 section 的运行时最终正文。
+
+## 复核清单
+
+- 是否把 section cache 写成永久缓存。
+- 是否漏写 `/clear`、`/compact` 相关重置语义。
+- 是否把 `mcp_instructions` 误写成普通缓存 section。

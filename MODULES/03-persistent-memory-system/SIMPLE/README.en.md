@@ -2,23 +2,26 @@
 
 # Persistent Memory System In One Minute
 
-Treat Claude Code memory as several parallel paths:
+Keep this short mental model:
+
+Claude Code does not have one generic “memory.” The visible source exposes at least three layers: session summaries, durable memory, and team memory.
 
 ```mermaid
 flowchart TD
-    A[claudemd entrypoints] --> B[user context injection]
-    C[SessionMemory] --> D[session-memory/summary.md]
-    D --> E[sessionMemoryCompact]
-    F[extractMemories] --> G[auto memory root]
-    G --> H[topic files]
-    I[findRelevantMemories(memoryDir)] --> J[relevant-memory attachments]
+    A[SessionMemory] --> B[summary.md for current session]
+    C[extractMemories] --> D[auto memory root]
+    D --> E[MEMORY.md index]
+    D --> F[topic files]
+    G[teamMemPaths] --> H[auto memory / team]
+    H --> I[teamMemorySync]
+    J[autoDream] --> K[conditional background consolidation]
 ```
 
 ## Three Takeaways
 
-- `claudemd` handles entrypoint injection
-- `SessionMemory` maintains the session summary
-- `extractMemories + memdir` handle durable memory writes and recall rules
+- `SessionMemory` serves current-session continuity
+- durable memory serves cross-session topic memory
+- team memory is a shared layer under the auto-memory tree
 
 ## Read Next
 

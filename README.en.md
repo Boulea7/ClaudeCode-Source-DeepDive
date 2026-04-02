@@ -2,39 +2,26 @@
 
 # Claude Code Source Deep Dive
 
-An unofficial research repository focused on reading `Claude Code` through source-backed architecture notes.
+An unofficial research repository built around the public `Claude Code` source mirror.
 
-This repository keeps the emphasis on three things:
-
-- how the runtime chain is connected
-- how major subsystems are split
-- which statements are already grounded in source and which still require conservative wording
+The main question this repository answers is how the two entry paths branching from `main.tsx` converge into a shared `query/runtime` chain, and how tools, MCP, skills, plugins, permissions, memory, compaction, tasks, and prompts attach to that chain.
 
 ## What You Can Verify Here
 
-- how the interactive main thread moves from `main.tsx` into `REPL.tsx`, then into `query.ts`
-- what role `QueryEngine.ts` plays on non-interactive / SDK paths
-- how tools, MCP, skills, plugins, permissions, memory, compaction, and tasks connect to the same runtime
-- how far the current source supports prompt assembly, feature gates, and remote / bridge behavior
-
-## How This Repository Uses Source
-
-- Code claims come only from:
-  - `https://github.com/ChinaSiro/claude-code-sourcemap`
-  - the local mirror: `_upstream/claude-code-sourcemap/`
-- Source paths in this repository point to the real local mirror path:
-  - `_upstream/claude-code-sourcemap/restored-src/src/...`
-
-See [DISCLAIMER.en.md](./DISCLAIMER.en.md) for the full boundary statement.
+- how the interactive path moves from `main.tsx` into `launchRepl()`, `REPL.tsx`, and then `query()`
+- how the non-interactive / SDK path moves from `main.tsx` into `QueryEngine.ts` and then `query()`
+- how `Tool.ts` and `tools.ts` define the tool contract, the built-in tool set, and the MCP-merged tool pool
+- how `query.ts` handles tool execution, attachments, compaction, stop hooks, continuation rules, and between-turn refreshes
+- which conclusions are already source-backed and which names or branches still need conservative wording
 
 ## Start Here
 
 | Goal | Entry | What you get |
 | --- | --- | --- |
-| Build the big picture first | [ARCHITECTURE.en.md](./ARCHITECTURE.en.md) | the main execution chain, major layers, and key entry files |
+| Build the big picture first | [ARCHITECTURE.en.md](./ARCHITECTURE.en.md) | the two entry paths, the shared runtime chain, and key entry files |
 | Read by subsystem | [MODULES/README.en.md](./MODULES/README.en.md) | overview, simple guides, and deep dives for 8 modules |
 | Focus on prompt assembly | [PROMPTS/README.en.md](./PROMPTS/README.en.md) | system prompt, agent prompt, and skill injection paths |
-| Focus on gated branches | [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md) | compile-time gates, runtime gates, and hidden capability clues |
+| Focus on gated branches | [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md) | compile-time gates, runtime gates, and conditional path clues |
 | Scan the repo quickly | [SIMPLE/README.en.md](./SIMPLE/README.en.md) | a short route for first-time readers |
 | Jump into source-heavy reading | [DEEP/README.en.md](./DEEP/README.en.md) | a longer route for source walkthroughs |
 
@@ -44,26 +31,27 @@ See [DISCLAIMER.en.md](./DISCLAIMER.en.md) for the full boundary statement.
 
 1. [ARCHITECTURE.en.md](./ARCHITECTURE.en.md)
 2. [MODULES/README.en.md](./MODULES/README.en.md)
-3. any module `SIMPLE/README.en.md`
-4. any module `DEEP/README.en.md`
+3. any module `README.en.md`
+4. any module `SIMPLE/README.en.md`
+5. any module `DEEP/README.en.md`
 
-### Path B: Follow the runtime chain
+### Path B: Follow the shared runtime chain
 
 1. [ARCHITECTURE.en.md](./ARCHITECTURE.en.md)
-2. [MODULES/01-agent-loop-and-teams](./MODULES/01-agent-loop-and-teams/)
-3. [MODULES/02-planning-compaction-and-assistant](./MODULES/02-planning-compaction-and-assistant/)
-4. [MODULES/03-persistent-memory-system](./MODULES/03-persistent-memory-system/)
-5. [MODULES/05-tools-mcp-skills-and-plugins](./MODULES/05-tools-mcp-skills-and-plugins/)
-6. [MODULES/06-permissions-sandbox-and-trust](./MODULES/06-permissions-sandbox-and-trust/)
+2. [01-agent-loop-and-teams/README.en.md](./MODULES/01-agent-loop-and-teams/README.en.md)
+3. [02-planning-compaction-and-assistant/README.en.md](./MODULES/02-planning-compaction-and-assistant/README.en.md)
+4. [03-persistent-memory-system/README.en.md](./MODULES/03-persistent-memory-system/README.en.md)
+5. [05-tools-mcp-skills-and-plugins/README.en.md](./MODULES/05-tools-mcp-skills-and-plugins/README.en.md)
+6. [06-permissions-sandbox-and-trust/README.en.md](./MODULES/06-permissions-sandbox-and-trust/README.en.md)
 
-### Path C: Focus on prompts, gates, and hidden branches
+### Path C: Start with prompts, gates, and remote-facing paths
 
 1. [PROMPTS/README.en.md](./PROMPTS/README.en.md)
 2. [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
-3. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
-4. [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/)
+3. [07-remote-session-bridge-and-sdk/README.en.md](./MODULES/07-remote-session-bridge-and-sdk/README.en.md)
+4. [08-prompts-config-and-other-moats/README.en.md](./MODULES/08-prompts-config-and-other-moats/README.en.md)
 
-## Repo Map
+## Key Docs And Folders
 
 ```text
 .
@@ -71,24 +59,31 @@ See [DISCLAIMER.en.md](./DISCLAIMER.en.md) for the full boundary statement.
 ├── README.en.md
 ├── README.zh-TW.md
 ├── README.ja.md
-├── DISCLAIMER.md
 ├── ARCHITECTURE.md
-├── SIMPLE/
-├── DEEP/
+├── ARCHITECTURE.en.md
+├── DISCLAIMER.md
+├── DISCLAIMER.en.md
 ├── MODULES/
 ├── PROMPTS/
 ├── FEATURE-FLAGS/
+├── SIMPLE/
+├── DEEP/
 ├── COMPARISONS/
 ├── EXAMPLES/
-└── ASSETS/
+├── ASSETS/
+└── AI-AGENT/
 ```
+
+For a first pass, start with `README`, `ARCHITECTURE`, `MODULES`, `PROMPTS`, and `FEATURE-FLAGS`. `AI-AGENT/` is a structured companion layer for automation-oriented reading.
 
 ## Boundary Notes
 
-- This is an unofficial research repository. It does not represent Anthropic’s official structure, rollout plans, or product wording.
-- `feature()`, GrowthBook, and env gates only show conditional code paths. They do not prove public rollout.
-- Names such as `Buddy`, `KAIROS`, `PROACTIVE`, `voice`, `bridge`, and `remote isolation` stay source-bound and conservative.
-- Prompt fragments such as `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` and `mcp_instructions` must be described as conditional path elements, not fixed always-on sections.
+- this is an unofficial research repository
+- source-backed claims are bounded by `ChinaSiro/claude-code-sourcemap` and the local `_upstream/claude-code-sourcemap/` mirror
+- `feature()`, GrowthBook, and env gates show conditional paths in code; they do not prove public rollout on their own
+- names such as `Buddy`, `KAIROS`, `PROACTIVE`, `voice`, `bridge`, and `remote isolation` stay within source wording and surrounding context
+
+See [DISCLAIMER.en.md](./DISCLAIMER.en.md) for the full boundary statement.
 
 ## Continue Reading
 
@@ -97,9 +92,7 @@ See [DISCLAIMER.en.md](./DISCLAIMER.en.md) for the full boundary statement.
 - [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
 - [COMPARISONS/README.en.md](./COMPARISONS/README.en.md)
 - [EXAMPLES/README.en.md](./EXAMPLES/README.en.md)
-
-## Machine-Readable Index
-
-If you want structured material for other agents, see:
-
-- [AI-AGENT](./AI-AGENT/)
+- [ASSETS/README.en.md](./ASSETS/README.en.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md) / [CONTRIBUTING.en.md](./CONTRIBUTING.en.md)
+- [SECURITY.md](./SECURITY.md) / [SECURITY.en.md](./SECURITY.en.md)
+- [AI-AGENT](./AI-AGENT/): structured companion notes for automation-oriented reading

@@ -1,361 +1,168 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Persistent Memory System
 
-这一章最容易被误解的地方，是大家会把 Claude Code 的 memory 想成“一个 `CLAUDE.md` 文件”。
+本章说明 Claude Code 的记忆系统如何分成三层，并通过附件、扫描、同步和后台整理机制继续参与长会话。
 
-但从公开镜像来看，更准确的结构是三块并行机制：
+公开镜像可以直接支持以下结论：
 
-- **session continuity**：`SessionMemory`
-- **durable writing**：`extractMemories`
-- **durable rules and recall**：`memdir`
-
-它们会互相配合，但不是同一套系统的上下两层。
-
-如果你只想先抓一个核心感觉，可以把这一章理解成：Claude Code 把“当前会话的连续性”和“跨会话的长期记忆”明确分开了。
+- `SessionMemory` 维护当前会话的 `summary.md`
+- durable memory 通过 `MEMORY.md` 加 topic files 保存跨会话记忆
+- team memory 位于 auto memory 子树中的 `team/` 目录，并由 sync watcher 与服务端同步
 
 ## 这部分负责什么
 
-这一层主要负责四件事：
+这一层负责四件事：
 
-1. 定义 durable memory 存在哪、怎么进入 system prompt 与 recall 流程
-2. 在当前会话内维护 session 级 `summary.md`
-3. 在回合结束后把值得长期保留的信息写入 durable memory
-4. 给 team memory 提供路径边界与作用域规则
+1. 为当前会话维护摘要型记忆
+2. 为个人跨会话记忆维护 durable topic files
+3. 为团队共享记忆维护 team 子树与同步
+4. 在满足条件时触发后台整理路径
 
 ## 关键文件
 
 ### Session memory
 
 - `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
-  - session 级摘要更新主流程
 - `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
-  - 配置、阈值、等待与读取
 - `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/prompts.ts`
-  - `summary.md` 模板、更新 prompt、compact 截断
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/filesystem.ts`
-  - `session-memory/summary.md` 的真实路径定义
 
 ### Durable memory
 
 - `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/extractMemories.ts`
-  - turn-end durable memory writer
-- `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/prompts.ts`
-  - durable / team extraction prompt
 - `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
-  - durable memory 的 instruction prompt 与目录初始化
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/paths.ts`
-  - `getAutoMemPath()` 与 auto memory 根目录解析
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
-  - taxonomy 与不该保存的内容
 - `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryScan.ts`
-  - topic file 扫描
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/findRelevantMemories.ts`
-  - query-time recall
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/claudemd.ts`
-  - `AutoMem / TeamMem` 入口索引注入
 
 ### Team memory
 
 - `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
-  - `team/` 子树路径、键清洗、路径校验
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPrompts.ts`
-  - team memory prompt 文案
 - `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/index.ts`
-  - TeamMem pull / push / sync state 主逻辑
 - `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/watcher.ts`
-  - startup pull、文件 watcher、push 调度
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/sessionFileAccessHooks.ts`
-  - team memory 访问埋点与写后通知
+- `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/types.ts`
+
+### 条件化整理路径
+
 - `_upstream/claude-code-sourcemap/restored-src/src/services/autoDream/autoDream.ts`
-  - `autoDream` 后台 consolidation 主链
-- `_upstream/claude-code-sourcemap/restored-src/src/services/autoDream/config.ts`
-  - `autoDreamEnabled` 与运行时 gate
 
-## 执行流
+## 源码主线
 
-### 1. `SessionMemory` 负责当前会话的 `summary.md`
+### 1. `SessionMemory` 只服务当前会话连续性
 
-`SessionMemory` 这条链是 session-local 的。
+`sessionMemory.ts` 会在 post-sampling hook 中检查门限，然后通过 forked agent 更新当前会话的 `summary.md`。当前文件明确写了一个重要边界：`SessionMemory` 只在主 REPL 线程运行。
 
-路径来自：
+这条路径说明：
 
-- `getSessionMemoryDir()`
-- `getSessionMemoryPath()`
+- `SessionMemory` 不是 durable memory 的别名
+- 它是当前会话的摘要层
+- 它还会被 `sessionMemoryCompact` 当作 compact 的优先输入
 
-当前公开源码里能直接确认它落在：
+### 2. durable memory 由 `MEMORY.md` 和 topic files 组成
 
-- `getProjectDir(getCwd()) / getSessionId() / session-memory / summary.md`
-- 这条路径定义在 `utils/permissions/filesystem.ts`
+`memdir.ts` 里可以直接确认 durable memory 的组织方式：
 
-也就是说，它在项目会话目录里，不在 durable memory 根目录里。
+- `MEMORY.md` 是索引入口
+- 具体记忆写入单独 topic files
+- topic files 带 frontmatter
+- `buildMemoryLines()` 会要求模型把细节写进 topic files，而不是把正文塞进 `MEMORY.md`
 
-它的典型使用链是：
+`extractMemories.ts` 负责在合适时机启动 forked agent，把新信息写成 durable memory 文件。
 
-1. `setup.ts` 启动时调用 `initSessionMemory()`
-2. 注册 post-sampling hook
-3. 满足阈值后用 forked agent 更新 `summary.md`
-4. 后续被 `sessionMemoryCompact`、`awaySummary`、`skillify` 这类路径读取
+### 3. query-time recall 与 durable write 不是同一动作
 
-这条链的边界很明确：
+`memoryScan.ts` 提供目录扫描与 manifest 格式化能力，用于在 recall 或提取阶段读取已有记忆。它不等于写入本身。
 
-- 它服务会话连续性
-- 不是 durable memory
-- 也不是 topic file
+这条边界很重要：
 
-### 2. Session memory 的写权限非常窄
+- durable write 主要由 `extractMemories.ts` 完成
+- query-time recall 主要依赖 `memdir/*` 的扫描、索引和附件逻辑
 
-`SessionMemory` 后台 fork 的权限模型比 durable memory 更窄。
+公开文档不把“写入”和“召回”混成一个机制。
 
-当前可以直接确认：
+### 4. team memory 是 auto memory 子树的一部分
 
-- 更新子代理只能 `Edit` 当前这一份 `summary.md`
-- 不是在整个 memory 根里自由读写
+`teamMemPaths.ts` 直接定义了 team memory 的位置：
 
-这也是为什么文档里应把它写成：
+- `getTeamMemPath()` 返回 `join(getAutoMemPath(), 'team')`
 
-- “当前会话的摘要文件”
+同一个文件还明确要求：
 
-而不是：
+- team memory 依赖 auto memory 已启用
+- team memory 写入要做路径校验和 symlink 逃逸防护
 
-- “通用记忆写入器”
+这说明 team memory 不是并列于 auto memory 的另一套根目录。它是 auto memory 体系里的共享子树。
 
-### 3. `extractMemories` 负责 durable memory 写入
+### 5. team memory sync 是独立服务层
 
-`extractMemories.ts` 是另一条完全不同的链。
+`services/teamMemorySync/index.ts` 负责 pull、push、checksum、冲突与 entry 限制。`watcher.ts` 负责本地目录监听、初始 pull、debounced push 与失败抑制。
 
-它的触发点在：
+当前源码还能确认几个公开表述里值得保留的点：
 
-- `query/stopHooks.ts` 的回合结束阶段
+- team memory sync 依赖 first-party OAuth
+- team memory sync 依赖 GitHub repo 识别
+- watcher 只在 `TEAMMEM` 开关与 team memory 可用时启动
 
-目标是：
+### 6. `loadMemoryPrompt()` 会按条件组合 auto 与 team 记忆
 
-- 从最近对话里提取值得长期保留的信息
-- 写入 auto memory 根内的 durable memory 文件
+`memdir.ts` 里，`loadMemoryPrompt()` 会根据当前配置选择：
 
-这里要特别强调两点：
+- 纯 auto memory prompt
+- auto + team 的 combined prompt
+- KAIROS daily-log prompt
 
-- 它本质上是一个后台 extraction / writer
-- 它写的不是 `session-memory/summary.md`
+这条分支说明 KAIROS 与 team memory、auto memory 的交互是条件化的。公开文档不把任何一种分支写成唯一固定模式。
 
-当前源码还能确认一个重要的去重边界：
+### 7. `autoDream` 是条件化后台整理路径
 
-- 如果主代理本轮已经直接写过 auto memory
-- 后台 extractor 会跳过这轮，避免重复写入
+`autoDream.ts` 当前明确把自己描述成 background memory consolidation。它会在满足时间门限、session 数门限与锁条件后，启动一条 forked worker。
 
-而且这条链还有一个很实用的收边：
+源码里还有两个必须保留的保守点：
 
-- 它不会把自己写成新的会话摘要
-- 它写的是 auto memory 根里的 durable files
+- `getKairosActive()` 为真时，`autoDream` 直接关闭，并注释说明 KAIROS 模式使用 disk-skill dream
+- 当前可见文件能确认 `autoDream` 的后台整理逻辑，不能把 KAIROS 和 `/dream` 的完整产品语义写死
 
-### 4. `memdir` 定义 durable memory 的制度层
+### 8. `SessionMemory`、durable memory、team memory 必须三分
 
-这里可以先把它理解成 durable memory 的“规则层”和“目录层”，而不是一个单独的写入器。
+这一章最容易被写糊的地方就是把所有记忆都写成同一个“memory system”。当前源码要求更细的表述：
 
-`memdir` 这层真正负责 durable memory 的规则：
+- `SessionMemory`：当前会话摘要，服务连续性与 compact
+- durable memory：topic files 与 `MEMORY.md`，服务个人跨会话记忆
+- team memory：team 子树与同步服务，服务团队共享记忆
 
-- 根目录在哪
-- instruction prompt 怎么组织
-- `MEMORY.md` 怎么作为入口索引
-- taxonomy 是什么
-- recall 怎么做
-- team/private 作用域怎么区分
+这三者共享部分工具与目录规则。它们不共享同一份语义边界。
 
-也就是说：
-
-- `extractMemories` 负责写
-- `memdir` 负责 durable memory 的规则、目录初始化和 recall 基础设施
-- `claudemd.ts` 负责把 `AutoMem / TeamMem` 入口索引真正读进上下文
-
-### 5. durable taxonomy 是闭集四类
-
-当前源码里，durable taxonomy 是闭集四类：
-
-- `user`
-- `feedback`
-- `project`
-- `reference`
-
-这四类定义在：
-
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
-
-同时，源码还明确要求 durable memory 不要保存一些内容，例如：
-
-- 临时任务状态
-- 短期噪声
-- 已经过时的执行细节
-
-这正好说明 durable memory 与 `SessionMemory` 是刻意分层的：
-
-- `SessionMemory` 可以保留当前会话连续性
-- durable memory 只保留未来会话仍值得复用的知识
-
-### 6. team memory 是 durable memory 根下的 `team/` 子域
-
-这轮重新核读后，这一点可以写得更明确。
-
-当前源码里，team memory 位于：
-
-- `getAutoMemPath()` 根下的 `team/` 子目录
-
-并且：
-
-- `isTeamMemoryEnabled()` 先检查 auto memory 是否开启
-- 再检查 team gate
-
-所以更稳妥的表述是：
-
-- auto memory 根目录下有普通 memory files
-- team memory 是这个根下面的 `team/` 子树
-
-### 7. relevant-memory 主链默认会递归覆盖 `team/` topic files
-
-`findRelevantMemories()` 本身接收一个 `memoryDir` 参数，再对这个目录下的 topic files 做递归扫描。
-
-因此更准确的说法是：
-
-- `findRelevantMemories()` 自己不带默认目录
-- 但主线程常见调用链是 `attachments.ts -> getAutoMemPath() -> recursive scan`
-- 因为扫描是递归的，`team/` 下 topic files 默认也在候选集里
-- 如果调用方传的是更窄目录，召回范围才会相应缩小
-
-但这里还有一个很重要的过滤：
-
-- basename 为 `MEMORY.md` 的索引文件不会进入这条 recall 链
-
-也就是说：
-
-- auto `MEMORY.md`
-- team `MEMORY.md`
-
-是两份独立索引文件
-
-而相关召回主要面向 topic files，不是直接把索引文件整份塞回去。
-
-### 8. private / team 归属更多体现在 prompt taxonomy，不是自动路由器
-
-这是这一轮需要特别收紧的地方。
-
-当前源码能确认：
-
-- `memoryTypes.ts` 与 team prompt 文案会描述 private / team 的归属建议
-- 但真正的硬边界主要是“目标路径是否落在 auto memory 根内”
-
-当前源码里可以确认 `teamMemPaths.ts` 提供了：
-
-- `validateTeamMemWritePath()`
-- `validateTeamMemKey()`
-
-但这轮不能直接把它们写成“所有 team 写路径都会统一经过”的硬事实。
-
-所以文档里不要写成：
-
-- “某个 type 会自动路由到 private 或 team”
-
-更准确的写法是：
-
-- type 和 scope 主要通过 prompt taxonomy 引导
-- 代码硬边界主要是路径约束
-
-### 9. Team memory 的同步机制至少能确认到 watcher 链
-
-这一轮可以把上一版的保守表述再收紧一点。
-
-当前源码里已经能确认：
-
-- `setup.ts` 在 `feature('TEAMMEM')` 下会启动 `startTeamMemoryWatcher()`
-- watcher 启动后会先 `pullTeamMemory(...)`
-- 再继续启动文件 watcher
-- `sessionFileAccessHooks.ts` 里，team memory 文件访问会被单独识别
-
-所以更准确的写法是：
-
-- team memory 的“会话开始时先拉一次，再继续 watch 本地改动”这条客户端同步链是能从源码坐实的
-- TeamMem 文件在 Edit / Write 后还会经过 `sessionFileAccessHooks.ts` 显式 `notifyTeamMemoryWrite()`
-- 但这仍然是客户端 best-effort 同步机制，不等于服务端侧同步策略、冲突处理或最终一致性语义
-
-### 10. `/dream` 与 `autoDream` 是两条相关但不相同的线
-
-这一轮也可以把 KAIROS memory 那里的 `/dream` 线索写得更具体。
-
-当前源码里能确认：
-
-- `skills/bundled/index.ts` 会在 `feature('KAIROS') || feature('KAIROS_DREAM')` 下尝试 `registerDreamSkill()`
-- `autoDream.ts` 是后台 consolidation 链，会在时间阈值、session 数量和锁条件满足时 fork 子代理
-- `autoDream.ts` 自己明确写着：`getKairosActive()` 时直接关闭，因为 `KAIROS mode uses disk-skill dream`
-- `MemoryFileSelector.tsx` 还能看到 `Auto-dream` 状态和 `/dream to run` 的 UI 文案
-
-因此更稳妥的说法是：
-
-- `/dream` 不是只有注释线索，当前镜像里至少能确认到 skill 注册点、后台 `autoDream` 链路和 UI 提示
-- 但 `skills/bundled/index.ts` 里引用的 `dream.js` 实现文件，这一轮仍没有在当前镜像里复核到
-- `autoDream` 也不应写成固定 nightly job；它当前更像时间阈值、session 数量和锁三层 gate 下的 opportunistic consolidation
-- 所以“手动 `/dream` 技能的完整实现”仍不能写成已完整坐实
-
-## 一张图看两条 memory 链
+## 一张图看三层记忆
 
 ```mermaid
 flowchart TD
-    A[conversation turns] --> B[SessionMemory]
-    A --> C[extractMemories]
-    A --> N[teamMemorySync]
-    B --> D[session-memory/summary.md]
-    D --> E[sessionMemoryCompact]
-    C --> G[auto memory root]
-    G --> H[topic files]
-    C -. conditional .-> I[optional MEMORY.md index updates]
-    G --> M[claudemd.ts loads<br/>AutoMem / TeamMem MEMORY.md]
-    N --> G
-    H --> J[findRelevantMemories(memoryDir)]
-    J --> K[sideQuery selection]
-    K --> L[attachment surfacing]
+    A[SessionMemory] --> B[session-memory/summary.md]
+    B --> C[sessionMemoryCompact]
+    D[memdir.ts] --> E[auto memory root]
+    E --> F[MEMORY.md]
+    E --> G[topic files]
+    H[teamMemPaths.ts] --> I[auto memory / team]
+    I --> J[teamMemorySync]
 ```
 
-## 一张图看 durable / team 结构
+## 一张图看后台整理路径
 
 ```mermaid
 flowchart TD
-    A[getAutoMemPath] --> B[auto memory root]
-    B --> C[non-team topic files]
-    B --> D[team subtree]
-    B --> E[MEMORY.md entrypoint]
-    D --> F[team topic files]
-    D --> G[team MEMORY.md]
-    D --> J[teamMemorySync<br/>pull / watch / push]
-    H[memoryTypes taxonomy] --> I[user / feedback / project / reference]
-    I -. prompt guidance, not hard router .-> B
-    B -. default relevant-memory scan is recursive .-> F
+    A[extractMemories] --> B[forked durable-memory writer]
+    C[autoDream] --> D[conditional background consolidation]
+    D --> E[review touched sessions]
+    E --> F[update memory files]
+    G[KAIROS active] --> H[disable autoDream path]
 ```
 
-## 为什么这个设计重要
+## 保守边界
 
-这套分层最值得注意的地方，是它把不同时间尺度分开了：
+- `SessionMemory`、durable memory、team memory 保持三分表述，不混写。
+- team memory 是 auto memory 子树。公开文档不把它写成独立根目录产品。
+- `autoDream`、KAIROS daily-log、`/dream` 都保留条件化表述。当前源码不能支撑“固定产品语义”。
+- 静态源码不能推出各项记忆 gate 的线上默认状态。
 
-- 当前会话连续性：`SessionMemory`
-- 跨会话可复用知识：`durable memory`
+## 继续阅读
 
-这样做的好处是：
-
-- session 摘要可以大胆服务 compact 和长会话续航
-- durable memory 不会被当前会话的短期噪声污染
-- team memory 可以在同一套 durable 树里增加共享层，但仍保留明确边界
-
-## 推荐阅读顺序
-
-1. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
-2. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
-3. `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/prompts.ts`
-4. `_upstream/claude-code-sourcemap/restored-src/src/memdir/paths.ts`
-5. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
-6. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryTypes.ts`
-7. `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
-8. `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/extractMemories.ts`
-9. `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryScan.ts`
-10. `_upstream/claude-code-sourcemap/restored-src/src/memdir/findRelevantMemories.ts`
-
-## 仍待确认
-
-- team memory 的客户端同步链现在已经能确认到“startup pull + watcher + 写后通知”，但服务端侧同步策略、冲突处理和最终一致性语义，这一页仍不继续外推。
-- `manuallyExtractSessionMemory()` 的注释提到 `/summary`，但本轮没有在当前树里找到直接调用点。
-- `skills/bundled/index.ts` 里能看到 `registerDreamSkill()` 的注册点，但 `dream.js` 实现文件这轮没有在当前镜像里复核到，因此手动 `/dream` 的完整实现仍不能写死。
-- `KAIROS` 相关 nightly distillation 仍只能写成代码线索，不应写成当前构建已完整启用的事实；当前能直接坐实的是 KAIROS active 时 `autoDream` 会关闭，日记写入会改走 daily-log 路径。
-- `validateTeamMemWritePath()` / `validateTeamMemKey()` 在哪些写链路里稳定生效，这一轮没有继续追到完整调用面。
+- 概览：[../README.md](../README.md)
+- 快速版：[../SIMPLE/README.md](../SIMPLE/README.md)
+- 轻量比较：[../comparison.md](../comparison.md)

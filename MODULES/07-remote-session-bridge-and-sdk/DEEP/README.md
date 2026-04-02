@@ -1,3 +1,5 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Remote Session, Bridge, And SDK
 
 这一章要回答的核心问题是：
@@ -216,14 +218,14 @@
 - `entrypoints/agentSdkTypes.ts` 里还能看到一个 `@internal` helper 会跳过 `tengu_ccr_bridge` entitlement gate；这更说明源码里存在内部调用分支，不能拿它反推公开默认状态
 - `tengu_remote_backend` 这轮能直接坐实到的范围也更窄：当前可见调用点主要落在 `claude --remote` 的 TUI 入口判定，不能外推成完整 remote backend 产品形态
 
-### 6. `sessionRunner.ts` 说明 bridge 不只是一个内存态适配层
+### 6. `sessionRunner.ts` 说明 bridge 还会管理本地 worker 进程
 
 `sessionRunner.ts` 很关键，因为它说明 standalone / multi-session bridge 最终会：
 
 - 拉起本地 `claude --print --sdk-url --session-id ...` 子进程
 - 通过 stdin / stdout 做桥接
 
-这也说明 `bridge/` 的职责不只停在消息转发，它还会管理真正的本地 worker 进程。
+这也说明 `bridge/` 的职责覆盖消息转发和本地 worker 进程管理。
 
 ## 一张图看 `remote/` 与 `bridge/` 的分层
 
@@ -278,7 +280,7 @@ flowchart LR
 ## 仍待确认
 
 - `/bridge`、`worker_epoch`、`ccr_v2_compat_enabled` 等服务端语义，这一轮只能写成“客户端预期 / 兼容逻辑”，不能写成后端事实。
-- `session_*` 与 `cse_*` 的双 ID 兼容逻辑可以确认存在，但服务端当前到底接受哪些 tag，不能只靠客户端静态代码写死。
+- `session_*` 与 `cse_*` 的双 ID 兼容逻辑可以确认存在，但服务端当前到底接受哪些 tag，仍需要额外证据。
 - env-based 与 env-less 在真实产品入口里的默认启用条件，这一轮不继续外推。
 - `entrypoints/agentSdkTypes.ts` 里的 pre-entitled internal caller 只说明“有内部绕过 entitlement gate 的调用面”，不能写成公开 SDK 默认行为。
 - `entrypoints/agentSdkTypes.ts` 里的 `connectRemoteControl()` 在当前镜像里还是 stub，因此不能把它写成“已从源码确认可用的公开 SDK 方法”。

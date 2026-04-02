@@ -1,267 +1,61 @@
+[简体中文](./system-prompt-assembly.md) | [English](./system-prompt-assembly.en.md)
+
 # System Prompt Assembly
 
-这一页只解释一件事：
+这一页只讲 system prompt 的装配路径与动态改写点。
 
-**Claude Code 的 system prompt 由一套分阶段装配链生成。**
-
-这里聚焦装配机制、优先级和边界，不转储大段 raw prompt。
-
-如果你只想抓主线，可以把这一页理解成：Claude Code 会先得到一份 default prompt，再按交互模式、agent 类型和 feature gate 把它继续改写。
-
-## 这部分负责什么
-
-这一页主要说明四件事：
-
-1. `getSystemPrompt()` 如何产出 default prompt parts
-2. interactive 主线程如何走 `buildEffectiveSystemPrompt()`
-3. non-interactive 主线程为什么不是同一条 precedence
-4. 普通 subagent 与 fork subagent 在 prompt 装配上到底差在哪里
-
-## 关键文件
+## 关键源码文件
 
 - `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
 - `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
 - `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
-
-## 执行流
-
-### 1. `getSystemPrompt()` 先生成 default prompt parts
-
-`constants/prompts.ts` 里的 `getSystemPrompt()` 返回的是：
-
-- `string[]`
-
-不是：
-
-- 最终拼好的单段字符串
-
-标准路径里，它会先构造静态前缀，再求值动态 sections，并在满足全局缓存条件时才插入：
-
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
-
-这里最好再补一句源码语义：
-
-- boundary 是 `shouldUseGlobalCacheScope()` 为真时才插入
-- 不是每次调用 `getSystemPrompt()` 都一定出现
-
-也就是说，default prompt 在这一层已经被明确拆成：
-
-- static
-- dynamic
-
-这里对应的是缓存边界设计。
-
-### 2. 标准路径与 proactive / KAIROS 路径不是一回事
-
-当前 `getSystemPrompt()` 至少有三条路径：
-
-1. `CLAUDE_CODE_SIMPLE`
-   - 返回极简单段 prompt
-2. proactive / KAIROS 激活
-   - 走 autonomous agent 风格路径
-   - 不走标准 section registry
-3. 常规路径
-   - 先构造 dynamic sections
-   - 再通过 `resolveSystemPromptSections()` 求值
-
-标准路径里还能直接确认一个特别重要的动态 section：
-
-- `mcp_instructions`
-  - 通过 `DANGEROUS_uncachedSystemPromptSection(...)` 注册
-  - 用来承接 MCP server instructions 这种会随连接状态变化的内容
-
-所以文档里要把“标准路径”与“特化路径”分开写，不要混成一个通用流程。
-
-这里再补一个边界会更稳妥：
-
-- 这些路径分支已经能从源码确认存在
-- 但它们的公开启用状态仍受 `feature(...)`、GrowthBook、env flag 共同影响
-
-因此这一页只能说明装配机制，不能把 proactive / KAIROS / coordinator 写成固定公开产品档位。
-
-### 3. interactive 主线程在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
-
-`utils/systemPrompt.ts` 负责 interactive 主线程的最终折叠。
-
-真正调用它的 interactive 装配点，更适合直接落在：
-
-- `screens/REPL.tsx`
-
-更直接一点说：
-
-- 交互式主线程不是先走 `QueryEngine`
-- 而是在 `REPL.tsx` 里先装好 prompt，再直接进入 `query()`
-- 同一层还会从 store 现算工具池，并把 `refreshTools` 放进 `toolUseContext`
-- `main.tsx` 传给 REPL 的 `systemPrompt` 更适合理解成 `customSystemPrompt` 输入，而不是已经渲染完的最终 prompt
-
-当前源码里可确认的 precedence 更适合写成：
-
-1. `overrideSystemPrompt`
-2. `coordinator prompt`（仅协调模式开启且没有 `mainThreadAgentDefinition` 时）
-3. `mainThreadAgentDefinition`
-4. `customSystemPrompt`
-5. `defaultSystemPrompt`
-6. `appendSystemPrompt`
-
-其中：
-
-- 只要不是 override
-- `appendSystemPrompt` 就会被尾追加
-
-还有一个非常重要的分支：
-
-- 平时 main-thread agent prompt 会替换 default
-- proactive / KAIROS 激活时，main-thread agent prompt 会作为 `# Custom Agent Instructions` 追加在 default 后面
-
-所以“agent prompt 是否替换默认 prompt”本身也是运行时相关的。
-
-### 4. non-interactive 主线程不是同一条 precedence
-
-这一节最容易帮你避免一个常见误解：交互式和非交互式不是“同一份 prompt 换个入口”。
-
-这一点很容易被写错。
-
-non-interactive 主线程不会走：
-
-- `buildEffectiveSystemPrompt()`
-
-它的链路是：
-
-1. `main.tsx` 把 `systemPrompt` / `appendSystemPrompt` 交给 headless 路径
-2. `QueryEngine` 通过 `fetchSystemPromptParts()` 取得 default / user / system context
-3. 再本地组合：
-   - `customSystemPrompt ?? defaultSystemPrompt`
-   - `+ memoryMechanicsPrompt?`
-   - `+ appendSystemPrompt`
-
-而且：
-
-- 只要 `customSystemPrompt` 存在
-- `queryContext.ts` 就会跳过 `getSystemPrompt()` 和 `getSystemContext()`
-- `memoryMechanicsPrompt` 只在 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时追加
-
-这也说明 interactive 与 non-interactive 需要分开写成两条 prompt 路径。
-
-### 5. 普通 subagent 有自己的 prompt 起点
-
-普通 subagent 不复用主线程 default prompt。
-
-它的起点来自：
-
-- `agentDefinition.getSystemPrompt()`
-
-然后再经过：
-
-- `enhanceSystemPromptWithEnvDetails()`
-
-如果 agent 自己的 `getSystemPrompt()` 失败，才退回：
-
-- `DEFAULT_AGENT_PROMPT`
-
-所以更准确的说法是：
-
-- 普通 subagent 有自己的 agent prompt 链
-- 它不是主线程 prompt 的简单子集
-
-### 6. fork subagent 是另一套上下文继承模型
-
-fork subagent 和普通 subagent 的差异非常大。
-
-它的目标不是：
-
-- “开一个新 agent prompt”
-
-而是：
-
-- 尽量复用父线程已经渲染好的 prompt 前缀和消息前缀
-
-当前可确认的关键点有：
-
-- 优先复用父 `renderedSystemPrompt`
-- 复用父精确工具池
-- 复用父 `thinkingConfig`
-- 用 `buildForkedMessages()` 重建父 assistant 消息与占位 `tool_result`
-
-这里有一个需要特别保守的地方：
-
-- 本轮能确认 fork 复用父 prompt 与父消息前缀
-- 但仅凭 prompt 相关文件本身，看不到“fork 专属默认基础 prompt 常量”
-
-所以文档不要写成：
-
-- “fork 自带完全独立的默认基础 prompt”
-
-### 7. `getAgentToolSection()` 也属于 prompt 装配的一部分
-
-当前主线程默认 prompt 里，和子代理相关的一段说明来自：
-
-- `getAgentToolSection()`
-
-而这段文案本身又和 fork gate 相关：
-
-- fork 开启时，说明“不带 `subagent_type` 会创建 fork”
-- fork 未开启时，说明“使用 specialized agents”
-
-它被放在 dynamic boundary 之后，这样可以避免把这类运行时分支污染全局可缓存静态前缀。
-
-## 一张图看 4 条装配路径
-
-```mermaid
-flowchart TD
-    A[getSystemPrompt default parts] --> B[static parts]
-    A --> C[resolved dynamic sections]
-    B --> D[SYSTEM_PROMPT_DYNAMIC_BOUNDARY<br/>conditional]
-    B --> E[default prompt parts]
-    D --> E
-    C --> E
-
-    E --> F[interactive main thread]
-    F --> G[REPL.tsx]
-    G --> H[buildEffectiveSystemPrompt]
-    H --> I[renderedSystemPrompt]
-
-    E --> J[non-interactive main thread]
-    J --> K[QueryEngine direct combine<br/>or skip default parts when custom prompt exists]
-
-    L[agentDefinition.getSystemPrompt] --> M[ordinary subagent]
-    M --> N[enhanceSystemPromptWithEnvDetails]
-
-    O[parent renderedSystemPrompt] --> P[fork subagent]
-    P --> Q[buildForkedMessages]
-```
-
-## 为什么这个设计重要
-
-这条装配链决定了几个非常关键的事实：
-
-- default prompt 不是最终 prompt
-- interactive 与 non-interactive 的 precedence 不同
-- 普通 subagent 与 fork subagent 的 prompt 模型不同
-- `appendSystemPrompt`、main-thread agent、coordinator、custom prompt 都有明确优先级
-
-如果不把这几条路径拆开，文档就很容易把源码行为写错。
-
-## 推荐阅读顺序
-
-1. `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
-2. `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
-3. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
-4. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
-5. `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
-6. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
-7. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
-8. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
-9. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
-
-## 仍待确认
-
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 在 API 层如何切分 prompt block，这一页没有继续展开到 API 实现。
-- `isForkSubagentEnabled()` 的完整判定条件，这一页当前只继续收紧到“它至少受 `FORK_SUBAGENT`、coordinator mode 和 non-interactive 路径共同影响”，不继续展开所有 gate 组合。
-- `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 名字带 `fork`，但不能直接等同于 fork 子代理主装配链。
-- proactive / KAIROS / coordinator 在不同构建里的默认 rollout 状态，这一页也不外推；当前只能确认它们会改写 prompt 路径，不证明公开构建一定启用。
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
+
+## 当前源码能确认的机制
+
+- `prompts.ts:getSystemPrompt()` 有三条主路径：
+  - `CLAUDE_CODE_SIMPLE` 的极简路径
+  - standard path
+  - proactive path。条件是 `PROACTIVE` 或 `KAIROS` 分支存在，且 proactive runtime 处于活动状态
+- standard path 先返回静态前缀，再按 section registry 追加动态段落。
+- 静态前缀稳定包含 intro、system、actions、tool use、tone/style、output efficiency；`doing tasks` 只在 `outputStyleConfig === null` 或 `keepCodingInstructions === true` 时插入。
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 只会在 `shouldUseGlobalCacheScope()` 为真时插入。
+- `systemPromptSections.ts` 定义了两类 section：
+  - `systemPromptSection()`。结果会缓存
+  - `DANGEROUS_uncachedSystemPromptSection()`。结果允许逐轮重算并可能打破缓存
+- `resolveSystemPromptSections()` 会读取 section cache。缓存结果在 `/clear` 与 `/compact` 相关清理路径后重置。
+- 当前标准动态 sections 至少包括：
+  - `session_guidance`
+  - `memory`
+  - `ant_model_override`
+  - `env_info_simple`
+  - `language`
+  - `output_style`
+  - `mcp_instructions`
+  - `scratchpad`
+  - `frc`
+  - `summarize_tool_results`
+  - gated `numeric_length_anchors`
+  - gated `token_budget`
+  - gated `brief`
+- `mcp_instructions` 有两条路径：
+  - inline section path
+  - `attachments.ts:getMcpInstructionsDeltaAttachment()` 提供的 attachment-backed delta path
+- interactive main thread 在 `REPL.tsx` 里使用 `buildEffectiveSystemPrompt()`。
+- non-interactive main thread 在 `QueryEngine.ts` 里用 `fetchSystemPromptParts()` 与 `asSystemPrompt([...])` 自己拼装，不直接调用 `buildEffectiveSystemPrompt()`。
+
+## 当前源码不能确认的内容
+
+- 哪些 dynamic sections 在某个公开构建里默认打开。
+- 某次真实会话里所有 section 的最终字节顺序和具体文本。
+- `PROACTIVE`、`KAIROS`、`brief` 等路径的 rollout 状态。
+
+## 复核清单
+
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 是否仍写成条件插入。
+- `mcp_instructions` 是否同时保留 inline 与 delta attachment 两条路径。
+- interactive 与 non-interactive 装配链是否被分开。
+- 文档里是否避免了 raw prompt 转储。

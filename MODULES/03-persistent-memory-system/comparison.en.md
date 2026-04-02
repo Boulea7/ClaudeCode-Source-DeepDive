@@ -4,4 +4,9 @@
 
 Many tools support rule files, history, or long context.
 
-What matters here is that Claude Code splits entry injection, session summaries, durable files, and query-time recall into separate mechanisms.
+Claude Code is more explicit at this layer:
+
+- session summaries, durable memory, and team memory stay clearly separate
+- `MEMORY.md` and topic files play different roles
+- team memory has its own sync service layer
+- `autoDream` and KAIROS-related paths remain conditional

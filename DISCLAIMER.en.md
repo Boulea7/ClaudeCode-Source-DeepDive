@@ -1,41 +1,40 @@
 [简体中文](./DISCLAIMER.md) | [English](./DISCLAIMER.en.md)
 
-# Disclaimer
+# Repository Disclaimer
 
 ## Repository Position
 
-This is an unofficial, developer-facing research document set.
+This document set is for reading the public source mirror, with focus on the runtime chain, module boundaries, tool systems, prompt assembly, and conditional paths.
 
-It records reading notes derived from the public source mirror, with the goal of making the runtime chain, module boundaries, and implementation details easier to verify.
+Anthropic official structure, release timing, product naming, and internal repository content sit outside the factual scope of this document set.
 
-## Boundary For Code Claims
+## Boundary For Source Claims
 
-All source-backed claims in this repository come only from:
+All source-related conclusions in this repository come from these two places only:
 
 - `https://github.com/ChinaSiro/claude-code-sourcemap`
 - the local mirror: `_upstream/claude-code-sourcemap/`
 
-If a statement cannot be checked against those two sources, this repository does not present it as a code fact.
+When a claim cannot be checked against those two sources, this repository presents it as an inference, a clue, or an open question.
 
-## What This Repository Includes
+## What This Document Set Includes
 
 - architecture overviews
 - module-level source walkthroughs
 - prompt assembly notes
-- runtime notes for tools, MCP, skills, plugins, permissions, memory, compaction, tasks, and remote behavior
-- curated notes on feature gates and hidden capability clues
+- runtime notes for tools, MCP, skills, plugins, permissions, memory, compaction, tasks, and remote-related paths
+- curated notes on feature gates and conditional branches
 
-## What This Repository Does Not Include
+## Scope Boundary
 
-- official documentation
-- official release notes
-- a reconstructed internal repository
+- official documentation and official release notes
+- reconstructed internal repositories
 - large raw prompt dumps
 - product conclusions without source support
 
-## Names That Must Stay Conservative
+## Names That Require Conservative Wording
 
-Even when the names appear in source, they should stay source-bound and conservative:
+Even when these names appear in source, they stay within source wording and local context:
 
 - `Buddy`
 - `KAIROS`
@@ -46,30 +45,24 @@ Even when the names appear in source, they should stay source-bound and conserva
 - `bridge`
 - `remote isolation`
 
-Preferred wording includes:
+Safer phrasing includes:
 
-- code clues exist
-- the current mirror does not fully settle this
-- stronger conclusions would go too far
-- public rollout status cannot be confirmed
-
-## Relationship To Official Sources
-
-This repository has no formal relationship with Anthropic and does not represent official internal structure, product naming, or release timing.
-
-Its analysis reflects reading notes from the public mirror only.
+- the code contains the name or branch
+- the current mirror provides partial clues
+- stronger product claims need more evidence
+- public rollout status still needs separate confirmation
 
 ## Citation Guidance
 
-If you quote this repository, keep these three points:
+If you quote this repository, keep these three points with it:
 
 1. this is an unofficial research document set
-2. code facts are bounded by the public mirror and the local `_upstream` mirror
-3. feature gates and hidden branches do not equal publicly released capabilities
+2. source-backed claims are bounded by the public mirror and the local `_upstream` mirror
+3. feature gates and hidden branches are code-path clues; they do not establish public capabilities on their own
 
 ## Writing Rules
 
-- important claims should point back to source paths when possible
-- `PROMPTS/` explains assembly mechanisms and does not dump large raw prompts
-- `FEATURE-FLAGS/` records code gates and branches, not rollout announcements
-- uncertain points should be written narrowly
+- point important conclusions back to source paths when possible
+- `PROMPTS/` explains assembly mechanisms and avoids large raw prompt dumps
+- `FEATURE-FLAGS/` records code gates and conditional branches
+- narrow the wording when evidence is incomplete

@@ -1,143 +1,49 @@
+[简体中文](./agent-memory-compact-gates.md) | [English](./agent-memory-compact-gates.en.md)
+
 # Agent, Memory, And Compact Gates
 
-## 这部分关注什么 gate
+这一页记录 agent、memory、compact、task layer 的 gate。
 
-这一页主要整理：
+## 关键源码文件
 
-- agent spawn / fork / teammate 相关 gate
-- SessionMemory、memdir、team memory 相关 gate
-- compact、Task V2、Plan Mode 周边的 gate 与 env 开关
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/paths.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/compact/autoCompact.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/tasks.ts`
 
-这一页最适合在你已经看过 `MODULES/01`、`MODULES/02`、`MODULES/03` 之后再回来读，因为它讲的是“这些链路还会被哪些条件改写”。
+## 当前源码能确认的行为
 
-## 关键文件
+- `FORK_SUBAGENT` 会让省略 `subagent_type` 的 Agent 调用进入 fork path。
+- `FORK_SUBAGENT` 打开时，`AgentTool` schema 会隐藏 `run_in_background`。
+- `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` 会整体禁用后台任务能力。
+- `CLAUDE_AUTO_BACKGROUND_TASKS` 或 `tengu_auto_background_agents` 会把自动后台化超时设成 120 秒。
+- `KAIROS` 会影响 `AgentTool` schema 中 `cwd` 的可见性，也会影响 `assistantForceAsync`。
+- `tengu_session_memory` 是 SessionMemory 的单独 gate。
+- `TEAMMEM` 是 TeamMem 的编译期开关。
+- `tengu_herring_clock` 会继续影响 team memory 的运行时分支和 telemetry。
+- `memdir.ts` 里 `KAIROS` 且 `getKairosActive()` 为真时，daily-log prompt 优先于 TeamMem 路径。
+- `REACTIVE_COMPACT` 会抑制 proactive autocompact。
+- `CONTEXT_COLLAPSE` 会在启用时抑制 autocompact 的部分路径。
+- `query.ts` 里 `CACHED_MICROCOMPACT`、`TOKEN_BUDGET`、`HISTORY_SNIP`、`BG_SESSIONS` 各自控制不同 context 管理分支。
+- `isTodoV2Enabled()` 的当前规则是：
+  - `CLAUDE_CODE_ENABLE_TASKS` 为真时强制开启 Task V2
+  - 否则 interactive 默认 Task V2，non-interactive 默认 TodoWrite
 
-- `restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `restored-src/src/tools/AgentTool/runAgent.ts`
-- `restored-src/src/tools/AgentTool/forkSubagent.ts`
-- `restored-src/src/utils/agentSwarmsEnabled.ts`
-- `restored-src/src/services/SessionMemory/sessionMemory.ts`
-- `restored-src/src/services/extractMemories/extractMemories.ts`
-- `restored-src/src/memdir/memdir.ts`
-- `restored-src/src/memdir/paths.ts`
-- `restored-src/src/memdir/teamMemPaths.ts`
-- `restored-src/src/services/teamMemorySync/index.ts`
-- `restored-src/src/services/teamMemorySync/watcher.ts`
-- `restored-src/src/services/autoDream/autoDream.ts`
-- `restored-src/src/utils/sessionFileAccessHooks.ts`
-- `restored-src/src/services/compact/autoCompact.ts`
-- `restored-src/src/query.ts`
-- `restored-src/src/utils/tasks.ts`
-- `restored-src/src/tools/TodoWriteTool/TodoWriteTool.ts`
-- `restored-src/src/tools/TaskUpdateTool/TaskUpdateTool.ts`
+## 当前源码不能确认的内容
 
-## 代码里能确认的行为
+- `KAIROS`、`TEAMMEM`、`SessionMemory` 的 rollout。
+- `/dream`、nightly distillation、长期记忆产品化范围。
+- 所有入口下 Task V2 的统一产品策略。
 
-### `FORK_SUBAGENT`
+## 复核清单
 
-- 省略 `subagent_type` 时，fork gate 开启会走 fork path，而不是默认 general-purpose。
-- `AgentTool` schema 还会据此隐藏 `run_in_background`。
-- 文档应写成“fork 会改变默认 spawn 语义”，不是普通 agent type。
-
-### `tengu_auto_background_agents` + `CLAUDE_AUTO_BACKGROUND_TASKS`
-
-- `AgentTool.tsx` 里会把前台 agent 在 120 秒后自动后台化。
-- 同时 `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` 会整体禁用后台化能力。
-
-### `AGENT_TRIGGERS` / `AGENT_TRIGGERS_REMOTE`
-
-- 相关 gate 会影响 scheduler / remote agent 触发链。
-- 当前更适合写成“agent 触发型能力有独立 gate”，不要默认当成常规 subagent 行为。
-
-### `WORKFLOW_SCRIPTS` / `MONITOR_TOOL`
-
-- `tasks.ts`、`PermissionRequest.tsx`、`AgentTool/runAgent.ts` 都有对应 gate。
-- 这说明 workflow / monitor 属于条件编译进来的可选工具，不是默认恒定存在。
-
-### `TRANSCRIPT_CLASSIFIER` / `BASH_CLASSIFIER`
-
-- 这些 gate 不只是权限层开关，也会影响 `AgentTool`、Plan Mode 退出、auto mode 恢复、classifier approval。
-- 当前更适合写成“auto mode 与审批链的 gated safety path”。
-
-### `tengu_session_memory`
-
-- `services/SessionMemory/sessionMemory.ts` 用它决定 SessionMemory 功能是否开启。
-- 这说明 SessionMemory 是单独 gate 的，不应与 durable memory 一起写成永远同开。
-
-### `TEAMMEM` + `tengu_herring_clock`
-
-- `memdir/memdir.ts`、`teamMemPaths.ts`、`paths.ts` 都有 team memory 相关分支。
-- `TEAMMEM` 是编译期开关；`tengu_herring_clock` 还会影响运行时是否进入 team memory 分支。
-- `setup.ts` 和 `teamMemorySync/watcher.ts` 还能确认本地同步链：先 initial pull，再启动 watcher；`sessionFileAccessHooks.ts` 会在 TeamMem 写后显式通知同步层。
-
-### `KAIROS` 对 memory 的影响
-
-- `memdir/memdir.ts` 在 `feature('KAIROS') && getKairosActive()` 时会切到 daily-log prompt。
-- `memdir/paths.ts` 与 `memdir/memdir.ts` 的注释都把 nightly `/dream`、distill、日志到 `MEMORY.md` 的关系写成 prompt / 注释层线索。
-- 这里能确认的是：KAIROS 会改变“新 memory 写到哪里”的提示逻辑；`MEMORY.md` 仍会被当成 distilled index 读入上下文。
-- 当前还能确认另一条边界：`autoDream` 会在 `getKairosActive()` 时直接关闭，所以不能把 KAIROS daily-log 与当前可见的 `autoDream` 机制混成同一条实现链。
-- `skills/bundled/index.ts` 里还能看到：`feature('KAIROS') || feature('KAIROS_DREAM')` 时会尝试 `registerDreamSkill()`，说明 `/dream` 至少有 skill 注册点，不只是注释里的名字。
-- `consolidationPrompt.ts` 文件头还明确写着它是从 `dream.ts` 拆出来的；`consolidationLock.ts` 里也保留了面向 manual `/dream` 的 `recordConsolidation()` 注释接口。
-- `components/memory/MemoryFileSelector.tsx` 还能看到 `/dream to run` 的 UI 提示，因此 manual `/dream` 至少已有注册点和界面线索，不只是注释名词。
-- 不能把它直接写成 nightly distillation 已经在当前公开构建里稳定上线，更不能写成完整长期记忆产品已发布。
-
-### `tengu_coral_fern` / `tengu_moth_copse`
-
-- `memdir/memdir.ts` 里：
-  - `tengu_coral_fern` 控制“Searching past context”这一段是否出现。
-  - `tengu_moth_copse` 控制是否跳过 `MEMORY.md` index 写法说明。
-- `claudemd.ts` 里还能看到：`tengu_moth_copse` 打开后，`AutoMem/TeamMem` 入口索引会从 system prompt 注入集合中过滤掉，改由 relevant-memory prefetch 去 surfaced topic files。
-
-### `tengu_passport_quail` / `tengu_slate_thimble` / `tengu_bramble_lintel`
-
-- 这些分支分别出现在 auto memory path、durable extraction、extractMemories 频率或策略上。
-- 当前可以写成 durable memory 的目录 / 写入策略仍受运行时 gate 控制。
-
-### `REACTIVE_COMPACT` / `CONTEXT_COLLAPSE` / `CACHED_MICROCOMPACT` / `TOKEN_BUDGET` / `HISTORY_SNIP` / `BG_SESSIONS`
-
-- `query.ts` 和 `services/compact/autoCompact.ts` 都显示这几条是独立层：
-  - `REACTIVE_COMPACT` 可抑制 proactive autocompact。
-  - `CONTEXT_COLLAPSE` 会接管一部分上下文管理。
-  - `CACHED_MICROCOMPACT` 有延迟反馈链。
-  - `TOKEN_BUDGET` 会改变 continuation。
-  - `HISTORY_SNIP`、`BG_SESSIONS` 各自控制不同压缩 / 背景附件行为。
-- 它们不能被合并成“单一 compact 开关”。
-
-### Task V2 / TodoWrite 切换
-
-- 这里不完全是 `feature(...)`，而是 `isTodoV2Enabled()` 的运行时切换逻辑：
-  - 交互式默认 Task V2。
-  - 非交互式默认 TodoWrite。
-  - `CLAUDE_CODE_ENABLE_TASKS` 可以强制打开 Task V2。
-- 文档要把它写成“运行时策略开关”，不要混成 runtime task。
-
-## 不能确认的发布状态
-
-- 这份镜像能证明相关分支存在，但不能证明这些 gate 在当前正式版全都打开。
-- `KAIROS` 与 memory 的关系，目前只能确认 daily-log prompt / assistant-mode 分支；nightly `/dream`、distillation、append-only log 这组关系在当前镜像里已经不只是名字线索，还能看到 skill 注册点、shared consolidation prompt、manual stamp helper 注释和 UI 提示，但 `dream.js` / `dream.ts` 实现文件仍缺失，因此完整执行细节仍不能写死。
-- `autoDream` 是 opportunistic consolidation 机制，不是固定 nightly job；同时它在 `getKairosActive()` 时会关闭，所以不能拿它当作 KAIROS daily-log 的直接后台实现。
-- `/dream` 这条线目前还不能确认两件事：一是 `dream.js` / `dream.ts` 的真实 skill body 是否在当前镜像别处存在，二是 `recordConsolidation()` 是否真有调用点；因此仍不能把 manual `/dream` 写成已完整坐实的执行链。
-- `flushOnDateChange()` 当前只确认是 KAIROS 跨天时触发的 transcript flush 调用点，不能把它写成 `/dream` 已坐实的一部分。
-- TeamMem 的本地同步链已经能确认到 `startup pull + watcher + 写后通知`，但 push 仍有 debounce / suppression / shutdown best-effort 语义，不能写成强一致同步承诺。
-- Task V2 的默认启用逻辑在交互式会话里可见，但不能仅凭静态代码推出所有入口的一致产品策略。
-
-## 容易误写的点
-
-- 不要把 SessionMemory、extractMemories、memdir 写成“同一 memory 系统的不同层级开关”。
-- 不要把 `REACTIVE_COMPACT`、`CONTEXT_COLLAPSE` 写成“同一个实验名字的别名”。
-- 不要把 `TEAMMEM` 写成“所有用户都默认拥有的 team memory”。
-- 不要把 TodoWrite / Task V2 / runtime task 混成一种“Task”。
-- 不要把 `KAIROS` daily-log 路径写成“已经能从源码证实 nightly distillation 完整跑通”。
-- 不要把 `autoDream` 写成“KAIROS nightly /dream 的已证实后台实现”。
-
-## 推荐阅读顺序
-
-1. `restored-src/src/tools/AgentTool/AgentTool.tsx`
-2. `restored-src/src/utils/agentSwarmsEnabled.ts`
-3. `restored-src/src/services/SessionMemory/sessionMemory.ts`
-4. `restored-src/src/memdir/memdir.ts`
-5. `restored-src/src/memdir/paths.ts`
-6. `restored-src/src/services/extractMemories/extractMemories.ts`
-7. `restored-src/src/services/compact/autoCompact.ts`
-8. `restored-src/src/query.ts`
-9. `restored-src/src/utils/tasks.ts`
+- SessionMemory、TeamMem、memdir 不混写成同一个系统。
+- Task V2 与 TodoWrite 不混写成一个 task 概念。
+- `KAIROS` 相关 memory 路径不写成 rollout 或完整产品闭环。
+- 中文页路径全部保持 `_upstream/...`。

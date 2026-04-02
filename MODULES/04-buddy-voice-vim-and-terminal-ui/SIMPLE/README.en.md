@@ -2,23 +2,25 @@
 
 # Buddy, Voice, Vim, And Terminal UI In One Minute
 
-Keep one point in mind first:
+Keep this short mental model:
 
-The interaction layer is more than a terminal shell. It reconnects companion UI, voice input, and vim mode back into the runtime.
+Claude Code’s terminal interaction layer has at least three visible lines: a companion surface, a voice input chain, and vim-style modal input.
 
 ```mermaid
 flowchart TD
-    A[Terminal UI] --> B[Keybindings]
-    B --> C[Vim Mode]
-    B --> D[Voice Input]
-    A --> E[Buddy / Companion Surface]
+    A[REPL.tsx] --> B[PromptInput]
+    B --> C[Buddy / Companion Surface]
+    B --> D[Voice Input Chain]
+    B --> E[VimTextInput]
+    D --> F[local recording + STT]
+    E --> G[vim transitions / operators]
 ```
 
 ## Three Takeaways
 
-- `Buddy` is safer to describe as a companion / watcher surface clue
-- `voice` is safer to describe as a dictation-enhancement chain
-- `vim/` is a clearly layered modal input system
+- `Buddy` is currently safest as a companion-surface clue
+- voice is currently safest as an input-side dictation chain
+- vim is currently safest as a layered modal input engine
 
 ## Read Next
 

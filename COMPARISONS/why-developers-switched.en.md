@@ -15,3 +15,20 @@ This page keeps only a few repeated themes from public discussion. It is backgro
 ## Reverse Reasons Matter Too
 
 Some users still prefer Cursor, Windsurf, Aider, or Codex CLI for IDE interaction, model flexibility, lighter workflows, or open customization.
+
+## Boundary
+
+This page summarizes recurring public discussion themes. It does not prove source-level design conclusions.
+
+## Sources
+
+- Anthropic release pages
+- Claude Code `CHANGELOG.md`
+- OpenAI Codex release pages and changelog
+- Cursor forum and changelog
+- public Reddit / HN discussion
+
+## Back To The Reading Path
+
+- [README.en.md](./README.en.md)
+- [../README.en.md](../README.en.md)

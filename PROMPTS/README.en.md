@@ -2,41 +2,48 @@
 
 # PROMPTS
 
-This set of documents explains Claude Code’s prompt assembly and injection paths.
+This document set tracks prompt assembly, prompt injection entry points, source anchors, and review boundaries in the current mirror.
 
-It focuses on four question groups:
-
-- where the default prompt parts come from
-- how interactive and non-interactive main-thread paths assemble the system prompt
-- how ordinary subagents and fork subagents differ in prompt origin
-- how skills, attachments, and gates shape model-visible context
-
-## Suggested Reading Order
+## Reading Order
 
 1. [system-prompt-assembly.en.md](./system-prompt-assembly.en.md)
-2. [agent-prompts.en.md](./agent-prompts.en.md)
-3. [system-prompt-sections.en.md](./system-prompt-sections.en.md)
+2. [system-prompt-sections.en.md](./system-prompt-sections.en.md)
+3. [agent-prompts.en.md](./agent-prompts.en.md)
 4. [skills-and-command-injection.en.md](./skills-and-command-injection.en.md)
-5. [system-prompt-source-index.en.md](./system-prompt-source-index.en.md)
-6. [exposure-surfaces-and-risks.en.md](./exposure-surfaces-and-risks.en.md)
+5. [exposure-surfaces-and-risks.en.md](./exposure-surfaces-and-risks.en.md)
+6. [system-prompt-source-index.en.md](./system-prompt-source-index.en.md)
 
-## Term Notes
+## Term Cards
 
-- `default prompt parts`
-  - the prompt fragments returned by `getSystemPrompt()`
-- `interactive main thread`
-  - `main.tsx -> REPL.tsx -> query.ts`
-- `non-interactive main thread`
-  - `main.tsx -> QueryEngine.ts -> query.ts`
+- `gate`
+  - A compile-time or runtime branch switch. Seeing a gate in source proves a branch exists. It does not prove rollout.
+- `rollout`
+  - The actual release state for a gated path in a build, account tier, subscription tier, or experiment cohort. Static source alone cannot prove rollout.
+- `attachment-backed delta path`
+  - A runtime path that sends changes through attachments instead of inlining them into the main system prompt sections. The directly confirmed example in this pass is `mcp_instructions_delta` in `attachments.ts`.
 - `ordinary subagent`
-  - uses the agent’s own prompt origin
+  - A subagent path with an explicit `subagent_type`. It starts from the agent's own prompt source and then applies env/details enhancement.
 - `fork subagent`
-  - preferentially reuses the parent’s rendered prompt and message prefix
+  - The implicit fork path triggered when `FORK_SUBAGENT` is enabled and `subagent_type` is omitted. It preferentially reuses the parent `renderedSystemPrompt` and message prefix.
 - `dynamic boundary`
-  - the conditional `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
+  - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`, the conditional marker that separates the cacheable static prefix from session-variant sections.
 
-## What This Section Does Not Do
+## Scope Boundary
 
-- it does not dump large raw prompts
-- it does not turn feature-gated paths into rollout claims
-- it does not present prompt assembly as one fixed universal pipeline
+- These pages explain assembly mechanics, injection paths, visibility surfaces, and conservative wording rules.
+- They do not dump large raw system prompts or raw agent prompts.
+- They do not convert feature gates into rollout claims.
+- They keep fork, ordinary subagent, interactive main thread, and non-interactive main thread as separate paths.
+
+## Main Source Spine Re-read In This Pass
+
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`

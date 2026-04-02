@@ -2,6 +2,11 @@
 
 # Short Comparison
 
-Many tools say they can plan before acting.
+Many tools claim they can “plan before acting.”
 
-What matters here is that planning, compaction, plan files, and task state all live in runtime mechanisms.
+Claude Code is more concrete at this layer:
+
+- planning mode is a formal permission state
+- the plan file is a separate artifact
+- compaction is scheduled from the turn loop rather than treated as one path
+- checklists, task records, and running tasks each keep their own state layer

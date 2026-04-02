@@ -2,68 +2,58 @@
 
 # Claude Code Source Deep Dive
 
-一個以原始碼拆解為核心的 `Claude Code` 非官方研究倉庫。
+一個圍繞 `Claude Code` 公開鏡像原始碼建立的非官方研究倉庫。
 
-這個倉庫固定聚焦三件事：
+這份倉庫主要回答一類問題：`main.tsx` 分出的兩個入口路徑，怎樣匯入共享的 `query/runtime` 主鏈，以及 tools、MCP、skills、plugins、permissions、memory、compact、tasks、prompts 等系統怎樣掛到這條主鏈上。
 
-- 執行鏈如何接起來
-- 模組之間如何分層
-- 哪些結論已有原始碼支撐，哪些地方仍需保守描述
+詳細文件目前以簡體中文與英文為主；本頁提供導覽與摘要，方便先建立整體地圖。
 
 ## 你可以在這裡確認什麼
 
-- 互動式主執行緒如何從 `main.tsx` 進入 `REPL.tsx`，再進入 `query.ts`
-- `QueryEngine.ts` 在非互動 / SDK 路徑中扮演什麼角色
-- tools、MCP、skills、plugins、permissions、memory、compact、tasks 如何接到同一條執行鏈上
-- prompt 裝配、feature gate、remote / bridge 相關程式碼目前能確認到什麼程度
-
-## 這個倉庫如何使用原始碼
-
-- 程式碼事實只來自：
-  - `https://github.com/ChinaSiro/claude-code-sourcemap`
-  - 本地鏡像：`_upstream/claude-code-sourcemap/`
-- 本倉庫引用的原始碼路徑，預設指向目前倉庫裡真實存在的：
-  - `_upstream/claude-code-sourcemap/restored-src/src/...`
-
-完整邊界說明見 [DISCLAIMER.md](./DISCLAIMER.md) 與 [DISCLAIMER.en.md](./DISCLAIMER.en.md)。
+- 互動式路徑怎樣從 `main.tsx` 進入 `launchRepl()`、`REPL.tsx`，再進入 `query()`
+- 非互動 / SDK 路徑怎樣從 `main.tsx` 進入 `QueryEngine.ts`，再進入 `query()`
+- `Tool.ts` 與 `tools.ts` 怎樣定義工具協議、內建工具集合、MCP 合併後的工具池
+- `query.ts` 怎樣處理工具執行、attachments、compact、stop hooks、續跑條件與跨回合刷新
+- 哪些結論已有原始碼支撐，哪些名稱與分支仍需保守書寫
 
 ## 從哪裡開始讀
 
 | 目標 | 建議入口 | 你會得到什麼 |
 | --- | --- | --- |
-| 先建立整體地圖 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 主執行鏈、分層關係、關鍵入口檔案 |
-| 按模組系統閱讀 | [MODULES/README.md](./MODULES/README.md) | 8 個模組的總覽、簡單版、深讀版入口 |
-| 只看 prompt 裝配 | [PROMPTS/README.md](./PROMPTS/README.md) | system prompt、agent prompt、skill 注入路徑 |
-| 只看 gated 分支 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | 編譯期 gate、執行期 gate、隱藏能力線索 |
-| 快速瀏覽全倉 | [SIMPLE/README.md](./SIMPLE/README.md) | 給第一次進入倉庫的短路線 |
-| 直接進入深讀 | [DEEP/README.md](./DEEP/README.md) | 給原始碼追讀的長路線 |
+| 先建立整體地圖 | [ARCHITECTURE.en.md](./ARCHITECTURE.en.md) | 兩個入口路徑、共享主鏈、關鍵入口檔案 |
+| 按子系統閱讀 | [MODULES/README.en.md](./MODULES/README.en.md) | 8 個模組的總覽、簡單版、深讀版入口 |
+| 只看 prompt 裝配 | [PROMPTS/README.en.md](./PROMPTS/README.en.md) | system prompt、agent prompt、skill 注入路徑 |
+| 只看 gated 分支 | [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md) | 編譯期 gate、執行期 gate、條件路徑線索 |
+| 快速瀏覽全倉 | [SIMPLE/README.en.md](./SIMPLE/README.en.md) | 面向第一次進入倉庫的短路線 |
+| 直接進入深讀 | [DEEP/README.en.md](./DEEP/README.en.md) | 面向原始碼追讀的長路線 |
 
 ## 閱讀路線
 
-### 路線 A：先看整張圖
+### 路線 A：先看整體圖
 
 1. [ARCHITECTURE.md](./ARCHITECTURE.md)
-2. [MODULES/README.md](./MODULES/README.md)
-3. 任一模組的 `SIMPLE/README.md`
-4. 任一模組的 `DEEP/README.md`
+2. [MODULES/README.en.md](./MODULES/README.en.md)
+3. 任一模組的 `README.en.md`
+4. 任一模組的 `SIMPLE/README.en.md`
+5. 任一模組的 `DEEP/README.en.md`
 
-### 路線 B：先追主執行鏈
+### 路線 B：先追共享主鏈
 
-1. [ARCHITECTURE.md](./ARCHITECTURE.md)
-2. [MODULES/01-agent-loop-and-teams](./MODULES/01-agent-loop-and-teams/)
-3. [MODULES/02-planning-compaction-and-assistant](./MODULES/02-planning-compaction-and-assistant/)
-4. [MODULES/03-persistent-memory-system](./MODULES/03-persistent-memory-system/)
-5. [MODULES/05-tools-mcp-skills-and-plugins](./MODULES/05-tools-mcp-skills-and-plugins/)
-6. [MODULES/06-permissions-sandbox-and-trust](./MODULES/06-permissions-sandbox-and-trust/)
+1. [ARCHITECTURE.en.md](./ARCHITECTURE.en.md)
+2. [01-agent-loop-and-teams/README.en.md](./MODULES/01-agent-loop-and-teams/README.en.md)
+3. [02-planning-compaction-and-assistant/README.en.md](./MODULES/02-planning-compaction-and-assistant/README.en.md)
+4. [03-persistent-memory-system/README.en.md](./MODULES/03-persistent-memory-system/README.en.md)
+5. [05-tools-mcp-skills-and-plugins/README.en.md](./MODULES/05-tools-mcp-skills-and-plugins/README.en.md)
+6. [06-permissions-sandbox-and-trust/README.en.md](./MODULES/06-permissions-sandbox-and-trust/README.en.md)
 
-### 路線 C：先看 prompt、gate 與隱藏分支
+### 路線 C：先看 prompts、gate 與遠端路徑
 
-1. [PROMPTS/README.md](./PROMPTS/README.md)
-2. [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
-3. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
-4. [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/)
+1. [PROMPTS/README.en.md](./PROMPTS/README.en.md)
+2. [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
+3. [07-remote-session-bridge-and-sdk/README.en.md](./MODULES/07-remote-session-bridge-and-sdk/README.en.md)
+4. [08-prompts-config-and-other-moats/README.en.md](./MODULES/08-prompts-config-and-other-moats/README.en.md)
 
-## 倉庫結構
+## 主要文件與目錄
 
 ```text
 .
@@ -71,35 +61,40 @@
 ├── README.en.md
 ├── README.zh-TW.md
 ├── README.ja.md
-├── DISCLAIMER.md
 ├── ARCHITECTURE.md
-├── SIMPLE/
-├── DEEP/
+├── ARCHITECTURE.en.md
+├── DISCLAIMER.md
+├── DISCLAIMER.en.md
 ├── MODULES/
 ├── PROMPTS/
 ├── FEATURE-FLAGS/
+├── SIMPLE/
+├── DEEP/
 ├── COMPARISONS/
 ├── EXAMPLES/
-└── ASSETS/
+├── ASSETS/
+└── AI-AGENT/
 ```
 
-## 閱讀時需要記住的邊界
+首次閱讀建議先看 `README`、`ARCHITECTURE`、`MODULES`、`PROMPTS`、`FEATURE-FLAGS`。`AI-AGENT/` 提供面向自動化閱讀的結構化補充材料。
 
-- 這是非官方研究倉庫，不代表 Anthropic 官方結構、發布計畫或產品口徑
-- `feature()`、GrowthBook、env gate 只能說明程式碼裡存在條件分支，不能直接說明公開 rollout
-- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` 等名稱只按原始碼證據保守書寫
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`、`mcp_instructions` 等 prompt 片段都要按條件路徑理解，不能寫成固定常駐段落
+## 閱讀邊界
+
+- 這是非官方研究倉庫
+- 原始碼事實邊界是公開鏡像 `ChinaSiro/claude-code-sourcemap` 與本地 `_upstream/claude-code-sourcemap/`
+- `feature()`、GrowthBook、env gate 說明條件路徑存在，這些線索本身不足以說明公開 rollout
+- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` 等名稱保持原始碼字面和上下文範圍
+
+完整邊界說明見 [DISCLAIMER.md](./DISCLAIMER.md)。
 
 ## 繼續閱讀
 
-- [MODULES/README.md](./MODULES/README.md)
-- [PROMPTS/README.md](./PROMPTS/README.md)
-- [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
-- [COMPARISONS/README.md](./COMPARISONS/README.md)
-- [EXAMPLES/README.md](./EXAMPLES/README.md)
-
-## 機器可讀索引
-
-如果你要給其他 agent 餵結構化材料，可以再看：
-
-- [AI-AGENT](./AI-AGENT/)
+- [MODULES/README.en.md](./MODULES/README.en.md)
+- [PROMPTS/README.en.md](./PROMPTS/README.en.md)
+- [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
+- [COMPARISONS/README.en.md](./COMPARISONS/README.en.md)
+- [EXAMPLES/README.en.md](./EXAMPLES/README.en.md)
+- [ASSETS/README.en.md](./ASSETS/README.en.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md) / [CONTRIBUTING.en.md](./CONTRIBUTING.en.md)
+- [SECURITY.md](./SECURITY.md) / [SECURITY.en.md](./SECURITY.en.md)
+- [AI-AGENT](./AI-AGENT/)：面向自動化閱讀的結構化補充材料

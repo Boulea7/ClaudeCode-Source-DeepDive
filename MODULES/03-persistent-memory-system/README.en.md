@@ -2,27 +2,29 @@
 
 # 03 Persistent Memory System
 
-This chapter covers four memory-related runtime paths:
+This chapter explains how Claude Code splits its memory stack into session memory, durable personal memory, and team memory, then keeps those layers useful across long-running sessions.
 
-- entrypoint injection
-- session summaries
-- durable writes
-- query-time recall
+In the public source mirror, those layers live in `services/SessionMemory/*`, `memdir/*` plus `services/extractMemories/*`, and `memdir/teamMemPaths.ts` plus `services/teamMemorySync/*`. `autoDream` adds a conditional background consolidation path. It belongs to the memory system, but it should not be described as an always-on product capability.
 
 ## What You Should Understand After This Chapter
 
-- what `CLAUDE.md`, auto memory, and SessionMemory each do
-- why `SessionMemory` serves conversation continuity
-- why team memory lives under the auto-memory tree
-- why query-time recall is separate from entrypoint injection
+- why `SessionMemory`, durable memory, and team memory need separate wording
+- what `MEMORY.md` and topic files each do inside auto memory
+- why team memory lives under the auto-memory tree rather than a separate root
+- why `autoDream`, KAIROS daily-log mode, and `/dream` need conditional wording
 
 ## Key Files
 
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/claudemd.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/memdir/`
-- `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/`
-- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/`
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/permissions/filesystem.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemory.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/sessionMemoryUtils.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/SessionMemory/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/extractMemories/extractMemories.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memdir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/memoryScan.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/memdir/teamMemPaths.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/index.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/teamMemorySync/watcher.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/autoDream/autoDream.ts`
 
 ## Where To Start
 

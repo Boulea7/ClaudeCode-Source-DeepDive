@@ -1,3 +1,5 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Permissions, Sandbox, And Trust
 
 这一章要回答的核心问题是：**Claude Code 的权限系统为什么看起来像一层独立运行时。**

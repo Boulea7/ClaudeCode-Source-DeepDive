@@ -1,3 +1,5 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Tools, MCP, Skills, And Plugins
 
 这一章最容易写乱，因为 `tools`、`MCP`、`skills`、`plugins` 都在扩展 Claude Code 的能力。
@@ -187,7 +189,7 @@ export function getMergedTools(...) {
 
 ### 5. resources 与 auth pseudo-tool 都是宿主侧额外补入
 
-MCP 并不只生成远端 tools。
+MCP 会生成远端 tools，也会触发宿主侧补入能力。
 
 当前客户端还会在特定条件下额外补入宿主工具：
 
@@ -206,7 +208,7 @@ MCP 并不只生成远端 tools。
 
 ### 6. `needs-auth` 是伪工具链路，不是单纯状态标签
 
-当前源码里，“需要授权”的语义不是只停留在连接状态上。
+当前源码里，“需要授权”的语义会进入连接状态和后续工具路径。
 
 当某个 server 命中 `needs-auth` 时：
 

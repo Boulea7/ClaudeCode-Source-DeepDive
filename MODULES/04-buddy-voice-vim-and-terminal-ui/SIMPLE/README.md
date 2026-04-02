@@ -2,23 +2,25 @@
 
 # 1 分钟看懂 Buddy, Voice, Vim, And Terminal UI
 
-这一章最适合先记住一件事：
+最短心智模型如下：
 
-交互层不只是终端外壳，它会把 companion UI、voice 输入和 vim 模式接回运行时。
+Claude Code 的终端交互层至少包含三条线：companion surface、voice 输入链、vim 模态输入。
 
 ```mermaid
 flowchart TD
-    A[Terminal UI] --> B[Keybindings]
-    B --> C[Vim Mode]
-    B --> D[Voice Input]
-    A --> E[Buddy / Companion Surface]
+    A[REPL.tsx] --> B[PromptInput]
+    B --> C[Buddy / Companion Surface]
+    B --> D[Voice Input Chain]
+    B --> E[VimTextInput]
+    D --> F[local recording + STT]
+    E --> G[vim transitions / operators]
 ```
 
 ## 三个要点
 
-- `Buddy` 更适合写成 companion / watcher surface 线索
-- `voice` 当前更适合写成语音听写增强链路
-- `vim/` 是清楚拆层的模态输入系统
+- `Buddy` 当前更适合写成 companion surface 线索
+- voice 当前更适合写成输入侧语音听写链
+- vim 当前更适合写成分层 modal input engine
 
 ## 下一步去哪里
 

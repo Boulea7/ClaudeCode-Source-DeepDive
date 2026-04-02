@@ -2,25 +2,28 @@
 
 # Planning, Compaction, And Assistant In One Minute
 
-This chapter makes more sense if you split it into parallel mechanisms:
+Keep this short mental model:
+
+Claude Code splits “design first,” “persist the plan,” “shrink long context,” and “track work” into four separate runtime mechanisms.
 
 ```mermaid
 flowchart TD
-    A[EnterPlanModeTool] --> B[toolPermissionContext.mode = plan]
-    B --> C[read-only planning state]
-    D[attachments / plan prompts] --> E[plan file create or edit]
-    F[autoCompactIfNeeded] --> G[trySessionMemoryCompaction]
-    G -->|fallback| H[compactConversation]
-    I[TodoWrite v1] --> J[AppState.todos]
-    K[Task V2] --> L[task-list files]
-    M[runtime task] --> N[AppState.tasks + output files]
+    A[EnterPlanMode] --> B[permission mode = plan]
+    B --> C[read-only planning phase]
+    D[plans.ts] --> E[plan file]
+    F[query.ts] --> G[autoCompactIfNeeded]
+    G --> H[sessionMemoryCompact]
+    H -->|fallback| I[compactConversation]
+    J[TodoWrite] --> K[AppState.todos]
+    L[Task V2] --> M[disk task list]
+    N[runtime tasks] --> O[AppState.tasks + output files]
 ```
 
 ## Three Takeaways
 
-- `Plan Mode` combines permission state and follow-up prompt attachments
-- the plan file is a separate artifact
-- `TodoWrite`, Task V2, and runtime tasks are three different layers
+- `Plan Mode` is a mode switch, not the same thing as the plan file
+- compaction has multiple paths, and autocompact tries the session-memory path first
+- `TodoWrite`, Task V2, and runtime tasks are different objects
 
 ## Read Next
 

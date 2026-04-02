@@ -2,25 +2,41 @@
 
 # Runtime And Prompt Gates
 
-This page collects gates that directly affect prompt assembly, runtime entry paths, and major interaction surfaces.
+This page tracks the gates that directly reshape prompt assembly, runtime entry paths, and user-facing interaction surfaces.
 
-## What This Page Covers
+## Key Source Files
 
-- prompt-path branches
-- runtime entry branches
-- interaction-facing gates for companion and voice surfaces
+- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/query.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
 
-## Main Points
+## Confirmed From Source
 
-- `CLAUDE_CODE_SIMPLE` changes both prompt shape and tool-pool shape
-- `COORDINATOR_MODE` changes prompt, tools, and resume behavior under specific conditions
-- `PROACTIVE` and `KAIROS` change both prompt paths and runtime behavior
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` remains conditional
-- `VOICE_MODE` currently supports a conservative “voice dictation enhancement” description
-- `BUDDY` currently supports a conservative companion-surface description
+- `CLAUDE_CODE_SIMPLE` switches `getSystemPrompt()` into a minimal path.
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` is inserted conditionally through `shouldUseGlobalCacheScope()`.
+- `COORDINATOR_MODE` rewrites the main-thread priority branch in `buildEffectiveSystemPrompt()`.
+- `PROACTIVE` and `KAIROS` reshape both the proactive `getSystemPrompt()` path and the way main-thread agent instructions are combined in `buildEffectiveSystemPrompt()`.
+- In `query.ts`, `REACTIVE_COMPACT`, `CONTEXT_COLLAPSE`, `CACHED_MICROCOMPACT`, `TOKEN_BUDGET`, `HISTORY_SNIP`, and `BG_SESSIONS` continue to reshape query-time context handling.
+- `VOICE_MODE` is safest to describe as a voice-input or dictation-enhancement path. This pass did not confirm a full two-way voice assistant.
+- `tengu_cobalt_frost` is currently confirmed only as a `voice_stream` query-parameter branch.
+- `BUDDY` is currently confirmed only across companion sprite, notification, intro attachment, and reaction-style front-end paths.
 
-## Conservative Boundaries
+## Not Confirmed From Source
 
-- prompt-path gates do not prove public rollout
-- `voice` should not expand into TTS or a full two-way assistant
-- `Buddy` should not expand into a settled public product name
+- Public rollout for `KAIROS`, `PROACTIVE`, or `COORDINATOR_MODE`.
+- The full product scope behind `VOICE_MODE`.
+- Whether `Buddy` equals an already public product name.
+
+## Review Checklist
+
+- Keep `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` conditional.
+- Do not expand `VOICE_MODE` into TTS or a full voice assistant.
+- Do not expand `Buddy` into a publicly settled companion product.
+- Keep prompt-path gates separate from rollout claims.

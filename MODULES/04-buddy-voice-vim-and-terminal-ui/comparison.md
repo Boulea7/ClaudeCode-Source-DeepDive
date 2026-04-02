@@ -2,6 +2,11 @@
 
 # 轻量比较
 
-很多 AI coding 工具把重点放在编辑器里。
+很多 AI coding 工具重点落在编辑器表面。
 
-这一章更值得看的地方，是 Claude Code 在终端里实现了自己的交互层，包括输入模式、companion UI 和 voice 输入链路。
+Claude Code 在这一层的区别点更清楚：
+
+- 终端里有 companion surface
+- voice 已经接入输入侧录音与 STT 链
+- vim 模态输入有独立状态机与执行层
+- 这些交互能力都接回 `REPL.tsx` 与 `PromptInput.tsx`

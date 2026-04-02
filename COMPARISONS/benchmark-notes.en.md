@@ -13,3 +13,16 @@ Public benchmarks can add context, but they do not replace source analysis.
 ## Boundary
 
 This repository uses benchmarks as background only. The main work remains the source-backed walkthroughs.
+
+## Sources
+
+- Anthropic `Claude 3.7 Sonnet and Claude Code`
+- OpenAI `Introducing Codex`
+- OpenAI `Introducing upgrades to Codex`
+- CursorBench notes
+- Aider benchmarks
+
+## Back To The Reading Path
+
+- [README.en.md](./README.en.md)
+- [../README.en.md](../README.en.md)

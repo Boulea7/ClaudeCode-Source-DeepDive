@@ -1,6 +1,14 @@
+[简体中文](./timeline.md) | [English](./timeline.en.md)
+
 # Claude Code 与竞品的时间线
 
 这页只保留最能帮助阅读源码的时间点，不追求做一份完整行业年表。
+
+## 这页负责什么
+
+- 给源码阅读补背景时间轴
+- 解释 Claude Code 为什么会很快进入高频比较
+- 保持时间线最小化，不展开完整行业史
 
 ## Claude Code
 
@@ -22,9 +30,17 @@
 - `Aider`
   - 2025 到 2026 延续 OSS 高频发布路线
 
-## 这页的作用
+## 关键点
 
-这页的作用，是说明：**Claude Code 出现的时间并不早，但它把一组系统能力组合得很完整，所以很快就进入了高频比较列表。**
+- Claude Code 出现得不算早
+- 它把一组系统能力组合得比较完整
+- 这组组合方式让它很快进入高频比较列表
+
+## 边界
+
+- 这页只补阅读背景
+- 这页不替源码章节下结论
+- 时间线不是产品能力证明
 
 ## 来源
 
@@ -35,3 +51,8 @@
 - Cursor changelog
 - Windsurf changelog
 - Aider history
+
+## 返回阅读路径
+
+- [COMPARISONS/README.md](./README.md)
+- [README.md](../README.md)

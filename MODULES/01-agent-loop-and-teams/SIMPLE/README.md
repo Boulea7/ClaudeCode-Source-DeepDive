@@ -2,25 +2,30 @@
 
 # 1 分钟看懂 Agent Loop And Teams
 
-先记住一个最短的心智模型：
+最短心智模型如下：
 
-Claude Code 把主线程、子 agent、任务状态和 team 协作放进了同一套运行链。
+Claude Code 先建立一条通用 `query()` 回合循环，再把子 agent、后台任务和 team 任务都接到这条循环外层的编排与任务表示层。
 
 ```mermaid
 flowchart TD
-    A[Main Agent] --> B[AgentTool]
-    B --> C[Worker / Sub-agent]
-    A --> D[Task Runtime]
-    D --> E[Local Tasks]
-    D --> F[Remote Tasks]
-    D --> G[In-Process Teammates]
+    A[main.tsx] --> B{session type}
+    B --> C[interactive: REPL.tsx]
+    B --> D[headless: QueryEngine.ts]
+    C --> E[query.ts]
+    D --> E
+    E --> F[AgentTool]
+    F --> G[runAgent / remote launch]
+    G --> H[tasks/*]
+    H --> I[local_agent]
+    H --> J[remote_agent]
+    H --> K[in_process_teammate]
 ```
 
 ## 三个要点
 
-- 主线程负责整体推进
-- `AgentTool` 负责创建、恢复或切换子代理路径
-- `tasks/` 说明 worker 有独立状态，不只是一条消息里的临时对象
+- 交互式主链明确经过 `REPL.tsx`
+- `AgentTool` 负责编排，`runAgent()` 负责执行
+- `tasks/*` 是运行时状态层，不是单纯展示层
 
 ## 下一步去哪里
 

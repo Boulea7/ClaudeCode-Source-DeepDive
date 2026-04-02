@@ -2,6 +2,11 @@
 
 # 轻量比较
 
-很多工具也支持规则文件、历史记录或长上下文。
+很多工具支持规则文件、历史记录或长上下文。
 
-Claude Code 这里更值得看的地方，是它把入口注入、会话摘要、持久文件和查询时召回拆成了几条机制。
+Claude Code 在这一层的区别点更清楚：
+
+- 会话摘要、durable memory、team memory 三分明确
+- `MEMORY.md` 与 topic files 职责不同
+- team memory 有独立同步服务层
+- `autoDream` 与 KAIROS 路径保持条件化

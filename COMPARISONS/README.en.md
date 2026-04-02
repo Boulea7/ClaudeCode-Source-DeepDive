@@ -1,10 +1,10 @@
 [简体中文](./README.md) | [English](./README.en.md)
 
-# COMPARISONS
+# Comparisons And Background
 
-This section provides a small amount of background material to explain why Claude Code is often compared with other tools.
+This section adds a small amount of background material to explain why Claude Code is often discussed next to other tools.
 
-It does not turn comparisons into marketing copy, and it does not replace the source-focused core of the repository.
+These pages add context. They do not replace the source-focused core of the repository.
 
 ## Suggested Reading Order
 

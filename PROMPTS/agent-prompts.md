@@ -1,252 +1,48 @@
+[简体中文](./agent-prompts.md) | [English](./agent-prompts.en.md)
+
 # Agent Prompts
 
-这一页只解释一件事：
+这一页拆开主线程与子代理的 prompt 来源。它只讲装配来源，不转储原始 prompt 文本。
 
-**主线程、main-thread agent、普通 subagent、fork subagent 的 prompt 是怎么来的。**
-
-如果你读 prompt 文档时最容易混淆“哪条链是主线程、哪条链是子线程”，这一页就是专门把这几条路径拆开的。
-
-不做的事：
-
-- 不复制大段原始 agent prompt
-- 不把 agent prompt 机制简化成“都继承主线程”
-
-## 这部分负责什么
-
-这一页主要讲四件事：
-
-1. 交互式主线程 prompt 从哪里来
-2. 非交互主线程为什么不是同一条装配链
-3. 普通 subagent 的 prompt 起点是什么
-4. fork subagent 为什么要复用 `renderedSystemPrompt`
-
-## 关键文件
+## 关键源码文件
 
 - `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/loadAgentsDir.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
 - `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
 
-## 执行流
-
-### 1. 源码里至少有 4 条不同路径
-
-这一层最容易写混的地方，是把所有 agent prompt 都当成同一条链。
-
-更准确的分法是：
-
-1. 交互式主线程
-2. 非交互主线程
-3. 普通 subagent
-4. fork subagent
-
-这四条路径都和 prompt 相关，但装配规则并不相同。
-
-### 2. 交互式主线程会在 `REPL.tsx` 里走 `buildEffectiveSystemPrompt()`
-
-在交互式主线程里，`buildEffectiveSystemPrompt()` 会按优先级决定最终生效内容：
-
-- `overrideSystemPrompt`
-- coordinator prompt
-- `mainThreadAgentDefinition`
-- `customSystemPrompt`
-- `defaultSystemPrompt`
-
-然后：
-
-- `appendSystemPrompt` 尾追加
-
-这里还要注意一个调用签名差异：
-
-- built-in agent：`getSystemPrompt({ toolUseContext })`
-- custom / plugin agent：`getSystemPrompt()`
-
-这说明 built-in agent prompt 可以感知当前工具上下文，而 custom / plugin agent 默认是更静态的 prompt 提供者。
-
-这里还可以再补一个条件：
-
-- coordinator prompt 只有在 `COORDINATOR_MODE` 开启且当前没有 `mainThreadAgentDefinition` 时才会抢到这一层
-- 所以它不是“永远排在 main-thread agent 前面”的无条件分支
-
-### 3. 非交互主线程不完全一样
-
-`QueryEngine.ts` 这条路径里，主线程不会调用：
-
-- `buildEffectiveSystemPrompt()`
-
-它走的是：
-
-- `fetchSystemPromptParts(...)`
-- 取 `defaultSystemPrompt / userContext / systemContext`
-- 再直接组合 `custom/default + optional memory mechanics + append`
-
-`main.tsx` 里还有一个单独特判：
-
-- non-interactive 模式下，如果是 custom main-thread agent，会直接把它的 prompt 放进 headless `systemPrompt`
-- 只要 `customSystemPrompt` 已经存在，`QueryEngine` 这条链还会跳过 `getSystemPrompt()` 与 `getSystemContext()` 的标准预取
-
-因此文档里如果把“所有主线程 prompt 都走同一条链”写死，会和源码不一致。
-
-### 4. 普通 subagent 的 prompt 起点更适合直接落在 `runAgent.ts`
-
-普通 subagent 走的是 `runAgent.ts`：
-
-1. 进入 `getAgentSystemPrompt(...)`
-2. 在里面调 agent 自己的 `getSystemPrompt(...)`
-3. 把结果包装成数组
-4. 交给 `enhanceSystemPromptWithEnvDetails(...)`
-5. 若失败则 fallback 到 `DEFAULT_AGENT_PROMPT`
-
-这里最重要的结论是：
-
-- 普通 subagent 不直接复用主线程完整 prompt
-- 它有自己的 prompt 起点和自己的 env / detail 补充层
-
-```mermaid
-flowchart LR
-    A[agentDefinition.getSystemPrompt] --> B[enhanceSystemPromptWithEnvDetails]
-    B --> C[ordinary subagent prompt]
-    D[error] --> E[DEFAULT_AGENT_PROMPT]
-    E --> B
-```
-
-### 5. fork subagent 是另一套继承模型
-
-`forkSubagent.ts` 这条路径非常特殊。
-
-它更接近：
-
-- 把父线程当前上下文切一份给 worker
-
-关键点有两个。
-
-#### 优先传 `renderedSystemPrompt`
-
-fork 会优先把父线程已经渲染好的：
-
-- `renderedSystemPrompt`
-
-直接传下去。
-
-源码注释里给出的原因很明确：
-
-- 避免重新调用 `getSystemPrompt()` 后出现差异
-- 避免 GrowthBook 等运行时状态从 cold 变 warm 导致 prompt 漂移
-- 尽量保持 prompt cache 前缀稳定
-
-换成更口语一点的说法就是：
-
-- fork 不是重新算一遍 prompt
-- 而是尽量沿用父线程已经算好的那份
-
-#### `promptMessages` 也不是普通 user prompt
-
-普通 subagent 常见的是新的用户任务消息。
-
-fork 不是。它会调用：
-
-- `buildForkedMessages(...)`
-
-去重建：
-
-- 父 assistant message
-- 占位 `tool_result`
-- worker directive
-
-这条链的目标，是尽量继承父线程已经存在的 prompt 和消息前缀。
-
-```mermaid
-flowchart TD
-    A[parent renderedSystemPrompt] --> D[fork child]
-    B[parent assistant message] --> C[buildForkedMessages]
-    C --> D
-    E[placeholder tool_result blocks] --> C
-    F[worker directive] --> C
-```
-
-### 6. `renderedSystemPrompt` 不是冗余字段
-
-这轮复核后，这一点可以写得更明确。
-
-`renderedSystemPrompt` 存在的意义，包括：
-
-- 给 fork 子代理提供稳定的父 prompt 前缀
-- 避免重算 prompt 时出现 drift
-
-所以文档里应该直接写：
-
-- `renderedSystemPrompt` 是 fork 稳定性的一部分
-
-### 7. 有些边界仍然要保守
-
-这轮也需要继续收紧两种说法：
-
-- 不能把 `buildSideQuestionFallbackParams()` 里的 `forkContextMessages` 直接等同于 fork 子代理主装配链
-- 不能只凭 prompt 相关文件就断言“fork 有完全独立的默认基础 prompt 常量”
-
-目前能稳定确认的是：
-
-- 普通 subagent 走自己的 agent prompt 链
-- fork 尽量复用父 `renderedSystemPrompt` 与父消息前缀
-
-### 8. 这些路径本身也受 feature gate 控制
-
-这一页最后还要把几个名字写得更保守：
-
-- `COORDINATOR_MODE` 会改变 interactive 主线程是否插入 coordinator prompt，以及 tool pool 的裁剪方式
-- `PROACTIVE` / `KAIROS` 会让 main-thread agent prompt 从“替换 default”变成“追加在 default 后面”
-- `FORK_SUBAGENT` 会改变省略 `subagent_type` 时的默认语义
-
-这些都说明：
-
-- agent prompt 路径确实会被 feature gate 改写
-- 但静态源码只能证明“有这条分支”，不能直接证明它在当前公开构建里默认启用
-
-## 一张图看 4 条 agent prompt 路径
-
-```mermaid
-flowchart TD
-    A[interactive main thread] --> B[REPL.tsx]
-    B --> C[buildEffectiveSystemPrompt]
-
-    D[non-interactive main thread] --> E[QueryEngine.ts]
-    E --> F[custom/default + memory + append]
-
-    G[agentDefinition.getSystemPrompt] --> H[ordinary subagent]
-    H --> I[enhanceSystemPromptWithEnvDetails]
-
-    J[parent renderedSystemPrompt] --> K[fork subagent]
-    K --> L[buildForkedMessages]
-```
-
-## 为什么这个设计重要
-
-这条装配链决定了几个关键事实：
-
-- 主线程 agent prompt 与普通 subagent prompt 不是同一条链
-- 普通 subagent 更像“agent 自己的 prompt + env/details”
-- fork subagent 才是“尽量继承父线程 prompt 和父消息前缀”的特例
-
-如果不把这几条路径拆开，文档就很容易把 “fork” 和 “普通 worker” 写成同一种东西。
-
-## 推荐阅读顺序
-
-1. `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
-2. `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
-3. `_upstream/claude-code-sourcemap/restored-src/src/main.tsx`
-4. `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
-5. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/loadAgentsDir.ts`
-6. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
-7. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
-8. `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
-
-## 仍待确认
-
-- 不同 feature gate 下 fork / proactive / coordinator / built-in agent 的真实启用状态。
-- 某个具体运行时里 agent prompt 的最终字节内容。
-- fork fallback 重算时与父线程 prompt 的实际偏差范围。源码当前只能确认 fork 优先复用父 `renderedSystemPrompt` 与父消息前缀，并在 fallback 重算场景下提示“可能 diverge”，不能写成绝对一致。
-- `COORDINATOR_MODE`、`PROACTIVE`、`KAIROS` 这些名字当前只能稳定证明它们会改写主线程 / agent prompt 路径，不能直接当成公开产品档位。
+## 当前源码能确认的机制
+
+- interactive main thread 在 `REPL.tsx` 里先拉 `getSystemPrompt()`、`getUserContext()`、`getSystemContext()`，再调用 `buildEffectiveSystemPrompt()`，随后把结果写回 `toolUseContext.renderedSystemPrompt`。
+- `buildEffectiveSystemPrompt()` 的优先级是：
+  - `overrideSystemPrompt`
+  - coordinator prompt。条件是 `COORDINATOR_MODE` 打开、环境变量为真、当前没有 `mainThreadAgentDefinition`
+  - `mainThreadAgentDefinition` 的 prompt
+  - `customSystemPrompt`
+  - `defaultSystemPrompt`
+- built-in main-thread agent 通过 `getSystemPrompt({ toolUseContext })` 取 prompt。非 built-in agent 走无参 `getSystemPrompt()`。
+- `PROACTIVE` 或 `KAIROS` 激活且 proactive runtime 处于活动状态时，main-thread agent prompt 会以 `# Custom Agent Instructions` 的形式追加在 `defaultSystemPrompt` 后面。
+- non-interactive main thread 走 `queryContext.ts -> fetchSystemPromptParts()` 与 `QueryEngine.ts` 的 `asSystemPrompt([...])` 组合链。
+- `customSystemPrompt` 存在时，`fetchSystemPromptParts()` 会跳过默认 `getSystemPrompt()` 和 `getSystemContext()` 预取。
+- `QueryEngine.ts` 在 `customSystemPrompt` 存在且 `hasAutoMemPathOverride()` 为真时，会额外注入 `memoryMechanicsPrompt`。
+- ordinary subagent 走 `runAgent.ts:getAgentSystemPrompt()`。这条链会调用 `agentDefinition.getSystemPrompt(...)`，再进入 `enhanceSystemPromptWithEnvDetails(...)`，失败时退回 `DEFAULT_AGENT_PROMPT`。
+- fork subagent 由 `AgentTool.tsx` 决定路由。省略 `subagent_type` 且 fork gate 打开时，`effectiveType` 保持 `undefined`，随后进入 fork path。
+- fork path 优先复用父线程 `toolUseContext.renderedSystemPrompt`。缺失时会回退到重新计算，源码注释明确写明该回退可能发生 drift。
+- `forkSubagent.ts:buildForkedMessages()` 会克隆父 assistant message，保留全部 `tool_use` block，合成占位 `tool_result`，再附上 child directive。
+
+## 当前源码不能确认的内容
+
+- `COORDINATOR_MODE`、`PROACTIVE`、`KAIROS`、`FORK_SUBAGENT` 在公开构建里的 rollout 状态。
+- 某个运行时里的最终 prompt 字节内容。动态 sections、memory、attachments、GrowthBook 状态都会继续改写结果。
+- fork 回退重算与父线程 `renderedSystemPrompt` 的实际偏差范围。
+
+## 复核清单
+
+- interactive 与 non-interactive 是否被分成两条链。
+- ordinary subagent 与 fork subagent 是否被分开描述。
+- `renderedSystemPrompt` 是否被写成 fork 稳定性锚点。
+- `buildEffectiveSystemPrompt()` 的优先级是否保留 coordinator 条件。
+- 文档里是否出现大段 raw agent prompt。

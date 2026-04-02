@@ -1,3 +1,5 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Prompts、Config 与系统装配层
 
 这一章关注的是：

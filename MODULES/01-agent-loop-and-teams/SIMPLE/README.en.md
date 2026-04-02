@@ -2,25 +2,30 @@
 
 # Agent Loop And Teams In One Minute
 
-Keep one short mental model:
+Keep this short mental model:
 
-Claude Code places the main thread, child agents, task state, and team coordination inside the same runtime chain.
+Claude Code first establishes a shared `query()` turn loop, then attaches child agents, background work, and team-oriented tasks through orchestration and task-state layers around that loop.
 
 ```mermaid
 flowchart TD
-    A[Main Agent] --> B[AgentTool]
-    B --> C[Worker / Sub-agent]
-    A --> D[Task Runtime]
-    D --> E[Local Tasks]
-    D --> F[Remote Tasks]
-    D --> G[In-Process Teammates]
+    A[main.tsx] --> B{session type}
+    B --> C[interactive: REPL.tsx]
+    B --> D[headless: QueryEngine.ts]
+    C --> E[query.ts]
+    D --> E
+    E --> F[AgentTool]
+    F --> G[runAgent / remote launch]
+    G --> H[tasks/*]
+    H --> I[local_agent]
+    H --> J[remote_agent]
+    H --> K[in_process_teammate]
 ```
 
 ## Three Takeaways
 
-- the main thread drives overall progress
-- `AgentTool` chooses and launches child-agent paths
-- `tasks/` shows that workers have durable state, not just one message
+- the interactive path clearly runs through `REPL.tsx`
+- `AgentTool` orchestrates while `runAgent()` executes
+- `tasks/*` is a runtime state layer, not only a display layer
 
 ## Read Next
 

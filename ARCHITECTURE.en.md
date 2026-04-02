@@ -4,30 +4,24 @@
 
 This page gives a source-backed map before you dive into module details.
 
-You can read it as three things:
+The current public mirror shows two main entry paths branching from `main.tsx`, and both converge into a shared `query/runtime` chain.
 
-- one main execution chain
-- several systems attached around that chain
-- a set of conditional branches that can change behavior
-
-## The Main Chain The Current Source Supports
-
-In the current public mirror, the most stable entry paths are:
+## Two Entry Paths, One Shared Runtime Chain
 
 - interactive main thread:
-  - `main.tsx -> REPL.tsx -> query.ts`
+  - `main.tsx -> launchRepl() -> REPL.tsx -> query()`
 - non-interactive / SDK path:
-  - `main.tsx -> QueryEngine.ts -> query.ts`
+  - `main.tsx -> QueryEngine.ts -> query()`
 
-Both paths connect to the same core subsystems:
+The shared runtime surface across those paths includes:
 
-- tools
-- permissions
-- memory
-- compaction
-- tasks
-- MCP
-- prompt assembly
+- the tool pool
+- prompt assembly and context loading
+- permissions and approvals
+- memory and compaction
+- tasks and agent runtime
+- MCP, skills, and plugins
+- attachments, stop hooks, and continuation rules
 
 ## Key Entry Files
 
@@ -40,71 +34,54 @@ The source paths you can open directly in this repository live under:
 - `_upstream/claude-code-sourcemap/restored-src/src/Tool.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/tools.ts`
 
-## One Diagram For The Whole Chain
+## One Diagram For The Whole Flow
 
 ```mermaid
 flowchart LR
-    A[main.tsx] --> B{session type}
-    B --> C[interactive main thread<br/>REPL.tsx]
-    B --> D[non-interactive / SDK<br/>QueryEngine.ts]
-    C --> E[query.ts]
-    D --> E
-    E --> F[tools]
-    E --> G[memory and compact]
-    E --> H[permissions]
-    E --> I[tasks and agent runtime]
-    E --> J[prompt assembly]
-    F --> K[MCP / skills / plugins]
-    E --> L[remote / bridge]
-    E --> M[terminal UI / companion / voice / vim]
+    A[main.tsx] --> B{entry path}
+    B --> C[launchRepl()]
+    B --> D[QueryEngine.ts]
+    C --> E[REPL.tsx]
+    E --> G[query()]
+    D --> G
+    G --> H[tool execution and attachments]
+    G --> I[memory and compaction]
+    G --> J[permissions and approvals]
+    G --> K[tasks and agent runtime]
+    E --> L[prompt assembly and interactive context]
+    D --> M[prompt assembly and transcript state]
+    E --> N[tool pool and MCP merge]
 ```
 
 ## What Each Layer Handles
 
 ### Startup And Wiring
 
-`main.tsx` prepares session startup, including settings, models, MCP, skills, plugins, and the permission context.
+`main.tsx` handles CLI startup, config and model preparation, permission context, MCP-related initialization, and bundled plugin / skill registration. Interactive sessions then enter `launchRepl()`. Headless and SDK flows take the `QueryEngine.ts` wrapper path.
 
-### Interactive Main Thread
+### Interactive Orchestration Layer
 
-`REPL.tsx` is responsible for:
+`REPL.tsx` is the core orchestration layer for the interactive path. In source, it reads fresh tools and MCP clients from current store state, assembles the effective system prompt, and directly drives the shared query loop with `for await ... of query(...)`. Describing it as a viewer alone would miss a key source-backed role.
 
-- building the live tool pool
-- fetching user and system context
-- assembling the interactive system prompt
-- entering `query()`
+### Non-Interactive / SDK Wrapper
 
-### Non-Interactive / SDK Path
+`QueryEngine.ts` is also a wrapper around `query(...)`. It manages message state, prompt parts, transcript handling, and structured IO concerns, then enters the same shared query loop with `querySource: 'sdk'`.
 
-`QueryEngine.ts` is responsible for:
+### Shared Query Loop
 
-- fetching prompt parts
-- processing input
-- recording transcript state
-- assembling the non-interactive system prompt
-- entering `query()`
-
-### Query Loop
-
-`query.ts` controls how a turn continues, including:
-
-- tool execution
-- context shaping
-- compaction
-- attachment injection
-- stop and continuation conditions
+`query.ts` is the shared turn execution core. It owns loop state, handles tool execution, attachment injection, compaction, stop hooks, continuation rules, and between-turn refreshes of tools and context.
 
 ### Tool Contract And Tool Pool
 
-`Tool.ts` defines the shared tool contract, and `tools.ts` defines how built-in tools, MCP tools, and the final tool pool are assembled.
+`Tool.ts` defines the shared tool contract and `ToolUseContext`. `tools.ts` assembles the concrete tool pool: `getTools()` handles built-in tools plus filtering rules, while `assembleToolPool()` combines built-in tools and MCP tools into the runtime pool.
 
 ## Boundary Notes For This Page
 
-- the interactive main thread and the non-interactive path are not the same entry
-- the tool pool changes with deny rules, feature gates, and runtime state
-- prompt assembly has conditional branches and should not be written as a single fixed pipeline
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` is a conditional boundary marker
-- `remote/`, `bridge/`, and `connectRemoteControl()` still require conservative wording
+- `REPL.tsx` and `QueryEngine.ts` both enter the same `query()` core, but they serve different entry responsibilities
+- `ToolUseContext` carries runtime state and some REPL-only UI fields, so docs should keep UI-only state separate from API / transcript state
+- the tool pool changes with deny rules, agent restrictions, feature gates, runtime state, and MCP connection state
+- prompt fragments such as `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` and `mcp_instructions` should be described as conditional path elements
+- names such as `Buddy`, `KAIROS`, `voice`, `bridge`, and remote-related labels should stay within source wording and local context
 
 ## Where To Go Next
 

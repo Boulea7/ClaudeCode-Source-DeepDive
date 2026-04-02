@@ -1,42 +1,47 @@
 [简体中文](./exposure-surfaces-and-risks.md) | [English](./exposure-surfaces-and-risks.en.md)
 
-# Exposure Surfaces And Conservative Boundaries
+# Exposure Surfaces And Risks
 
-This page explains the prompt-related areas that are easiest to overstate.
+This page defines how far the PROMPTS docs should go.
 
-## What This Page Covers
+## Key Source Files
 
-- which areas can be explained at the mechanism level
-- which areas are safer as source indexes only
-- which names should remain gated-branch wording
-- which attachments become model-visible context
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/processUserInput/processSlashCommand.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
 
-## Mechanism-Level Surfaces
+## Confirmed Exposure Surfaces
 
-- `default prompt parts`
-- `dynamic sections`
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
-- interactive and non-interactive main-thread prompt paths
-- ordinary and fork subagent prompt paths
-- `skill_listing` and `command_permissions` attachments
+- The system prompt arrays returned by `getSystemPrompt()`.
+- The assembled main-thread system prompt produced by `buildEffectiveSystemPrompt()` and `QueryEngine.ts`.
+- Skill expansion from `processPromptSlashCommand()`, including the expanded text, loading metadata, attachment messages, and the `command_permissions` attachment.
+- Attachment messages produced by `attachments.ts`. This pass directly re-checked:
+  - `mcp_instructions_delta`
+  - `skill_listing`
+  - `command_permissions`
+  - `task_status`
+- Fork-child message prefixes produced by `buildForkedMessages()`, including the assistant message clone and placeholder `tool_result` blocks.
 
-## Index-Only Surfaces
+## Confirmed High-Risk Overstatements
 
-- large raw system prompt dumps
-- large raw agent prompt dumps
-- large skill-body dumps
-- internal helpers or rollout semantics that are not fully settled by the current mirror
+- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` is conditional, not a guaranteed section on every turn.
+- `mcp_instructions` has both an inline-section path and an attachment-backed delta path.
+- Ordinary subagents and fork subagents do not share the same prompt origin.
+- `createAttachmentMessage()` turns attachments into actual message objects, so attachment types and injection paths are valid mechanism-level documentation.
+- `command_permissions` is attached after skill expansion through `processPromptSlashCommand()`.
 
-## High-Risk Misstatements
+## Not Confirmed From Source
 
-- describing `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` as always present
-- describing `mcp_instructions` as one fixed inline section
-- describing fork as fully identical to the parent thread
-- turning `Buddy`, `KAIROS`, or `PROACTIVE` into fixed public modes
+- The full raw prompt for any real runtime turn.
+- Public product names or rollout state for labels such as `Buddy`, `KAIROS`, and `PROACTIVE`.
+- Server-side policy, experiment allocation, or entitlement rules.
 
-## Conservative Boundaries For This Section
+## Review Checklist
 
-- explain assembly mechanisms
-- do not dump full raw prompts
-- treat feature gates as code branches
-- keep rollout wording conservative
+- Do not describe attachments as system prompt sections.
+- Do not describe gated branches as rollout facts.
+- Do not describe fork paths as byte-for-byte identity with the parent.
+- Do not paste large raw prompts or complete skill bodies.

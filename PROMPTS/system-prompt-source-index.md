@@ -2,104 +2,60 @@
 
 # System Prompt Source Index
 
-这一页只做索引与检查，不做 raw system prompt 全量转储。
+这一页提供源码索引和复核锚点，不转储 raw prompt。
 
-## 这页负责什么
-
-- 列出 system prompt 的主要来源文件
-- 区分 interactive、non-interactive、ordinary subagent、fork subagent 几条路径
-- 列出会改写 prompt 的关键 section、gate 和 attachment
-- 提供复核时的检查清单
-
-## 主来源文件
+## 主索引
 
 - `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
-
-## 按路径查看
-
-### 1. default prompt parts
-
-- 来源：
-  - `constants/prompts.ts -> getSystemPrompt()`
-- 需要检查：
-  - simple path
-  - standard path
-  - proactive / KAIROS path
-  - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 是否条件插入
-
-### 2. interactive main thread
-
-- 来源：
-  - `screens/REPL.tsx`
-  - `utils/systemPrompt.ts -> buildEffectiveSystemPrompt()`
-- 需要检查：
   - `getSystemPrompt()`
-  - `getUserContext()`
-  - `getSystemContext()`
+  - `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
+  - `getSessionSpecificGuidanceSection()`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+  - `systemPromptSection()`
+  - `DANGEROUS_uncachedSystemPromptSection()`
+  - `resolveSystemPromptSections()`
+  - `clearSystemPromptSections()`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/systemPrompt.ts`
   - `buildEffectiveSystemPrompt()`
-  - `toolUseContext.renderedSystemPrompt`
-
-### 3. non-interactive main thread
-
-- 来源：
-  - `utils/queryContext.ts`
-  - `QueryEngine.ts`
-- 需要检查：
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/queryContext.ts`
   - `fetchSystemPromptParts()`
-  - `customSystemPrompt`
-  - `appendSystemPrompt`
+  - `buildSideQuestionFallbackParams()`
+- `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
+  - interactive main-thread prompt assembly
+  - `toolUseContext.renderedSystemPrompt` 写回点
+- `_upstream/claude-code-sourcemap/restored-src/src/QueryEngine.ts`
+  - non-interactive main-thread prompt assembly
   - `memoryMechanicsPrompt`
-  - `customSystemPrompt` 存在时是否跳过默认预取
-
-### 4. ordinary subagent
-
-- 来源：
-  - `tools/AgentTool/runAgent.ts`
-- 需要检查：
-  - `agentDefinition.getSystemPrompt()`
-  - `enhanceSystemPromptWithEnvDetails()`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/AgentTool.tsx`
+  - `subagent_type` 缺失时的 fork 路由
+  - fork path 对父 `renderedSystemPrompt` 的优先复用
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/runAgent.ts`
+  - `getAgentSystemPrompt()`
   - `DEFAULT_AGENT_PROMPT` fallback
-
-### 5. fork subagent
-
-- 来源：
-  - `tools/AgentTool/forkSubagent.ts`
-  - `tools/AgentTool/runAgent.ts`
-- 需要检查：
-  - `renderedSystemPrompt`
-  - 精确工具池
-  - `thinkingConfig`
+- `_upstream/claude-code-sourcemap/restored-src/src/tools/AgentTool/forkSubagent.ts`
+  - `isForkSubagentEnabled()`
   - `buildForkedMessages()`
-  - gate 条件与 fallback
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/attachments.ts`
+  - `getMcpInstructionsDeltaAttachment()`
+  - `getSkillListingAttachments()`
+  - `getUnifiedTaskAttachments()`
+  - `createAttachmentMessage()`
 
-## 重点 section 与条件项
+## 当前源码能确认什么
 
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`
-- `mcp_instructions`
-- `session_guidance`
-- `output_style`
-- `language`
-- `memory`
-- `env_info_simple`
+- system prompt 的静态前缀、动态 boundary、section registry、interactive 装配、headless 装配、ordinary subagent、fork subagent、attachment 注入入口都能定位到直接源码锚点。
+- `AgentTool.tsx` 与 `forkSubagent.ts` 共同定义了 ordinary subagent 与 fork subagent 的分叉点。
+- `attachments.ts` 是 prompt 外增量可见面的核心入口。`mcp_instructions_delta`、`skill_listing`、`task_status` 都在这里生成并被包成 attachment message。
 
-## 检查清单
+## 当前源码不能确认什么
 
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` 是否按条件插入
-- `mcp_instructions` 是否走 inline section 还是 delta / attachment
-- interactive 与 non-interactive 是否被写成了同一条链
-- ordinary subagent 与 fork subagent 是否被混写
-- `Buddy`、`KAIROS`、`PROACTIVE`、`COORDINATOR_MODE` 是否被写成公开固定模式
-- 是否误把整份 raw system prompt 复制进文档
+- 任何 gate 的 rollout。
+- 任何真实会话里的完整 raw prompt。
+- 任何服务端侧实验分桶。
 
-## 保守边界
+## 复核清单
 
-- 这一页只做来源索引，不贴大段 raw system prompt
-- feature gate 只说明代码分支，不说明 rollout
-- 某条 prompt 路径存在，不说明所有构建都会走到
+- 需要解释 main-thread prompt 时，优先从 `prompts.ts`、`systemPrompt.ts`、`REPL.tsx`、`QueryEngine.ts` 开始。
+- 需要解释 subagent prompt 时，优先从 `AgentTool.tsx`、`runAgent.ts`、`forkSubagent.ts` 开始。
+- 需要解释增量可见面时，优先从 `attachments.ts` 与 `processPromptSlashCommand.tsx` 开始。
+- 文档里不复制大段 raw prompt。

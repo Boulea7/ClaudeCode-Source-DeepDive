@@ -1,6 +1,6 @@
 [简体中文](./README.md) | [English](./README.en.md)
 
-# SIMPLE
+# 第一次阅读路径
 
 这一层给第一次进入仓库的读者。
 
@@ -12,9 +12,13 @@
 ## 建议怎么读
 
 1. [MODULES/01-agent-loop-and-teams/SIMPLE/README.md](../MODULES/01-agent-loop-and-teams/SIMPLE/README.md)
-2. [MODULES/03-persistent-memory-system/SIMPLE/README.md](../MODULES/03-persistent-memory-system/SIMPLE/README.md)
-3. [MODULES/02-planning-compaction-and-assistant/SIMPLE/README.md](../MODULES/02-planning-compaction-and-assistant/SIMPLE/README.md)
+2. [MODULES/02-planning-compaction-and-assistant/SIMPLE/README.md](../MODULES/02-planning-compaction-and-assistant/SIMPLE/README.md)
+3. [MODULES/03-persistent-memory-system/SIMPLE/README.md](../MODULES/03-persistent-memory-system/SIMPLE/README.md)
 4. [MODULES/05-tools-mcp-skills-and-plugins/SIMPLE/README.md](../MODULES/05-tools-mcp-skills-and-plugins/SIMPLE/README.md)
+5. [MODULES/06-permissions-sandbox-and-trust/SIMPLE/README.md](../MODULES/06-permissions-sandbox-and-trust/SIMPLE/README.md)
+6. [MODULES/04-buddy-voice-vim-and-terminal-ui/SIMPLE/README.md](../MODULES/04-buddy-voice-vim-and-terminal-ui/SIMPLE/README.md)
+7. [MODULES/07-remote-session-bridge-and-sdk/SIMPLE/README.md](../MODULES/07-remote-session-bridge-and-sdk/SIMPLE/README.md)
+8. [MODULES/08-prompts-config-and-other-moats/SIMPLE/README.md](../MODULES/08-prompts-config-and-other-moats/SIMPLE/README.md)
 
 ## 读完这一层后去哪里
 

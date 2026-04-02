@@ -1,317 +1,159 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # 深度拆解：Buddy、Voice、Vim 与终端交互层
 
-这一章只做一件事：把终端交互层里**能从源码确认的部分**讲清楚。
+本章说明终端交互层里哪些能力可以从当前源码确认，哪些能力需要继续保守表述。
 
-这里最容易被写重的，是 `Buddy` 和 `voice`。当前公开镜像能确认的，是一组 companion、sprite、notification、mode gating 和输入状态机实现；还不能把它们直接写成完整产品闭环。
+公开镜像可以直接支持以下结论：
 
-这一章最值得带着的问题去读是：Claude Code 的交互层到底只是 UI，还是已经深深接进了运行时。
+- `Buddy` 更接近 companion surface 线索，而不是已经坐实的完整产品语义
+- voice 当前至少覆盖可见性判定、按键保持、录音、本地音频采集、STT 与输入框回填
+- vim 当前是一套分层 modal input engine，不应写成完整 Vim 兼容
 
 ## 这部分负责什么
 
-这一层主要覆盖三件事：
+这一层负责四件事：
 
-1. `buddy/` 里的 companion 子系统
-2. `vim/` 里的 modal 输入内核
-3. `voice/` 里的可用性判定、输入集成与录音 / STT 接点
-
-换句话说，这一层解决的是“用户怎么在终端里和 Claude Code 交互”，而不是“模型主循环怎么运行”。
+1. 把 companion UI 接到终端界面
+2. 把 voice 输入链接到 PromptInput
+3. 把 vim 模态输入接到同一个文本输入表面
+4. 把这些交互状态统一挂到 `REPL.tsx` 和 `PromptInput.tsx`
 
 ## 关键文件
 
-### Companion 子系统
+### Companion surface
 
 - `_upstream/claude-code-sourcemap/restored-src/src/buddy/companion.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/buddy/types.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/buddy/sprites.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/buddy/useBuddyNotification.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/buddy/prompt.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/components/PromptInput/PromptInput.tsx`
 - `_upstream/claude-code-sourcemap/restored-src/src/screens/REPL.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/state/AppStateStore.ts`
 
-### Vim 输入内核
-
-- `_upstream/claude-code-sourcemap/restored-src/src/vim/types.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/vim/motions.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/vim/textObjects.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/vim/operators.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/vim/transitions.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVimInput.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/components/VimTextInput.tsx`
-
-### Voice 相关链路
+### Voice 输入链
 
 - `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceEnabled.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceIntegration.tsx`
 - `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoice.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/context/voice.tsx`
-- `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/index.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/voice.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/services/voice.ts`
 - `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
-- `_upstream/claude-code-sourcemap/restored-src/src/tools/ConfigTool/ConfigTool.ts`
 
-## 执行流
+### Vim 模态输入
 
-### 1. `buddy/` 当前更适合写成 companion 子系统
+- `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVimInput.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/components/VimTextInput.tsx`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/transitions.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/operators.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/motions.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/vim/textObjects.ts`
 
-这轮重新核读后，`buddy/` 最稳妥的描述是：
+## 源码主线
 
-- companion 的确定性骨架生成
-- 终端 sprite / 气泡渲染
-- 输入区 teaser 与 `/buddy` 触发提示
-- 一次性 `companion_intro` 附件注入
+### 1. `Buddy` 当前落在 companion surface
 
-`companion.ts` 先从全局配置里读取持久化的 soul，再用：
+`buddy/companion.ts` 会把持久化配置里的 companion soul 与按用户身份稳定生成的 bones 合并成运行时 companion。`CompanionSprite.tsx` 负责把这个对象渲染成终端 sprite、speech bubble 和 pet hearts。
 
-- `oauthAccount.accountUuid`
-- 或 `userID`
+`PromptInput.tsx` 还明确保留了 `/buddy` 提交入口。`REPL.tsx` 会读取和清理 `companionReaction`。这些代码足以确认 companion surface 存在。
 
-生成 deterministic bones，最后由 `getCompanion()` 把两者合并成运行时 companion。
+这页继续保留保守边界：
 
-这也意味着：
+- 当前源码能确认 companion surface
+- 当前源码不能把 `Buddy` 写成完整产品闭环
 
-- `name`、`personality`、`hatchedAt` 更接近持久化 soul
-- `species`、`rarity`、`eye`、`hat`、`stats`、`shiny` 是按用户身份稳定派生的 bones
+### 2. voice 是输入侧链路，不是完整双向语音产品
 
-`CompanionSprite.tsx` 再把它变成终端 UI：
+`voiceModeEnabled.ts` 明确把 voice 可见性拆成两层：
 
-- 窄终端下退化为单行 face + label
-- 宽终端下显示多帧 sprite
-- fullscreen 时把浮动气泡拆成单独渲染层
-- `companionReaction` 驱动 speech bubble
-- `companionPetAt` 驱动 pet hearts
+- `isVoiceGrowthBookEnabled()`
+- `hasVoiceAuth()`
 
-这一轮还能把 reaction / pet 的边界再写具体一点：
+`useVoiceEnabled.ts` 再把用户设置 `settings.voiceEnabled` 叠上去。`useVoiceIntegration.tsx` 负责把按键保持、尾部字符清理、anchor 和 interim transcript 插入逻辑接到输入框。`useVoice.ts` 负责整个 hold-to-talk 生命周期。`services/voice.ts` 负责本地录音与后端选择。`services/voiceStreamSTT.ts` 负责 voice stream STT WebSocket。
 
-- `REPL.tsx` 在每次 `query()` 结束后，会把 `fireCompanionObserver(messagesRef.current, ...)` 的回调结果写回 `AppState.companionReaction`
-- `REPL.tsx` 滚动时也会主动把 `companionReaction` 清空
-- `CompanionSprite.tsx` 只是读取 `companionReaction` / `companionPetAt` 并负责渲染，不负责生成 reaction 文本
-- `companionPetAt` 这一轮仍只确认到读取点，没有在当前树里复核到明确写入点
+这条链已经能稳妥写成：
 
-`prompt.ts` 则把 `companion_intro` 作为一次性附件注入给主对话，用来提醒模型：
+- voice 输入链存在
+- 它覆盖 gate、auth、按键、录音、STT 和输入框回填
 
-- 输入框旁边还有一个 companion / watcher
+这条链不能写成：
 
-这里还要补一个 gate 边界：
+- 完整双向语音助手
+- 已确认的 TTS / playback / output-side voice 产品
 
-- `CompanionSprite.tsx`、`useBuddyNotification.tsx`、`buddy/prompt.ts` 都直接受 `feature('BUDDY')` 控制
-- 这说明当前能确认的是 companion 前台表现层与提示附件存在 gated path
-- 不能把它外推成“所有构建里默认开启的公开功能”
+### 3. `REPL.tsx` 仍是交互层总装配点
 
-但这里有两个边界必须单独写出来：
+`REPL.tsx` 当前直接接入：
 
-- `fireCompanionObserver(...)` 在 REPL 里有调用点，但本轮没有在当前树中复核到它的定义
-- `companionPetAt` 只有读取点，没有确认到写入点
+- `useVoiceIntegration`
+- `VoiceKeybindingHandler`
+- `CompanionSprite`
+- `CompanionFloatingBubble`
+- `PromptInput`
 
-所以文档不能把 companion reaction 的生成机制、模型来源、`/buddy pet` 行为写死。
+这说明 REPL 既负责消息滚动，也承担交互层总装配点。
 
-这里还可以再补一个更具体的限制：
+### 4. `PromptInput.tsx` 是 companion、voice、vim 的汇合面
 
-- `PromptInput.tsx` 只证明 companion footer 选中后会提交 `/buddy`
-- `commands.ts` 只证明当前树里有 `./commands/buddy/index.js` 这条命令入口引用
-- 但这轮没有在当前可见树里复核到 `/buddy` 命令实现文件
-- `AppStateStore.ts` 的注释虽然提到 `src/buddy/observer.ts`
-- 但当前镜像里没有这个文件
-- 因此 hatch / pet / mute / rename 这类具体行为，都不该在这一页写死
+当前可见源码里，`PromptInput.tsx` 同时负责：
 
-### 2. `voice` 不只是 gating，但也不能写成完整语音产品栈
+- `/buddy` 提交入口
+- `VimTextInput` 与普通 `TextInput` 的切换
+- voice 状态相关显示与留白
+- teammate、task、permission mode 等多种 footer 状态
 
-先用一句短话概括：当前源码已经足够证明“语音听写增强链”存在，但还不足以证明“完整双向语音助手”。
+这也是为什么这章需要同时写 `buddy/*`、`voice/*`、`vim/*` 和 `PromptInput.tsx`。输入层实际汇合点在 `PromptInput.tsx`。
 
-这轮重新核读后，`voice` 最稳妥的说法是：
+### 5. vim 当前是分层 modal input engine
 
-- `voice/voiceModeEnabled.ts` 负责能不能开
-- `/voice` 命令负责开关和预检
-- `useVoiceIntegration.tsx` 负责把按键保持、输入框插入和 UI 状态接起来
-- `services/voice.ts` 与 `services/voiceStreamSTT.ts` 提供录音和 STT 接点
+`useVimInput.ts` 管理 INSERT / NORMAL 模式、dot-repeat、last find、last change、operator context 和 replay。`VimTextInput.tsx` 把这套状态接到 `BaseTextInput`。`vim/transitions.ts` 负责状态转移。`vim/operators.ts` 负责执行 delete、change、yank、paste、indent、replace 等操作。
 
-这说明当前树里已经不只是“能不能显示 voice 按钮”的 gating。
+这页保留两个保守点：
 
-当前源码里能明确看到 3 层条件：
+- `transitions.ts` 与 `operators.ts` 已经实现了 counts、find、operator、text object 等主要结构
+- 当前实现不应被概括成“完整 Vim 兼容”
 
-1. `isVoiceGrowthBookEnabled()`
-   - 看 `VOICE_MODE` 编译期开关和 GrowthBook kill-switch
-2. `hasVoiceAuth()`
-   - 看是否具备 Claude.ai OAuth token
-3. `useVoiceEnabled()`
-   - 再叠加 `settings.voiceEnabled === true`
+### 6. `Buddy` 与 voice 都有 gate 和条件分支
 
-其中第一层还可以写得更具体一点：
+`CompanionSprite.tsx` 直接受 `feature('BUDDY')` 控制。voice 相关代码直接受 `VOICE_MODE`、GrowthBook kill-switch 与 OAuth 状态控制。
 
-- `isVoiceGrowthBookEnabled()` 不是泛泛的 feature probe
-- 它明确把 `VOICE_MODE` 编译期开关和 `tengu_amber_quartz_disabled` kill switch 叠在一起
+这说明当前公开文档适合强调“可确认的 gated surface”，不适合把这些分支写成所有构建默认开启的稳定公开能力。
 
-另外还可以明确写出：
-
-- `/voice` 命令的 `isEnabled` 与 `isHidden` 不是同一条件
-- `ConfigTool` 对 `voiceEnabled` 也会再次做 runtime gate
-- 默认 push-to-talk 键位是 `space -> voice:pushToTalk`
-- `/voice` 的开启流程会继续检查录音能力、stream 可用性、依赖和麦克风权限
-- `useVoiceEnabled()` 会把 `settings.voiceEnabled === true`、auth 与 kill-switch 合并成最终 UI 可见状态
-- `useVoiceIntegration()` 会处理 hold threshold、尾部按键清理、voice anchor 与 interim transcript 回填
-- `useVoiceIntegration()` 也是当前可见运行时里唯一直接调用 `useVoice()` 的地方，而且显式传的是 `focusMode: false`
-- `useVoice()` 虽然保留了 focus-driven recording 分支，但这轮没有在当前树里复核到 `focusMode: true` 的实际接线
-- `services/voice.ts` 当前更像本地录音后端选择与采集层
-- `services/voiceStreamSTT.ts` 当前更像 `voice_stream` WebSocket STT 客户端
-- `TextInput.tsx` 只消费 `voiceState` / `voiceAudioLevels` 来画录音时的输入光标波形
-
-如果再往下拆，这条链其实更适合分成两段来看：
-
-- `/voice` 是开关与预检入口
-- `REPL -> useVoiceIntegration -> useVoice -> services/voice -> voiceStreamSTT` 才是实际的录音与转写链
-
-因此更稳妥的表述是：
-
-- 这套代码至少已经覆盖了“判定 + 输入集成 + 本地录音 / STT 接点”
-- 但不要把它直接扩写成完整语音产品闭环
-
-这一轮还可以把负面边界写得更具体：
-
-- 在这批可见文件里，没有复核到明确的 TTS / playback / output-side 主链
-- `commands/voice/index.ts` 与 `commands/voice/voice.ts` 的职责都集中在开关、预检和设置切换
-- 所以更稳妥的表述仍然是“终端文本输入上的语音听写增强”，不是“双向语音助手”
-
-另外，`services/voiceStreamSTT.ts` 里还能看到 `tengu_cobalt_frost` 这类运行时 gate 线索；当前可见影响范围只落在 `voice_stream` 的 query params 和 STT provider 选择，不应把它扩写成 output 侧语音能力分支。
-
-### 3. `vim/` 采用“五段式”结构
-
-这轮复读后，`vim/` 的结构可以更清楚地写成：
-
-- `types.ts`
-  - 状态机与持久状态
-- `motions.ts`
-  - motion 解析
-- `textObjects.ts`
-  - text object 边界查找
-- `operators.ts`
-  - 实际文本改写
-- `transitions.ts`
-  - NORMAL 模式状态转移
-
-真正的接入层在：
-
-- `useVimInput.ts`
-- `VimTextInput.tsx`
-- `PromptInput.tsx`
-
-`useVimInput()` 负责：
-
-- INSERT / NORMAL 切换
-- `.` dot-repeat
-- `lastFind`
-- `lastChange`
-- 方向键与 `h/j/k/l` 的映射
-
-这里还有两个这轮应该明确写出的细节：
-
-- `operator + text object` 的 `count` 虽然会被记录，但当前实现里没有真正传进 `findTextObject()`
-- `D` 和 `C` 当前固定走 `executeOperatorMotion(..., '$', 1, ctx)`，前置 count 没有继续下沉到这个分支
-
-因此文档里不能写：
-
-- “完全 Vim 兼容”
-
-更稳妥的写法是：
-
-- 当前实现覆盖 INSERT / NORMAL、count、find、部分 `g` 前缀、常见 operator、部分 text object、dot-repeat 与寄存器/粘贴语义
-
-## 一张图看 companion 子系统
-
-```mermaid
-flowchart LR
-    A[getGlobalConfig().companion] --> B[getCompanion]
-    C[userID / oauth uuid] --> B
-    B --> D[CompanionSprite.tsx]
-    D --> E[sprite / speech bubble / pet hearts]
-    K[REPL.tsx query-end] --> L[fireCompanionObserver]
-    L --> M[companionReaction]
-    M --> D
-    B --> F[buddy/prompt.ts]
-    F --> G[companion_intro attachment]
-    G --> H[main conversation]
-    I[PromptInput / REPL] --> D
-    I --> J[/buddy teaser / focus state]
-```
-
-## 一张图看 Vim 五段式结构
+## 一张图看交互层
 
 ```mermaid
 flowchart TD
-    A[PromptInput] --> B[VimTextInput]
-    B --> C[useVimInput]
-    C --> D[transitions.ts]
-    D --> E[motions.ts]
-    D --> F[textObjects.ts]
-    D --> G[operators.ts]
-    C --> H[PersistentState / lastChange / lastFind]
+    A[REPL.tsx] --> B[PromptInput]
+    A --> C[CompanionSprite]
+    A --> D[VoiceKeybindingHandler]
+    B --> E[VimTextInput]
+    D --> F[useVoiceIntegration]
+    F --> G[useVoice]
+    G --> H[services/voice]
+    G --> I[voiceStreamSTT]
 ```
 
-## 一张图看 voice 开关与预检链
+## 一张图看 companion 与 voice
 
 ```mermaid
-flowchart LR
-    A[/voice command] --> B[isVoiceModeEnabled]
-    B --> C[recording / stream / dependency / mic preflight]
-    D[useVoiceEnabled] --> E[settings.voiceEnabled]
-    E --> F[hasVoiceAuth + GB kill-switch]
-    F --> G[voice feature visible]
+flowchart TD
+    A[companion.ts] --> B[getCompanion]
+    B --> C[CompanionSprite]
+    D[REPL.tsx] --> E[companionReaction]
+    E --> C
+    F[voiceModeEnabled.ts] --> G[hasVoiceAuth + GB gate]
+    G --> H[useVoiceEnabled]
+    H --> I[useVoiceIntegration]
+    I --> J[useVoice]
+    J --> K[recording + STT + transcript reinsertion]
 ```
 
-## 一张图看 voice 录音与转写链
+## 保守边界
 
-```mermaid
-flowchart LR
-    A[REPL.tsx] --> B[useVoiceIntegration]
-    B --> C[context/voice.tsx]
-    B --> D[useVoice]
-    D --> E[services/voice.ts<br/>local recording]
-    D --> F[services/voiceStreamSTT.ts<br/>voice_stream STT]
-    F --> G[voiceInterimTranscript / final transcript]
-    G --> H[insert transcript back into input]
-```
+- `Buddy` 保持 companion surface 表述，不写死成完整公开产品名。
+- voice 保持输入侧语音听写链表述，不扩写为 TTS、播放链或完整双向语音助手。
+- KAIROS 与 `/dream` 不在这一章扩写。它们的公开语义仍然保持条件化。
+- vim 保持“分层 modal input engine”表述，不写成完整 Vim parity。
 
-## 为什么这个设计重要
+## 继续阅读
 
-这部分代码很能说明 Claude Code 的一个特点：
-
-- 它不是“先有主循环，再随手接一层 UI”
-- 而是把输入模式、companion、voice 判定与输入集成也做成了相对独立的子系统
-
-几个最值得记住的点：
-
-- `buddy` 是一个带确定性骨架、持久 soul、附件注入和输入区提示的 companion 子系统
-- `voice` 在当前范围里已经不只是 gating，还能看到开关、预检、输入集成、录音和 STT 接点
-- `vim` 是一套清楚拆层的 modal 输入引擎
-
-## 推荐阅读顺序
-
-1. `_upstream/claude-code-sourcemap/restored-src/src/buddy/companion.ts`
-2. `_upstream/claude-code-sourcemap/restored-src/src/buddy/CompanionSprite.tsx`
-3. `_upstream/claude-code-sourcemap/restored-src/src/buddy/prompt.ts`
-4. `_upstream/claude-code-sourcemap/restored-src/src/buddy/useBuddyNotification.tsx`
-5. `_upstream/claude-code-sourcemap/restored-src/src/voice/voiceModeEnabled.ts`
-6. `_upstream/claude-code-sourcemap/restored-src/src/commands/voice/voice.ts`
-7. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceEnabled.ts`
-8. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVoiceIntegration.tsx`
-9. `_upstream/claude-code-sourcemap/restored-src/src/services/voice.ts`
-10. `_upstream/claude-code-sourcemap/restored-src/src/services/voiceStreamSTT.ts`
-11. `_upstream/claude-code-sourcemap/restored-src/src/vim/types.ts`
-12. `_upstream/claude-code-sourcemap/restored-src/src/vim/transitions.ts`
-13. `_upstream/claude-code-sourcemap/restored-src/src/vim/motions.ts`
-14. `_upstream/claude-code-sourcemap/restored-src/src/vim/textObjects.ts`
-15. `_upstream/claude-code-sourcemap/restored-src/src/vim/operators.ts`
-16. `_upstream/claude-code-sourcemap/restored-src/src/hooks/useVimInput.ts`
-
-## 仍待确认
-
-- `Buddy` 是否就是正式对外产品名。当前源码同时存在 `Buddy`、`Companion`、`watcher` 等命名，不能仅凭这些文件定论。
-- `fireCompanionObserver(...)` 的实现未在当前树中复核到，因此不能写死 companion reaction 的生成机制。
-- `companionPetAt` 的写入点当前没有确认到。
-- `/buddy` 命令的具体实现文件这轮没有在当前树里复核到；当前只能确认 `commands.ts` 里有命令入口引用、`PromptInput.tsx` 会提交 `/buddy`，因此 companion 的 hatch / pet / mute 等动作边界仍不能写死。
-- `AppStateStore.ts` 里提到的 `src/buddy/observer.ts` 在当前镜像里没有复核到，因此不能把它当成已读过的实现文件。
-- `voice` 的完整产品语义仍然不能从这轮范围推出；这批文件能稳定确认的是开关、预检、按键保持、本地录音、STT 与输入框回填，不能继续外推到 TTS、播放链或 output-side 语音能力。
-- `BUDDY`、`VOICE_MODE`、`tengu_cobalt_frost` 这些 gate 在不同构建里的默认状态，静态源码不能直接推出。
-- `vim` 这轮复读的是实现层，不是测试层，因此不能把支持范围扩写成“完整 Vim 兼容”。
+- 概览：[../README.md](../README.md)
+- 快速版：[../SIMPLE/README.md](../SIMPLE/README.md)
+- 轻量比较：[../comparison.md](../comparison.md)

@@ -2,68 +2,58 @@
 
 # Claude Code Source Deep Dive
 
-`Claude Code` をソースコード中心で読み解くための非公式リサーチリポジトリです。
+`Claude Code` の公開ソースミラーを起点に読み解く非公式リサーチリポジトリです。
 
-このリポジトリは次の 3 点に集中します。
+このリポジトリが主に扱うのは、`main.tsx` から分岐する 2 つの入口経路がどのように共有の `query/runtime` 主線へ合流するか、そして tools、MCP、skills、plugins、permissions、memory、compact、tasks、prompts などの各システムがその主線にどう接続されるかです。
 
-- 実行チェーンがどうつながるか
-- モジュールがどう分かれているか
-- どこまでがソースで確認でき、どこから先は慎重な表現が必要か
+詳細ドキュメントは主に簡体字中国語版と英語版です。このページは概要と導線をまとめた案内ページです。
 
 ## ここで確認できること
 
-- 対話型メインスレッドが `main.tsx` から `REPL.tsx` を経て `query.ts` に入る流れ
-- `QueryEngine.ts` が非対話 / SDK 経路で担う役割
-- tools、MCP、skills、plugins、permissions、memory、compact、tasks が同じ実行チェーンにどう接続されるか
-- prompt assembly、feature gate、remote / bridge 関連コードをどこまで確認できるか
-
-## このリポジトリのソース利用方針
-
-- コード上の事実は次の 2 つだけを根拠にしています。
-  - `https://github.com/ChinaSiro/claude-code-sourcemap`
-  - ローカルミラー：`_upstream/claude-code-sourcemap/`
-- このリポジトリで引用するソースパスは、実際に存在する次の場所を指します。
-  - `_upstream/claude-code-sourcemap/restored-src/src/...`
-
-詳細な境界は [DISCLAIMER.md](./DISCLAIMER.md) と [DISCLAIMER.en.md](./DISCLAIMER.en.md) を参照してください。
+- 対話型経路が `main.tsx` から `launchRepl()`、`REPL.tsx` を経て `query()` に入る流れ
+- 非対話 / SDK 経路が `main.tsx` から `QueryEngine.ts` を経て `query()` に入る流れ
+- `Tool.ts` と `tools.ts` がツール契約、組み込みツール集合、MCP 統合後のツールプールをどう定義するか
+- `query.ts` がツール実行、attachments、compact、stop hooks、継続条件、ターン間の再読込をどう扱うか
+- どこまでがソースで確認済みで、どの名称や分岐に慎重な表現が必要か
 
 ## 読み始める場所
 
 | 目的 | 入口 | 得られるもの |
 | --- | --- | --- |
-| まず全体像をつかむ | [ARCHITECTURE.md](./ARCHITECTURE.md) | 実行チェーン、主要レイヤー、重要な入口ファイル |
-| モジュールごとに読む | [MODULES/README.md](./MODULES/README.md) | 8 モジュールの概要、簡易版、詳細版への入口 |
-| prompt assembly を見る | [PROMPTS/README.md](./PROMPTS/README.md) | system prompt、agent prompt、skill injection の経路 |
-| gated branch を見る | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | コンパイル時 gate、実行時 gate、hidden capability の手がかり |
-| リポジトリを手早く回る | [SIMPLE/README.md](./SIMPLE/README.md) | 初見向けの短い読み方 |
-| そのまま深掘りする | [DEEP/README.md](./DEEP/README.md) | ソース追跡向けの長い読み方 |
+| まず全体像をつかむ | [ARCHITECTURE.en.md](./ARCHITECTURE.en.md) | 2 つの入口経路、共有主線、主要な入口ファイル |
+| サブシステムごとに読む | [MODULES/README.en.md](./MODULES/README.en.md) | 8 モジュールの概要、簡易版、詳細版への入口 |
+| prompt assembly を追う | [PROMPTS/README.en.md](./PROMPTS/README.en.md) | system prompt、agent prompt、skill injection の経路 |
+| gated branch を追う | [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md) | コンパイル時 gate、実行時 gate、条件付き経路の手がかり |
+| リポジトリを手早く回る | [SIMPLE/README.en.md](./SIMPLE/README.en.md) | 初見向けの短い読み方 |
+| そのまま深掘りする | [DEEP/README.en.md](./DEEP/README.en.md) | ソース追跡向けの長い読み方 |
 
 ## 読み方の例
 
-### ルート A：まず地図を作る
+### ルート A：まず全体地図を作る
 
-1. [ARCHITECTURE.md](./ARCHITECTURE.md)
-2. [MODULES/README.md](./MODULES/README.md)
-3. 任意のモジュールの `SIMPLE/README.md`
-4. 任意のモジュールの `DEEP/README.md`
+1. [ARCHITECTURE.en.md](./ARCHITECTURE.en.md)
+2. [MODULES/README.en.md](./MODULES/README.en.md)
+3. 任意のモジュールの `README.en.md`
+4. 任意のモジュールの `SIMPLE/README.en.md`
+5. 任意のモジュールの `DEEP/README.en.md`
 
-### ルート B：実行チェーンから追う
+### ルート B：共有主線から追う
 
-1. [ARCHITECTURE.md](./ARCHITECTURE.md)
-2. [MODULES/01-agent-loop-and-teams](./MODULES/01-agent-loop-and-teams/)
-3. [MODULES/02-planning-compaction-and-assistant](./MODULES/02-planning-compaction-and-assistant/)
-4. [MODULES/03-persistent-memory-system](./MODULES/03-persistent-memory-system/)
-5. [MODULES/05-tools-mcp-skills-and-plugins](./MODULES/05-tools-mcp-skills-and-plugins/)
-6. [MODULES/06-permissions-sandbox-and-trust](./MODULES/06-permissions-sandbox-and-trust/)
+1. [ARCHITECTURE.en.md](./ARCHITECTURE.en.md)
+2. [01-agent-loop-and-teams/README.en.md](./MODULES/01-agent-loop-and-teams/README.en.md)
+3. [02-planning-compaction-and-assistant/README.en.md](./MODULES/02-planning-compaction-and-assistant/README.en.md)
+4. [03-persistent-memory-system/README.en.md](./MODULES/03-persistent-memory-system/README.en.md)
+5. [05-tools-mcp-skills-and-plugins/README.en.md](./MODULES/05-tools-mcp-skills-and-plugins/README.en.md)
+6. [06-permissions-sandbox-and-trust/README.en.md](./MODULES/06-permissions-sandbox-and-trust/README.en.md)
 
-### ルート C：prompt、gate、hidden branch から入る
+### ルート C：prompts、gate、遠隔経路から入る
 
-1. [PROMPTS/README.md](./PROMPTS/README.md)
-2. [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
-3. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
-4. [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/)
+1. [PROMPTS/README.en.md](./PROMPTS/README.en.md)
+2. [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
+3. [07-remote-session-bridge-and-sdk/README.en.md](./MODULES/07-remote-session-bridge-and-sdk/README.en.md)
+4. [08-prompts-config-and-other-moats/README.en.md](./MODULES/08-prompts-config-and-other-moats/README.en.md)
 
-## リポジトリ構成
+## 主要ドキュメントとディレクトリ
 
 ```text
 .
@@ -71,35 +61,40 @@
 ├── README.en.md
 ├── README.zh-TW.md
 ├── README.ja.md
-├── DISCLAIMER.md
 ├── ARCHITECTURE.md
-├── SIMPLE/
-├── DEEP/
+├── ARCHITECTURE.en.md
+├── DISCLAIMER.md
+├── DISCLAIMER.en.md
 ├── MODULES/
 ├── PROMPTS/
 ├── FEATURE-FLAGS/
+├── SIMPLE/
+├── DEEP/
 ├── COMPARISONS/
 ├── EXAMPLES/
-└── ASSETS/
+├── ASSETS/
+└── AI-AGENT/
 ```
 
-## 読むときに保持すべき境界
+最初の入口としては `README`、`ARCHITECTURE`、`MODULES`、`PROMPTS`、`FEATURE-FLAGS` から入ると流れをつかみやすくなります。`AI-AGENT/` は自動化向けの構造化補足レイヤーです。
 
-- これは非公式の研究リポジトリです。Anthropic の公式構造、公開計画、製品表現を代表しません。
-- `feature()`、GrowthBook、env gate は条件分岐の存在を示すだけで、公開 rollout を証明しません。
-- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` などの名称は、ソースで確認できる範囲に限定して慎重に扱います。
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` や `mcp_instructions` のような prompt 断片は、常駐セクションではなく条件付きの経路要素として理解する必要があります。
+## 読むときの境界
+
+- これは非公式の研究リポジトリです
+- ソース事実の範囲は `ChinaSiro/claude-code-sourcemap` とローカルの `_upstream/claude-code-sourcemap/` ミラーです
+- `feature()`、GrowthBook、env gate は条件付き経路の存在を示すもので、公開 rollout をそのまま示すものではありません
+- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` などの名称は、ソース上の表現と周辺文脈の範囲で扱います
+
+詳細な境界は [DISCLAIMER.md](./DISCLAIMER.md) を参照してください。
 
 ## 続けて読む
 
-- [MODULES/README.md](./MODULES/README.md)
-- [PROMPTS/README.md](./PROMPTS/README.md)
-- [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
-- [COMPARISONS/README.md](./COMPARISONS/README.md)
-- [EXAMPLES/README.md](./EXAMPLES/README.md)
-
-## 機械可読インデックス
-
-他の agent に構造化資料を渡したい場合は、次も参照できます。
-
-- [AI-AGENT](./AI-AGENT/)
+- [MODULES/README.en.md](./MODULES/README.en.md)
+- [PROMPTS/README.en.md](./PROMPTS/README.en.md)
+- [FEATURE-FLAGS/README.en.md](./FEATURE-FLAGS/README.en.md)
+- [COMPARISONS/README.en.md](./COMPARISONS/README.en.md)
+- [EXAMPLES/README.en.md](./EXAMPLES/README.en.md)
+- [ASSETS/README.en.md](./ASSETS/README.en.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md) / [CONTRIBUTING.en.md](./CONTRIBUTING.en.md)
+- [SECURITY.md](./SECURITY.md) / [SECURITY.en.md](./SECURITY.en.md)
+- [AI-AGENT](./AI-AGENT/)：自動化向けの構造化補足ノート

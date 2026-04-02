@@ -1,12 +1,12 @@
 [简体中文](./README.md) | [English](./README.en.md)
 
-# COMPARISONS
+# 比较与背景材料
 
-这一部分提供少量背景材料，帮助读者理解为什么 Claude Code 的这些设计会被频繁拿来比较。
+这一部分提供少量背景材料，帮助读者理解 Claude Code 为什么会频繁进入比较语境。
 
-这里不会把比较写成营销文，也不会让比较盖过源码主线。
+这些页面只补背景，不替代源码主线。
 
-## 建议怎么读
+## 建议阅读顺序
 
 1. [timeline.md](./timeline.md)
 2. [why-developers-switched.md](./why-developers-switched.md)

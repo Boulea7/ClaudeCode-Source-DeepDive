@@ -1,25 +1,48 @@
 [简体中文](./system-prompt-sections.md) | [English](./system-prompt-sections.en.md)
 
-# Dynamic Sections And Cache Boundaries
+# System Prompt Sections
 
-This page explains the section system itself: how dynamic prompt sections are registered, cached, invalidated, and recomputed.
+This page explains the section registry. It does not restate raw section bodies.
 
-## What This Page Explains
+## Key Source Files
 
-- how sections are registered
-- what `cacheBreak` means
-- how `resolveSystemPromptSections()` evaluates sections
-- why `/clear` and `/compact` invalidate section state
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/systemPromptSections.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/constants/prompts.ts`
+- `_upstream/claude-code-sourcemap/restored-src/src/utils/sessionRestore.ts`
 
-## Main Points
+## Confirmed From Source
 
-- section entries are first-class registry objects
-- uncached sections still write their latest value back to cache slots
-- `mcp_instructions` is one of the clearest uncached sections in the standard registry path
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` separates cacheable static content from runtime-sensitive content on qualifying paths
+- `systemPromptSection(name, compute)` creates a cached section.
+- `DANGEROUS_uncachedSystemPromptSection(name, compute, reason)` creates a per-turn recomputed section.
+- `resolveSystemPromptSections()`:
+  - returns cached values on cache hit
+  - runs `compute()` on cache miss
+  - stores the result back into the cache
+- `clearSystemPromptSections()` clears the section cache and resets beta-header latches.
+- Source comments explicitly tie section-cache reset to `/clear` and `/compact` flows.
+- `prompts.ts` currently registers these main section names:
+  - `session_guidance`
+  - `memory`
+  - `ant_model_override`
+  - `env_info_simple`
+  - `language`
+  - `output_style`
+  - `mcp_instructions`
+  - `scratchpad`
+  - `frc`
+  - `summarize_tool_results`
+  - `numeric_length_anchors`
+  - `token_budget`
+  - `brief`
+- `mcp_instructions` is explicitly registered as `DANGEROUS_uncachedSystemPromptSection()`.
 
-## Conservative Boundaries
+## Not Confirmed From Source
 
-- section registry is stable; section membership and content remain conditional
-- `mcp_instructions` can move between inline sections and delta / attachment paths
-- dynamic boundary wording should stay conditional
+- Default-on status for any section in a public build.
+- The final runtime body of any section.
+
+## Review Checklist
+
+- Do not describe the section cache as permanent.
+- Do not omit `/clear` and `/compact` reset semantics.
+- Do not downgrade `mcp_instructions` into an ordinary cached section.

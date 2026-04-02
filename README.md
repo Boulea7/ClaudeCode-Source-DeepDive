@@ -2,52 +2,40 @@
 
 # Claude Code Source Deep Dive
 
-一个以源码拆解为核心的 `Claude Code` 非官方研究仓库。
+一个围绕 `Claude Code` 公开镜像源码建立的非官方研究仓库。
 
-这里的重点始终是三件事：
-
-- 运行链如何接起来
-- 模块之间如何分层
-- 哪些结论已经有源码支撑，哪些地方仍需保守描述
+这份仓库主要回答一类问题：`main.tsx` 分出的两个入口路径，怎样汇入共享的 `query/runtime` 主链，以及 tools、MCP、skills、plugins、permissions、memory、compact、tasks、prompts 等系统怎样挂到这条主链上。
 
 ## 你能在这里确认什么
 
-- 交互式主线程怎样从 `main.tsx` 进入 `REPL.tsx`，再进入 `query.ts`
-- `QueryEngine.ts` 在非交互 / SDK 路径中承担什么角色
-- tools、MCP、skills、plugins、permissions、memory、compact、tasks 如何接到同一条运行链上
-- prompt 装配、feature gate、remote / bridge 相关代码目前能确认到什么程度
-
-## 这个仓库如何使用源码
-
-- 代码事实只来自：
-  - `https://github.com/ChinaSiro/claude-code-sourcemap`
-  - 本地镜像：`_upstream/claude-code-sourcemap/`
-- 本仓库中引用的源码路径，默认指向当前仓库里真实存在的：
-  - `_upstream/claude-code-sourcemap/restored-src/src/...`
-
-更完整的边界说明见 [DISCLAIMER.md](./DISCLAIMER.md)。
+- 交互式路径怎样从 `main.tsx` 进入 `launchRepl()`、`REPL.tsx`，再进入 `query()`
+- 非交互 / SDK 路径怎样从 `main.tsx` 进入 `QueryEngine.ts`，再进入 `query()`
+- `Tool.ts` 与 `tools.ts` 怎样定义工具协议、内建工具集合、MCP 合并后的工具池
+- `query.ts` 怎样处理工具执行、attachments、compact、stop hooks、继续条件与跨回合刷新
+- 哪些结论已经有源码支撑，哪些名称与分支仍需保守书写
 
 ## 从哪里开始读
 
 | 目标 | 建议入口 | 你会得到什么 |
 | --- | --- | --- |
-| 先建立整体地图 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 主执行链、分层关系、关键入口文件 |
-| 按模块系统阅读 | [MODULES/README.md](./MODULES/README.md) | 8 个模块的总览、简单版、深读版入口 |
+| 先建立整体地图 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 两个入口路径、共享主链、关键入口文件 |
+| 按子系统阅读 | [MODULES/README.md](./MODULES/README.md) | 8 个模块的总览、简单版、深读版入口 |
 | 只看 prompt 装配 | [PROMPTS/README.md](./PROMPTS/README.md) | system prompt、agent prompt、skill 注入路径 |
-| 只看 gated 分支 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | 编译期 gate、运行时 gate、隐藏能力线索 |
+| 只看 gated 分支 | [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md) | 编译期 gate、运行时 gate、条件路径线索 |
 | 快速浏览全仓 | [SIMPLE/README.md](./SIMPLE/README.md) | 面向第一次进入仓库的短路线 |
 | 直接进入深读 | [DEEP/README.md](./DEEP/README.md) | 面向源码追读的长路线 |
 
 ## 推荐阅读路线
 
-### 路线 A：先看整张图
+### 路线 A：先看整体图
 
 1. [ARCHITECTURE.md](./ARCHITECTURE.md)
 2. [MODULES/README.md](./MODULES/README.md)
-3. 任意模块的 `SIMPLE/README.md`
-4. 任意模块的 `DEEP/README.md`
+3. 任意模块的 `README.md`
+4. 任意模块的 `SIMPLE/README.md`
+5. 任意模块的 `DEEP/README.md`
 
-### 路线 B：先看主运行链
+### 路线 B：先追共享主链
 
 1. [ARCHITECTURE.md](./ARCHITECTURE.md)
 2. [MODULES/01-agent-loop-and-teams](./MODULES/01-agent-loop-and-teams/)
@@ -56,14 +44,14 @@
 5. [MODULES/05-tools-mcp-skills-and-plugins](./MODULES/05-tools-mcp-skills-and-plugins/)
 6. [MODULES/06-permissions-sandbox-and-trust](./MODULES/06-permissions-sandbox-and-trust/)
 
-### 路线 C：先看 prompt、gate 与隐藏分支
+### 路线 C：先看 prompts、gate 与远端路径
 
 1. [PROMPTS/README.md](./PROMPTS/README.md)
 2. [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
-3. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
-4. [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/)
+3. [MODULES/07-remote-session-bridge-and-sdk](./MODULES/07-remote-session-bridge-and-sdk/)
+4. [MODULES/08-prompts-config-and-other-moats](./MODULES/08-prompts-config-and-other-moats/)
 
-## 仓库结构
+## 主要文档与目录
 
 ```text
 .
@@ -71,24 +59,31 @@
 ├── README.en.md
 ├── README.zh-TW.md
 ├── README.ja.md
-├── DISCLAIMER.md
 ├── ARCHITECTURE.md
-├── SIMPLE/
-├── DEEP/
+├── ARCHITECTURE.en.md
+├── DISCLAIMER.md
+├── DISCLAIMER.en.md
 ├── MODULES/
 ├── PROMPTS/
 ├── FEATURE-FLAGS/
+├── SIMPLE/
+├── DEEP/
 ├── COMPARISONS/
 ├── EXAMPLES/
-└── ASSETS/
+├── ASSETS/
+└── AI-AGENT/
 ```
 
-## 阅读时需要记住的边界
+首次阅读建议先看 `README`、`ARCHITECTURE`、`MODULES`、`PROMPTS`、`FEATURE-FLAGS`。`AI-AGENT/` 提供面向自动化阅读的结构化补充材料。
 
-- 这是非官方研究仓库，不代表 Anthropic 官方结构、发布计划或产品口径
-- `feature()`、GrowthBook、env gate 只能说明代码里存在条件分支，不能直接说明公开 rollout
-- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` 等名称只按源码证据保守书写
-- `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`、`mcp_instructions` 等 prompt 片段都要按条件路径理解，不能写成固定常驻段落
+## 阅读边界
+
+- 这是非官方研究仓库
+- 源码事实边界是公开镜像 `ChinaSiro/claude-code-sourcemap` 与本地 `_upstream/claude-code-sourcemap/`
+- `feature()`、GrowthBook、env gate 说明条件路径存在，它们本身不足以说明公开 rollout
+- `Buddy`、`KAIROS`、`PROACTIVE`、`voice`、`bridge`、`remote isolation` 等名称保持源码字面和上下文范围
+
+完整边界说明见 [DISCLAIMER.md](./DISCLAIMER.md)。
 
 ## 继续阅读
 
@@ -97,9 +92,7 @@
 - [FEATURE-FLAGS/README.md](./FEATURE-FLAGS/README.md)
 - [COMPARISONS/README.md](./COMPARISONS/README.md)
 - [EXAMPLES/README.md](./EXAMPLES/README.md)
-
-## 机器可读索引
-
-如果你需要给其他 agent 喂结构化材料，可以再看：
-
-- [AI-AGENT](./AI-AGENT/)
+- [ASSETS/README.md](./ASSETS/README.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md) / [CONTRIBUTING.en.md](./CONTRIBUTING.en.md)
+- [SECURITY.md](./SECURITY.md) / [SECURITY.en.md](./SECURITY.en.md)
+- [AI-AGENT](./AI-AGENT/)：面向自动化阅读的结构化补充材料
